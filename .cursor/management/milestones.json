@@ -1,42 +1,132 @@
 {
   "version": "1.0.0",
-  "updated_at": "2026-11-10T23:00:00+07:00",
-  "current_phase": "01",
+  "updated_at": "2026-11-10T23:51:29+07:00",
+  "current_phase": "00",
   "phases": [
     {
-      "phase": "01",
-      "name": "Database foundation",
+      "phase": "00",
+      "name": "Project discovery",
       "status": "in_progress",
-      "summary": "RO-009 is ready and RO-011 stays blocked until that security review is recorded.",
+      "summary": "RO-035 baseline is in review. Pytest on 2026-11-10 returned 1 failed, 64 passed, 1 skipped.",
       "task_ids": [
         "RO-001",
-        "RO-002",
-        "RO-003",
-        "RO-004",
-        "RO-005",
-        "RO-006",
-        "RO-007",
-        "RO-008",
-        "RO-009",
-        "RO-010",
-        "RO-011"
+        "RO-012",
+        "RO-035"
+      ]
+    },
+    {
+      "phase": "01",
+      "name": "Original game research",
+      "status": "in_progress",
+      "summary": "RO-013, RO-014, and RO-015 record repository evidence and a public search. No authorized client protocol was found. Original behavior stays unknown.",
+      "task_ids": [
+        "RO-013",
+        "RO-014",
+        "RO-015"
       ]
     },
     {
       "phase": "02",
-      "name": "Compatibility and validation",
+      "name": "Architecture",
       "status": "completed",
-      "summary": "RO-020 through RO-028 are completed. Original Rules of Survival behavior stays unknown.",
+      "summary": "RO-002 recorded the database architecture. ADR-0001 through ADR-0004 remain the accepted server decisions.",
       "task_ids": [
-        "RO-020",
-        "RO-021",
+        "RO-002"
+      ]
+    },
+    {
+      "phase": "03",
+      "name": "Database foundation",
+      "status": "in_progress",
+      "summary": "Models, migration 93510e8bf194, imports, and database QA are recorded. RO-009 is ready and RO-011 is blocked on that review.",
+      "task_ids": [
+        "RO-003",
+        "RO-004",
+        "RO-005",
+        "RO-008",
+        "RO-009",
+        "RO-011"
+      ]
+    },
+    {
+      "phase": "04",
+      "name": "Core game services",
+      "status": "in_progress",
+      "summary": "Inventory, team leave, and stored match lifecycle routes are recorded. Experience, progression, and equipment rewards stay open. RO-018 and RO-019 stay backlog.",
+      "task_ids": [
+        "RO-006",
+        "RO-007",
+        "RO-017",
+        "RO-018",
+        "RO-019",
+        "RO-036",
+        "RO-038",
+        "RO-039",
+        "RO-040",
+        "RO-043",
+        "RO-044",
+        "RO-046",
+        "RO-047",
+        "RO-048",
+        "RO-049"
+      ]
+    },
+    {
+      "phase": "05",
+      "name": "Gameplay engine",
+      "status": "in_progress",
+      "summary": "The deterministic simulator remains. RO-050 adds a local buggy. RO-051 records the match clock and placement results. Equipment and reward payouts stay unimplemented.",
+      "task_ids": [
         "RO-022",
-        "RO-023",
+        "RO-029",
+        "RO-030",
+        "RO-031",
+        "RO-050",
+        "RO-051"
+      ]
+    },
+    {
+      "phase": "06",
+      "name": "Networking and client compatibility",
+      "status": "in_progress",
+      "summary": "The documented JSON message list is tested against the parser. Original compatibility remains unknown. RO-033 stays backlog.",
+      "task_ids": [
+        "RO-016",
+        "RO-020",
         "RO-024",
+        "RO-028",
+        "RO-032",
+        "RO-033",
+        "RO-041",
+        "RO-042",
+        "RO-052"
+      ]
+    },
+    {
+      "phase": "07",
+      "name": "Quality and performance",
+      "status": "in_progress",
+      "summary": "The short Locust sample was run again: 77 requests, 0 failures, 14.28s. That sample is not capacity. RO-037 stays backlog.",
+      "task_ids": [
+        "RO-021",
+        "RO-023",
         "RO-025",
         "RO-026",
         "RO-027",
-        "RO-028"
+        "RO-037",
+        "RO-053"
+      ]
+    },
+    {
+      "phase": "08",
+      "name": "Release and deployment",
+      "status": "in_progress",
+      "summary": "Release status is recorded and is not ready. Docker returned an engine error. PostgreSQL was not executed. RO-034 still waits on RO-011.",
+      "task_ids": [
+        "RO-010",
+        "RO-034",
+        "RO-045",
+        "RO-054"
       ]
     }
   ]

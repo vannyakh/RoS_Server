@@ -1,0 +1,219 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-11-10T23:20:00+07:00",
+  "discoveries": [
+    {
+      "discovery_id": "DIS-0001",
+      "title": "No authorized original specification is in the repository",
+      "category": "research",
+      "description": "The compatibility matrix and its provenance file describe this repository. They are not an official Rules of Survival dataset.",
+      "observed_fact": "testdata/reference/provenance.json says the compatibility matrix was written from inspection of this repository and is not an official Rules of Survival reference.",
+      "interpretation": "Local implementation and local tests cannot be promoted to original-game compatibility.",
+      "hypothesis": "An authorized specification may exist outside this repository. None is checked in here.",
+      "implementation_impact": "Every feature stays compatibility_status unknown until a new source and a comparison are recorded.",
+      "source_type": "repository_inspection",
+      "source_reference": "testdata/reference/provenance.json",
+      "source_version": "1",
+      "observed_behavior": "The provenance file labels the matrix, the synthetic player, and the solo scenario as local artifacts.",
+      "evidence_path": "testdata/reference/provenance.json",
+      "confidence": "confirmed",
+      "status": "verified",
+      "related_features": [],
+      "related_tasks": [
+        "RO-013",
+        "RO-020",
+        "RO-028"
+      ],
+      "discovered_by": "cto",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "reviewed_at": "2026-11-10T22:55:00+07:00"
+    },
+    {
+      "discovery_id": "DIS-0002",
+      "title": "Development uses SQLite and production settings expect PostgreSQL",
+      "category": "database",
+      "description": "The README and operations document describe two database targets. The PostgreSQL test was skipped.",
+      "observed_fact": "README.md says development uses SQLite. docker-compose.yml defines PostgreSQL and Redis. RO-008 and RO-028 record that test_postgres_account_roundtrip was skipped because POSTGRES_TEST_URL was unset.",
+      "interpretation": "Schema portability is intended. A skipped PostgreSQL test is not evidence that production PostgreSQL was executed.",
+      "hypothesis": "The same Alembic revision will run on PostgreSQL. That still needs a run with POSTGRES_TEST_URL set.",
+      "implementation_impact": "Do not claim a PostgreSQL verification. Do not downgrade a database that must be kept.",
+      "source_type": "project_documentation",
+      "source_reference": "README.md",
+      "source_version": null,
+      "observed_behavior": "Startup applies alembic upgrade head to the SQLite file in DATABASE_URL. Compose was not started in RO-010.",
+      "evidence_path": "docs/DATABASE_OPERATIONS.md",
+      "confidence": "confirmed",
+      "status": "verified",
+      "related_features": [],
+      "related_tasks": [
+        "RO-003",
+        "RO-004",
+        "RO-010"
+      ],
+      "discovered_by": "cto",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "reviewed_at": "2026-11-10T22:55:00+07:00"
+    },
+    {
+      "discovery_id": "DIS-0003",
+      "title": "The wire protocol is this server's JSON protocol",
+      "category": "networking",
+      "description": "README.md and the architecture decision record describe a project JSON protocol, not an official client protocol.",
+      "observed_fact": "README.md documents version 1 messages auth, lobby.join, player.action, player.input, and state on ws://<host>:8000/api/v1/ws. The architecture record says this is not an official Rules of Survival client protocol.",
+      "interpretation": "Protocol tests prove this server's contract. They do not prove that an original game client can connect.",
+      "hypothesis": "The original client uses a different interface. That interface is not in this repository.",
+      "implementation_impact": "Networking work must keep rejecting unknown versions and must not be described as official-client compatibility.",
+      "source_type": "project_documentation",
+      "source_reference": "README.md",
+      "source_version": null,
+      "observed_behavior": "The first WebSocket message carries the token in the payload. The token is not placed in the URL.",
+      "evidence_path": "docs/engineering/ARCHITECTURE_DECISIONS.md",
+      "confidence": "confirmed",
+      "status": "verified",
+      "related_features": [
+        "MM-001"
+      ],
+      "related_tasks": [
+        "RO-024",
+        "RO-032"
+      ],
+      "discovered_by": "cto",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "reviewed_at": "2026-11-10T22:55:00+07:00"
+    },
+    {
+      "discovery_id": "DIS-0004",
+      "title": "Migration 93510e8bf194 preserves legacy_players",
+      "category": "database",
+      "description": "The accepted architecture record says the initial revision renames the old players table and does not drop it on upgrade.",
+      "observed_fact": "docs/engineering/ARCHITECTURE_DECISIONS.md states that revision 93510e8bf194 renames players to legacy_players, copies rows, and does not drop the legacy table on upgrade.",
+      "interpretation": "Upgrade is the path for an existing development database. Downgrade is documented for a disposable database.",
+      "hypothesis": "None. The preservation rule is already an accepted decision. RO-009 still has to cite the migration file in a security review.",
+      "implementation_impact": "Do not rewrite revision 93510e8bf194. Do not delete legacy_players or player-owned rows.",
+      "source_type": "project_documentation",
+      "source_reference": "docs/engineering/ARCHITECTURE_DECISIONS.md",
+      "source_version": "93510e8bf194",
+      "observed_behavior": "Upgrade keeps the renamed legacy table. Downgrade drops the new tables and is limited to a disposable database.",
+      "evidence_path": "migrations/versions/93510e8bf194_initial_database_schema.py",
+      "confidence": "confirmed",
+      "status": "verified",
+      "related_features": [
+        "PLAY-001"
+      ],
+      "related_tasks": [
+        "RO-004",
+        "RO-009"
+      ],
+      "discovered_by": "cto",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "reviewed_at": "2026-11-10T22:55:00+07:00"
+    },
+    {
+      "discovery_id": "DIS-0005",
+      "title": "Original combat, equipment, and vehicle behavior is unknown",
+      "category": "gameplay",
+      "description": "The matrix records local weapon and movement rules and leaves original behavior unknown. Equipment and vehicles are not implemented.",
+      "observed_fact": "The compatibility matrix marks GP-002, GP-004, and GP-005 as implemented local behavior with compatibility unknown. GP-007 and GP-008 are not implemented. Provenance says the solo scenario expects pistol damage 22 and speed 5 from this server's own files.",
+      "interpretation": "Those numbers are a local contract. They are not an original weapon table.",
+      "hypothesis": "The commercial game has different weapon, vehicle, and equipment behavior. No authorized source for those values is in this repository.",
+      "implementation_impact": "Do not fill equipment or vehicles with guessed original stats. Tests must cite app/game/items.py and app/game/rules.py when they assert local numbers.",
+      "source_type": "repository_inspection",
+      "source_reference": "testdata/reference/compatibility_matrix.json",
+      "source_version": "1",
+      "observed_behavior": "Local health starts at 100 in the matrix notes. Local speed is 5 map units per second. No vehicle simulation is implemented.",
+      "evidence_path": "testdata/reference/provenance.json",
+      "confidence": "unknown",
+      "status": "investigating",
+      "related_features": [
+        "GP-002",
+        "GP-004",
+        "GP-005",
+        "GP-007",
+        "GP-008"
+      ],
+      "related_tasks": [
+        "RO-015",
+        "RO-029",
+        "RO-030"
+      ],
+      "discovered_by": "cto",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "reviewed_at": null
+    },
+    {
+      "discovery_id": "DIS-0006",
+      "title": "No authorized client build is stored in the repository",
+      "category": "client",
+      "description": "A search of the workspace found no APK, IPA, packet capture, or native library that could be used as a client reference.",
+      "observed_fact": "The workspace contains no .apk, .ipa, .pcap, or .so file. README.md describes a browser client at /play for this server.",
+      "interpretation": "There is a browser play page for this server. There is no checked-in original mobile client to compare against.",
+      "hypothesis": "A user-owned authorized client may be analyzed later under the research rules. That analysis has not started.",
+      "implementation_impact": "Do not claim the original client can connect. Do not bypass pinning or authentication to obtain a client interface.",
+      "source_type": "repository_inspection",
+      "source_reference": "README.md",
+      "source_version": null,
+      "observed_behavior": "The documented client path is the browser page served by this server, using this server's WebSocket messages.",
+      "evidence_path": "README.md",
+      "confidence": "confirmed",
+      "status": "verified",
+      "related_features": [],
+      "related_tasks": [
+        "RO-014",
+        "RO-033"
+      ],
+      "discovered_by": "cto",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "reviewed_at": "2026-11-10T22:55:00+07:00"
+    },
+    {
+      "discovery_id": "DIS-0007",
+      "title": "Locust WebSocket receive timed out",
+      "category": "performance",
+      "description": "The short Locust profile failed because the WebSocket client blocked until the run time limit.",
+      "observed_fact": "python -m pytest -q --tb=line on 2026-11-10 finished 1 failed, 64 passed, 1 skipped in 64.35s. tests/performance/test_load.py failed. Locust 2.47.0 logged 4 HTTP requests, 0 HTTP failures, then WebSocketTimeoutException: Connection timed out, and exited 1.",
+      "interpretation": "The HTTP register and login calls in that sample succeeded. The failure is the WebSocket recv in tools/load_generator/locustfile.py waiting until Locust shut down.",
+      "hypothesis": "The server may have sent no further frame after auth, so recv waited for the whole run. That was not separately traced in this audit.",
+      "implementation_impact": "Do not treat the earlier 4-request sample or this failed run as capacity. Fix or quarantine the test before using it as a regression gate.",
+      "source_type": "test_execution",
+      "source_reference": "tests/performance/test_load.py",
+      "source_version": null,
+      "observed_behavior": "Two Locust users registered and logged in. websocket_auth then blocked on recv.",
+      "evidence_path": "reports/project-audit/BASELINE_REPORT.md",
+      "confidence": "confirmed",
+      "status": "verified",
+      "related_features": [],
+      "related_tasks": [
+        "RO-025",
+        "RO-035"
+      ],
+      "discovered_by": "cto",
+      "created_at": "2026-11-10T23:20:00+07:00",
+      "reviewed_at": "2026-11-10T23:20:00+07:00"
+    },
+    {
+      "discovery_id": "DIS-0008",
+      "title": "Public shutdown notice is not a protocol specification",
+      "category": "research",
+      "description": "A public operations announcement was found by web search. It does not describe the client protocol.",
+      "observed_fact": "A web search result for the Steam Community news page of app 788260 included an April 26, 2022 announcement that Rules of Survival—Steam would cease operations on June 27, 2022 at 15:00 and that account and character data would be deleted after shutdown. This session did not open the page in a browser and did not download a client.",
+      "interpretation": "The notice is evidence about a public shutdown date. It is not evidence of authentication, matchmaking, combat, or packet layout.",
+      "hypothesis": "An authorized technical specification may still exist outside this repository. None was retrieved.",
+      "implementation_impact": "Keep every feature compatibility_status unknown. Do not derive endpoints from the shutdown notice.",
+      "source_type": "public_documentation",
+      "source_reference": "https://steamcommunity.com/app/788260/allnews/",
+      "source_version": null,
+      "observed_behavior": "The search snippet quoted an operations timetable and a data-deletion statement. No packet field was quoted.",
+      "evidence_path": "reports/project-audit/BASELINE_REPORT.md",
+      "confidence": "high",
+      "status": "investigating",
+      "related_features": [],
+      "related_tasks": [
+        "RO-013",
+        "RO-035"
+      ],
+      "discovered_by": "cto",
+      "created_at": "2026-11-10T23:20:00+07:00",
+      "reviewed_at": null
+    }
+  ]
+}

@@ -53,4 +53,4 @@ Open the task's `history` array. It is the audit log. Do not rewrite old rows.
 
 ## Next assignment
 
-RO-009 is the next eligible task. RO-011 cannot start until RO-009 is completed.
+RO-009 is the next security task. RO-013 is the next research task. Both have completed dependencies. RO-011 cannot start until RO-009 is completed. RO-012 stays in review until QA runs `python scripts/validate_project_management.py`.

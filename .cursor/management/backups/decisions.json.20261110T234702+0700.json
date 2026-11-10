@@ -1,0 +1,184 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-11-10T23:40:39+07:00",
+  "decisions": [
+    {
+      "decision_id": "ADR-0001",
+      "title": "Modular monolith and local JSON protocol",
+      "date": "2026-11-10",
+      "status": "accepted",
+      "context": "The server is a Python 3.12 FastAPI application with HTTP, WebSocket, services, repositories, and a 20 Hz match loop.",
+      "problem": "The reconstruction needs one place for account, lobby, and match behavior without treating the wire format as an official client protocol.",
+      "options_considered": [
+        "Split services into separate deployable processes now",
+        "Keep a modular monolith and a project-specific JSON protocol"
+      ],
+      "chosen_solution": "Keep the modular monolith. HTTP and WebSocket code call services. Services call repositories. The match loop keeps positions in memory.",
+      "reason": "This is the recorded architecture in docs/engineering/ARCHITECTURE_DECISIONS.md.",
+      "consequences": "Official Rules of Survival packet formats stay out of scope. Changing the protocol or the process split needs a new decision record.",
+      "related_tasks": [
+        "RO-001",
+        "RO-002"
+      ],
+      "related_changes": [],
+      "record_path": "docs/architecture/decisions/ADR-0001-server-shape.md"
+    },
+    {
+      "decision_id": "ADR-0002",
+      "title": "Account identity and hashed session storage",
+      "date": "2026-11-10",
+      "status": "accepted",
+      "context": "Players need a login row and one profile. Sessions are stored on the server.",
+      "problem": "Response schemas must not expose password or token secrets.",
+      "options_considered": [
+        "Store plaintext tokens",
+        "Store Argon2 password hashes and SHA-256 session token hashes"
+      ],
+      "chosen_solution": "accounts is the login row and the JWT subject. players is one profile per account. Passwords use Argon2. Session tokens are stored as SHA-256 hashes and omitted from response schemas.",
+      "reason": "This is the recorded identity decision.",
+      "consequences": "Logout, if added, must revoke the stored hash. RO-009 still has to review the implementation.",
+      "related_tasks": [
+        "RO-003",
+        "RO-006",
+        "RO-009"
+      ],
+      "related_changes": [],
+      "record_path": "docs/architecture/decisions/ADR-0002-identity.md"
+    },
+    {
+      "decision_id": "ADR-0003",
+      "title": "UUID keys and portable JSON",
+      "date": "2026-11-10",
+      "status": "accepted",
+      "context": "Development uses SQLite and the production layout expects PostgreSQL.",
+      "problem": "One migration has to serve both databases.",
+      "options_considered": [
+        "Database-specific primary keys",
+        "UUID string keys and PortableJSON"
+      ],
+      "chosen_solution": "Primary keys are UUID strings. JSON columns use PortableJSON. The Python attribute for JSON payloads is details. Relationships use lazy=raise.",
+      "reason": "This is the recorded portability decision.",
+      "consequences": "A skipped PostgreSQL test does not prove the production path. Do not add a second incompatible key style without a new decision.",
+      "related_tasks": [
+        "RO-003",
+        "RO-004"
+      ],
+      "related_changes": [],
+      "record_path": "docs/architecture/decisions/ADR-0003-schema-portability.md"
+    },
+    {
+      "decision_id": "ADR-0004",
+      "title": "Preserve legacy player rows",
+      "date": "2026-11-10",
+      "status": "accepted",
+      "context": "An older players table existed before the normalized schema.",
+      "problem": "The new schema must not destroy the old rows during upgrade.",
+      "options_considered": [
+        "Drop the old table during upgrade",
+        "Rename it to legacy_players and copy rows"
+      ],
+      "chosen_solution": "Revision 93510e8bf194 renames players to legacy_players, creates the new tables, and copies rows. Upgrade does not drop the legacy table.",
+      "reason": "Player-owned rows are protected. Downgrade is only for a disposable database.",
+      "consequences": "Do not rewrite this applied revision. Do not delete legacy_players.",
+      "related_tasks": [
+        "RO-004",
+        "RO-009"
+      ],
+      "related_changes": [],
+      "record_path": "docs/architecture/decisions/ADR-0004-legacy-players.md"
+    },
+    {
+      "decision_id": "ADR-0005",
+      "title": "Management registries are the project record",
+      "date": "2026-11-10",
+      "status": "accepted",
+      "context": "The reconstruction runs across many Cursor sessions. Conversation history is not a durable project record.",
+      "problem": "Research, implementation, tests, compatibility, and ownership need a record that survives a new session.",
+      "options_considered": [
+        "Rely on chat summaries",
+        "Keep append-only JSON registries for tasks, discoveries, compatibility, checkpoints, and changelog"
+      ],
+      "chosen_solution": "The JSON files in .cursor/management are the source of truth. The CTO is the only role that changes task assignment or status. Checkpoints and released changelog rows are append-only.",
+      "reason": "A later session must be able to resume from files and command evidence.",
+      "consequences": "File existence does not change task status. Specialists do not edit the registries. The registries are not the game database.",
+      "related_tasks": [
+        "RO-012"
+      ],
+      "related_changes": [
+        "CH-0001"
+      ],
+      "record_path": "docs/architecture/decisions/ADR-0005-project-registries.md"
+    },
+    {
+      "decision_id": "ADR-0006",
+      "title": "Local tests do not prove original compatibility",
+      "date": "2026-11-10",
+      "status": "accepted",
+      "context": "RO-020 recorded 43 server functions. RO-028 reviewed them.",
+      "problem": "A passing test of this server can be mistaken for a match to original Rules of Survival.",
+      "options_considered": [
+        "Treat a passing local test as compatible",
+        "Keep implementation, test, and original compatibility as separate fields"
+      ],
+      "chosen_solution": "compatibility_status stays unknown unless an authorized original reference is cited and a comparison passed. Research notes must separate observed fact, interpretation, and hypothesis.",
+      "reason": "No authorized original specification is in this repository. DIS-0001 records that fact.",
+      "consequences": "Do not mark a feature compatible from app tests alone. Do not invent weapon stats, maps, or packet formats.",
+      "related_tasks": [
+        "RO-020",
+        "RO-028"
+      ],
+      "related_changes": [
+        "CH-0001"
+      ],
+      "record_path": "docs/architecture/decisions/ADR-0006-compatibility-evidence.md"
+    },
+    {
+      "decision_id": "ADR-0007",
+      "title": "Enforce stored sessions and separate readiness",
+      "date": "2026-11-10",
+      "status": "accepted",
+      "context": "Login stored a session hash that HTTP and WebSocket did not read. GET /health returns a fixed liveness body.",
+      "problem": "Revocation could not take effect, and a database check could not be added without changing that body.",
+      "options_considered": [
+        "Add a WebSocket logout message and change the health body",
+        "Check the stored hash on both existing entry points and add GET /ready"
+      ],
+      "chosen_solution": "POST /api/v1/auth/logout revokes one hash. HTTP and WebSocket reject a missing, revoked, or expired row. GET /health stays unchanged. GET /ready runs SELECT 1.",
+      "reason": "RO-038 approved that boundary. It keeps Argon2, JWT expiration checks, and the current client protocol.",
+      "consequences": "Other sessions stay valid. Original logout behavior stays unknown. PostgreSQL execution remains RO-045.",
+      "related_tasks": [
+        "RO-038",
+        "RO-039",
+        "RO-043",
+        "RO-044"
+      ],
+      "related_changes": [
+        "CH-0003",
+        "CH-0005"
+      ],
+      "record_path": "docs/architecture/decisions/ADR-0007-session-enforcement.md"
+    },
+    {
+      "decision_id": "ADR-0008",
+      "title": "Stored match records stay separate from the live match",
+      "date": "2026-11-10",
+      "status": "accepted",
+      "context": "The live match list and the stored match table use different identifiers.",
+      "problem": "One route path would make cancel and finalize apply to the wrong match.",
+      "options_considered": [
+        "Overload /api/v1/matches",
+        "Keep stored lifecycle on /api/v1/match-records"
+      ],
+      "chosen_solution": "Live snapshots stay on /matches. Stored create, join, cancel, and finalize use /match-records.",
+      "reason": "The tick loop does not write SQL. The stored row is a separate lifecycle.",
+      "consequences": "A stored cancel does not stop an in-memory match. Original matchmaking stays unknown.",
+      "related_tasks": [
+        "RO-048"
+      ],
+      "related_changes": [
+        "CH-0006"
+      ],
+      "record_path": "docs/architecture/decisions/ADR-0008-match-records.md"
+    }
+  ]
+}

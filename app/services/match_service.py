@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppError
@@ -24,14 +25,22 @@ class MatchService:
         self.matches = MatchRepository(session)
 
     async def create(self, match_code: str, max_players: int, game_mode_id: str | None = None) -> Match:
+        if max_players < 1:
+            raise AppError(422, "Match capacity must be at least 1")
         match = Match(match_code=match_code, max_players=max_players, game_mode_id=game_mode_id, status="scheduled")
         self.session.add(match)
-        await self.session.commit()
+        try:
+            await self.session.commit()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise AppError(409, "Match code already exists") from exc
         await self.session.refresh(match)
         return match
 
-    async def transition(self, match_id: str, status: str) -> Match:
+    async def transition(self, match_id: str, status: str, player_id: str | None = None) -> Match:
         match = await self._match(match_id)
+        if player_id is not None:
+            await self._require_participant(match_id, player_id)
         if status not in _TRANSITIONS[match.status]:
             raise AppError(409, "Invalid match transition")
         now = utc_now()
@@ -59,8 +68,10 @@ class MatchService:
         await self.session.refresh(participant)
         return participant
 
-    async def finalize(self, match_id: str, results: list[dict]) -> Match:
+    async def finalize(self, match_id: str, results: list[dict], player_id: str | None = None) -> Match:
         match = await self._match(match_id)
+        if player_id is not None:
+            await self._require_participant(match_id, player_id)
         if match.status != "running":
             raise AppError(409, "Only a running match can be finalized")
         total_kills = 0
@@ -103,6 +114,12 @@ class MatchService:
         await self.session.commit()
         await self.session.refresh(match)
         return match
+
+    async def _require_participant(self, match_id: str, player_id: str) -> MatchParticipant:
+        participant = await self.matches.participant(match_id, player_id)
+        if participant is None:
+            raise AppError(403, "Player is not in the match")
+        return participant
 
     async def _match(self, match_id: str) -> Match:
         match = await self.matches.by_id(match_id)

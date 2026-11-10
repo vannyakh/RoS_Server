@@ -8,7 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.exceptions import AppError
-from app.core.security import create_access_token, hash_password, hash_token, token_expires_in, verify_password
+from app.core.security import (
+    create_access_token,
+    decode_access_token,
+    hash_password,
+    hash_token,
+    token_expires_in,
+    verify_password,
+)
 from app.models.account import Account, AccountSession, LoginHistory
 from app.models.player import Player, PlayerStatistics
 from app.repositories.account_repository import AccountRepository
@@ -84,6 +91,31 @@ class AccountService:
         await self._record(account.id, "success", ip_address)
         await self.session.commit()
         return TokenResponse(access_token=token, expires_in=token_expires_in())
+
+    async def account_for_token(self, token: str) -> Account:
+        payload = decode_access_token(token)
+        account_id = payload.get("sub")
+        if not account_id:
+            raise AppError(401, "Invalid or expired token")
+        account = await self.accounts.by_id(account_id)
+        if account is None or account.status != "active":
+            raise AppError(401, "Player unavailable")
+        stored = await self.accounts.session_by_hash(hash_token(token))
+        if stored is None or stored.account_id != account.id or stored.revoked_at is not None:
+            raise AppError(401, "Invalid or expired token")
+        expires_at = stored.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at <= datetime.now(timezone.utc):
+            raise AppError(401, "Invalid or expired token")
+        return account
+
+    async def revoke_token(self, account_id: str, token: str) -> None:
+        stored = await self.accounts.session_by_hash(hash_token(token))
+        if stored is None or stored.account_id != account_id or stored.revoked_at is not None:
+            raise AppError(401, "Invalid or expired token")
+        stored.revoked_at = datetime.now(timezone.utc)
+        await self.session.commit()
 
     async def _record(self, account_id: str | None, status: str, ip_address: str | None) -> None:
         await self.accounts.add_login(

@@ -15,9 +15,10 @@ class InventoryItemResponse(BaseModel):
 
 
 class InventoryResponse(BaseModel):
-    id: str
+    id: str | None = None
     player_id: str
     items: list[InventoryItemResponse] = Field(default_factory=list)
+    currencies: list["CurrencyResponse"] = Field(default_factory=list)
 
 
 class CurrencyResponse(BaseModel):
@@ -36,3 +37,6 @@ class CurrencyChange(BaseModel):
 class ItemQuantityChange(BaseModel):
     item_code: str = Field(min_length=1, max_length=64)
     quantity: int = Field(ge=1)
+
+
+InventoryResponse.model_rebuild()

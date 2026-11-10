@@ -37,7 +37,7 @@ CHANGE_CATEGORIES = {
     "Infrastructure",
     "Documentation",
 }
-HISTORICAL_TASKS = tuple(f"RO-{index:03d}" for index in range(1, 12))
+HISTORICAL_TASKS = tuple(f"RO-{index:03d}" for index in list(range(1, 12)) + list(range(20, 29)))
 
 
 def _require(node: dict, required: list[str], label: str, problems: list[str]) -> None:
@@ -156,10 +156,19 @@ def validate_documents() -> list[str]:
         for cycle in _cycles(by_id):
             problems.append(f"dependency cycle: {cycle}")
         if milestones:
+            phase_of = {}
             for phase in milestones.get("phases", []):
                 for task_id in phase.get("task_ids", []):
+                    if task_id in phase_of:
+                        problems.append(f"milestones: {task_id} is listed in more than one phase")
+                    phase_of[task_id] = phase.get("phase")
                     if task_id not in by_id:
                         problems.append(f"milestones phase {phase.get('phase')}: unknown task {task_id}")
+            for task_id, task in by_id.items():
+                if task_id not in phase_of:
+                    problems.append(f"{task_id}: not listed in milestones.json")
+                elif task.get("phase") != phase_of[task_id]:
+                    problems.append(f"{task_id}: phase {task.get('phase')} does not match milestone phase {phase_of[task_id]}")
 
     feature_ids: set[str] = set()
     if compatibility:

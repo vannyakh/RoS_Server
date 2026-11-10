@@ -3,7 +3,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.account import Account, LoginHistory
+from app.models.account import Account, AccountSession, LoginHistory
 
 
 class AccountRepository:
@@ -15,6 +15,9 @@ class AccountRepository:
 
     async def by_username(self, username: str) -> Account | None:
         return await self.session.scalar(select(Account).where(Account.username == username))
+
+    async def session_by_hash(self, token_hash: str) -> AccountSession | None:
+        return await self.session.scalar(select(AccountSession).where(AccountSession.token_hash == token_hash))
 
     async def add(self, account: Account) -> Account:
         self.session.add(account)

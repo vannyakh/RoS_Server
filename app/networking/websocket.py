@@ -6,10 +6,10 @@ from fastapi import APIRouter, WebSocket
 from pydantic import ValidationError
 from starlette.websockets import WebSocketDisconnect
 
-from app.core.security import decode_access_token
+from app.core.exceptions import AppError
 from app.game.engine import game_engine
 from app.infrastructure.database import SessionLocal
-from app.models.account import Account
+from app.services.account_service import AccountService
 from app.networking.connection_manager import connection_manager
 from app.networking.protocol import format_error, parse_action, parse_input, parse_message
 from app.networking.validation import MAX_MESSAGE_BYTES, RateLimiter, SequenceTracker
@@ -74,15 +74,9 @@ async def _authenticate(websocket: WebSocket) -> tuple[str, int] | tuple[None, N
 
 async def _player_id_for_token(token: str) -> str | None:
     try:
-        payload = decode_access_token(token)
-    except Exception:
-        return None
-    player_id = payload.get("sub")
-    if not player_id:
-        return None
-    async with SessionLocal() as session:
-        account = await session.get(Account, player_id)
-    if account is None or account.status != "active":
+        async with SessionLocal() as session:
+            account = await AccountService(session).account_for_token(token)
+    except AppError:
         return None
     return account.id
 

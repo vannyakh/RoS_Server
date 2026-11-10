@@ -4,6 +4,7 @@ The password is a local fixture. Do not point --host at a database you need to k
 """
 
 import json
+import time
 from uuid import uuid4
 
 from locust import HttpUser, between, task
@@ -56,8 +57,15 @@ class PlayerUser(HttpUser):
                     {"version": 1, "type": "auth", "sequence": 1, "payload": {"token": self.token}}
                 )
             )
-            raw = connection.recv()
-            if "auth.ok" not in raw:
-                raise RuntimeError("websocket auth failed")
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline:
+                raw = connection.recv()
+                if "auth.ok" in raw:
+                    return
+                if "Invalid or expired token" in raw:
+                    raise RuntimeError("websocket auth rejected")
+            raise RuntimeError("websocket auth did not return auth.ok")
+        except websocket.WebSocketTimeoutException as exc:
+            raise RuntimeError("websocket auth timed out before auth.ok") from exc
         finally:
             connection.close()

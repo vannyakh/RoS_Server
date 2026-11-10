@@ -1,0 +1,147 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-11-10T23:34:20+07:00",
+  "entries": [
+    {
+      "change_id": "CH-0001",
+      "date": "2026-11-10",
+      "version": "unreleased",
+      "category": "Documentation",
+      "title": "Add project-control registries",
+      "description": "Checkpoints, discoveries, compatibility, milestones, decisions, and changelog records were added beside the existing task registry. RO-001 through RO-028 were kept. No feature was marked compatible with original RoS.",
+      "task_id": "RO-012",
+      "agent": "cto",
+      "files_changed": [
+        ".cursor/management/tasks.json",
+        ".cursor/management/workflow.json",
+        ".cursor/management/team.json",
+        ".cursor/management/discoveries.json",
+        ".cursor/management/compatibility.json",
+        ".cursor/management/checkpoints.json",
+        ".cursor/management/milestones.json",
+        ".cursor/management/decisions.json",
+        ".cursor/management/changelog.json",
+        "tools/project_tracker/",
+        "scripts/validate_project_management.py",
+        "docs/project/",
+        "docs/reverse-engineering/",
+        "docs/architecture/decisions/"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": "DIS-0001",
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0002",
+      "date": "2026-11-10",
+      "version": "unreleased",
+      "category": "Documentation",
+      "title": "Record the Phase 00 baseline",
+      "description": "Specialist audits and the baseline report were added. Pytest returned 1 failed, 64 passed, 1 skipped. No server module was changed and no feature was marked compatible.",
+      "task_id": "RO-035",
+      "agent": "cto",
+      "files_changed": [
+        "reports/project-audit/BASELINE_REPORT.md",
+        "reports/project-audit/architecture.md",
+        "reports/project-audit/database.md",
+        "reports/project-audit/api.md",
+        "reports/project-audit/tests.md",
+        "reports/project-audit/security.md",
+        "reports/project-audit/environment.md",
+        ".cursor/management/tasks.json",
+        ".cursor/management/discoveries.json",
+        ".cursor/management/checkpoints.json",
+        ".cursor/management/changelog.json",
+        ".cursor/management/milestones.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "python -m pytest -q --tb=line"
+      ],
+      "breaking_change": false,
+      "related_discovery": "DIS-0007",
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0003",
+      "date": "2026-11-10",
+      "version": "unreleased",
+      "category": "Security",
+      "title": "Enforce stored sessions on HTTP and WebSocket",
+      "description": "Logout revokes the presented session hash. Both entry points reject a missing, revoked, or expired row. New tokens include a unique jti. Argon2 and JWT expiration checks are unchanged.",
+      "task_id": "RO-039",
+      "agent": "cto",
+      "files_changed": [
+        "app/services/account_service.py",
+        "app/services/auth_service.py",
+        "app/api/dependencies.py",
+        "app/api/v1/auth.py",
+        "app/core/security.py",
+        "app/networking/websocket.py",
+        "app/repositories/account_repository.py",
+        "tests/integration/test_auth_session.py"
+      ],
+      "migration_revision": null,
+      "tests": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/integration/test_auth_session.py tests/integration/test_auth.py tests/integration/test_lobby_routes.py tests/integration/test_health.py tests/integration/test_websocket.py tests/integration/test_websocket_reliability.py tests/security/test_responses.py -q --tb=line",
+        ".\\.venv\\Scripts\\python.exe -m pytest -q --tb=line"
+      ],
+      "breaking_change": false,
+      "related_discovery": "DIS-0010",
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0004",
+      "date": "2026-11-10",
+      "version": "unreleased",
+      "category": "Fixed",
+      "title": "Stop the Locust run from blocking on unread server output",
+      "description": "The load test writes the server log to a file and the client reports auth success, rejection, or the existing 3 second timeout. The rerun passed.",
+      "task_id": "RO-041",
+      "agent": "cto",
+      "files_changed": [
+        "tests/performance/test_load.py",
+        "tools/load_generator/locustfile.py",
+        "tests/integration/test_websocket_reliability.py"
+      ],
+      "migration_revision": null,
+      "tests": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/performance/test_load.py -q --tb=line",
+        ".\\.venv\\Scripts\\python.exe -m pytest -q --tb=line"
+      ],
+      "breaking_change": false,
+      "related_discovery": "DIS-0009",
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0005",
+      "date": "2026-11-10",
+      "version": "unreleased",
+      "category": "Added",
+      "title": "Add durable lobby leave, ready, and database readiness",
+      "description": "Members can leave a durable lobby and set ready or unready. GET /health stays {status: ok}. GET /ready checks the database. Original lobby behavior stays unknown.",
+      "task_id": "RO-043",
+      "agent": "cto",
+      "files_changed": [
+        "app/services/lobby_service.py",
+        "app/api/v1/lobby.py",
+        "app/schemas/lobby.py",
+        "app/api/v1/health.py",
+        "tests/integration/test_lobby_routes.py",
+        "tests/integration/test_health.py"
+      ],
+      "migration_revision": null,
+      "tests": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/integration/test_auth_session.py tests/integration/test_auth.py tests/integration/test_lobby_routes.py tests/integration/test_health.py tests/integration/test_websocket.py tests/integration/test_websocket_reliability.py tests/security/test_responses.py -q --tb=line",
+        ".\\.venv\\Scripts\\python.exe -m pytest -q --tb=line"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    }
+  ]
+}

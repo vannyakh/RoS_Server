@@ -56,11 +56,11 @@
       "function_name": "Logout",
       "category": "authentication",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
-      "implementation_status": "not_implemented",
+      "implementation_status": "implemented",
       "compatibility_status": "unknown",
-      "test_status": "not_run",
-      "evidence": "none",
-      "known_differences": "No logout route revokes AccountSession.",
+      "test_status": "passing",
+      "evidence": "tests/integration/test_auth_session.py",
+      "known_differences": "Logout revokes one stored session. Original Rules of Survival logout behavior is unknown.",
       "priority": "medium"
     },
     {
@@ -70,9 +70,9 @@
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "implementation_status": "implemented",
       "compatibility_status": "unknown",
-      "test_status": "not_run",
-      "evidence": "none",
-      "known_differences": "Active status is checked on HTTP and WebSocket. Suspended accounts are not covered by a test.",
+      "test_status": "passing",
+      "evidence": "tests/integration/test_auth_session.py",
+      "known_differences": "Suspended and closed accounts still have no dedicated test. Original validation behavior is unknown.",
       "priority": "high"
     },
     {
@@ -188,11 +188,11 @@
       "function_name": "Lobby leaving",
       "category": "lobby",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
-      "implementation_status": "partial",
+      "implementation_status": "implemented",
       "compatibility_status": "unknown",
       "test_status": "passing",
-      "evidence": "tests/unit/test_gameplay.py",
-      "known_differences": "Leave is implemented for the in-memory queue, not the durable lobby table.",
+      "evidence": "tests/integration/test_lobby_routes.py",
+      "known_differences": "The in-memory queue uses account ids. Durable membership uses player ids. Original leave behavior is unknown.",
       "priority": "medium"
     },
     {
@@ -212,11 +212,11 @@
       "function_name": "Ready state",
       "category": "lobby",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
-      "implementation_status": "partial",
+      "implementation_status": "implemented",
       "compatibility_status": "unknown",
       "test_status": "passing",
-      "evidence": "tests/compatibility/lobby/test_lobby_rules.py",
-      "known_differences": "The column and the simulator track ready. No service or route updates it.",
+      "evidence": "tests/integration/test_lobby_routes.py",
+      "known_differences": "A missing member is rejected. Setting the same ready value again is accepted. Original ready behavior is unknown.",
       "priority": "medium"
     },
     {
@@ -239,8 +239,8 @@
       "implementation_status": "implemented",
       "compatibility_status": "unknown",
       "test_status": "passing",
-      "evidence": "tests/integration/test_lobby_routes.py",
-      "known_differences": "POST /api/v1/lobby/teams/{id}/members joins one team per lobby.",
+      "evidence": "tests/integration/test_core_services.py",
+      "known_differences": "DELETE /api/v1/lobby/teams/{id}/members removes the team row only. Original team behavior is unknown.",
       "priority": "medium"
     },
     {
@@ -299,8 +299,8 @@
       "implementation_status": "partial",
       "compatibility_status": "unknown",
       "test_status": "passing",
-      "evidence": "tests/unit/test_gameplay.py",
-      "known_differences": "A queued player can leave. In-match forfeit is separate.",
+      "evidence": "tests/integration/test_core_services.py",
+      "known_differences": "Stored cancel does not stop an in-memory match. Original cancellation is unknown.",
       "priority": "medium"
     },
     {
@@ -380,11 +380,11 @@
       "function_name": "Inventory",
       "category": "gameplay",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
-      "implementation_status": "partial",
+      "implementation_status": "implemented",
       "compatibility_status": "unknown",
       "test_status": "passing",
-      "evidence": "tests/compatibility/inventory/test_pickup.py",
-      "known_differences": "Match loot is in memory. Durable stacks are a separate table.",
+      "evidence": "tests/integration/test_core_services.py",
+      "known_differences": "Stored stacks use the development catalog. Match loot is separate. Original inventory is unknown.",
       "priority": "high"
     },
     {
@@ -404,11 +404,11 @@
       "function_name": "Vehicles",
       "category": "gameplay",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
-      "implementation_status": "not_implemented",
+      "implementation_status": "implemented",
       "compatibility_status": "unknown",
-      "test_status": "not_run",
-      "evidence": "none",
-      "known_differences": "No vehicle simulation is implemented.",
+      "test_status": "passing",
+      "evidence": "tests/unit/test_simulation.py",
+      "known_differences": "Speed 12 is a local value in app/game/items.py. Original vehicle behavior is unknown.",
       "priority": "low"
     },
     {
@@ -428,11 +428,11 @@
       "function_name": "Match duration",
       "category": "gameplay",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
-      "implementation_status": "partial",
+      "implementation_status": "implemented",
       "compatibility_status": "unknown",
-      "test_status": "not_run",
-      "evidence": "none",
-      "known_differences": "Phase timers exist in MatchRules and are not asserted against a clock.",
+      "test_status": "passing",
+      "evidence": "tests/unit/test_simulation.py",
+      "known_differences": "The clock uses this server's timers. Original match duration is unknown.",
       "priority": "medium"
     },
     {

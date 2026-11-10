@@ -37,6 +37,10 @@ async def register_player(db: AsyncSession, username: str, password: str) -> Acc
     return await AccountService(db).register(username, password)
 
 
+async def logout_player(db: AsyncSession, account: Account, token: str) -> None:
+    await AccountService(db).revoke_token(account.id, token)
+
+
 async def login_player(db: AsyncSession, username: str, password: str, host: str) -> TokenResponse:
     if too_many_attempts(host):
         raise AppError(429, "Too many login attempts")
@@ -52,6 +56,7 @@ async def login_player(db: AsyncSession, username: str, password: str, host: str
 __all__ = [
     "clear_failures",
     "login_player",
+    "logout_player",
     "normalize_username",
     "record_failure",
     "register_player",

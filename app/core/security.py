@@ -2,6 +2,7 @@
 
 import hashlib
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 import jwt
 from pwdlib import PasswordHash
@@ -23,7 +24,7 @@ def verify_password(password: str, hashed: str) -> bool:
 def create_access_token(player_id: str) -> str:
     now = datetime.now(timezone.utc)
     expires = now + timedelta(minutes=settings.jwt_expire_minutes)
-    payload = {"sub": player_id, "exp": expires, "iat": now}
+    payload = {"sub": player_id, "exp": expires, "iat": now, "jti": str(uuid4())}
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 

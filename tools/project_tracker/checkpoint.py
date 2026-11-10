@@ -57,6 +57,36 @@ def build_checkpoint() -> dict:
     compatibility = Counter(feature["compatibility_status"] for feature in features)
     commit, modified = _git()
     latest_change = changelog[-1]["change_id"] if changelog else None
+    ro028 = next((task for task in tasks if task["id"] == "RO-028" and task.get("completion_report")), None)
+    test_summary = (
+        "No new suite was run for this checkpoint. Last recorded suite on RO-028: "
+        + ro028["completion_report"]["test_results"]
+        if ro028
+        else "No suite result is recorded on RO-028."
+    )
+    risks = [
+        "No authorized original Rules of Survival specification is in the repository.",
+        "RO-009 must finish before the database foundation can be accepted.",
+    ]
+    seen_issues: set[str] = set()
+    for task in tasks:
+        for issue in (task.get("completion_report") or {}).get("remaining_issues") or []:
+            if issue not in seen_issues:
+                seen_issues.add(issue)
+                risks.append(f"{task['id']}: {issue}")
+    ro020 = next((task for task in tasks if task["id"] == "RO-020" and task.get("completion_report")), None)
+    recorded = (ro020 or {}).get("completion_report", {}).get("summary", "")
+    current_counts = (
+        implementation.get("implemented", 0),
+        implementation.get("partial", 0),
+        implementation.get("not_implemented", 0),
+    )
+    if "26 are implemented, 10 partial, and 7 not implemented" in recorded and current_counts != (26, 10, 7):
+        risks.append(
+            "RO-020's stored summary says 26 implemented, 10 partial, and 7 not implemented. "
+            f"The current compatibility file has {current_counts[0]} implemented, {current_counts[1]} partial, "
+            f"and {current_counts[2]} not implemented. The stored task report was left unchanged."
+        )
     eligible = [task["id"] for task in eligible_tasks(tasks)]
     blocked = by_status.get("blocked", [])
     gaps = [
@@ -87,7 +117,7 @@ def build_checkpoint() -> dict:
             f"Original compatibility: {compatibility.get('unknown', 0)} unknown, {compatibility.get('compatible', 0)} compatible. "
             "Passing local tests are not original-behavior proof."
         ),
-        "test_summary": "No new test run is attached to this checkpoint. The last recorded suite is on RO-001 and RO-008: 34 passed, 1 skipped.",
+        "test_summary": test_summary,
         "known_bugs": [
             "RO-011 is blocked because RO-009 has no security review report.",
             *gaps,
@@ -99,12 +129,7 @@ def build_checkpoint() -> dict:
         "database_changes": ["No migration was added. Head remains 93510e8bf194."],
         "modified_files": modified,
         "git_commit": commit,
-        "risks": [
-            "No authorized original Rules of Survival specification is in the repository.",
-            "PostgreSQL round-trip was skipped because POSTGRES_TEST_URL was unset.",
-            "Docker was not started when RO-010 was recorded.",
-            "RO-009 must finish before the database foundation can be accepted.",
-        ],
+        "risks": risks,
         "next_actions": [
             "Run the security-engineer on RO-009 and cite the files that were read.",
             "Start RO-013 and separate confirmed repository facts from unknown original behavior.",

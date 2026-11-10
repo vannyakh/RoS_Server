@@ -29,6 +29,16 @@ class PlayerState:
     kills: int = 0
     inventory: dict[str, int] = field(default_factory=dict)
     mags: dict[str, int] = field(default_factory=dict)
+    vehicle: str | None = None
+
+
+@dataclass
+class VehicleNode:
+    vehicle_id: str
+    kind: str
+    x: float
+    y: float
+    occupant: str | None = None
 
 
 @dataclass
@@ -66,6 +76,7 @@ class Match:
     winner_id: str | None = None
     recorded: bool = False
     loot: list[LootNode] = field(default_factory=list)
+    vehicles: list[VehicleNode] = field(default_factory=list)
     events: list[dict] = field(default_factory=list)
     elimination_order: list[str] = field(default_factory=list)
 

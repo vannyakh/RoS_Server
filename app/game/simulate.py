@@ -5,9 +5,9 @@ import math
 import random
 from uuid import uuid4
 
-from app.game.items import HEALS, LOOT_TABLE, MAX_STACK, MAX_WEAPONS, WEAPONS, is_weapon, weapon_count
+from app.game.items import HEALS, LOOT_TABLE, MAX_STACK, MAX_WEAPONS, VEHICLES, WEAPONS, is_weapon, weapon_count
 from app.game.rules import MatchRules
-from app.game.state import LootNode, Match, MatchResult, PlayerState, WorldState
+from app.game.state import LootNode, Match, MatchResult, PlayerState, VehicleNode, WorldState
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +85,10 @@ def apply_action(
         return _equip(player, item_id)
     if action == "discard":
         return _discard(player, item_id)
+    if action == "board":
+        return _board(match, player, rules)
+    if action == "exit":
+        return _exit_vehicle(match, player)
     return False, "Unknown action"
 
 
@@ -123,6 +127,7 @@ def snapshot(world: WorldState, player: PlayerState, rules: MatchRules) -> dict:
         "aim_y": round(player.aim_y, 3),
         "kills": player.kills,
         "map_size": rules.map_size,
+        "vehicle": player.vehicle,
     }
     match = world.matches.get(player.match_id) if player.match_id else None
     if match is not None:
@@ -152,6 +157,7 @@ def _create_match(world: WorldState, humans: list[PlayerState], rules: MatchRule
     match = Match(match_id=match_id, player_ids=[player.player_id for player in players])
     _arm_zone(match, rules, rng, first=True)
     match.loot = _spawn_loot(match_id, rng, rules)
+    match.vehicles = _spawn_vehicles(match_id, rules)
     for index, player in enumerate(players):
         player.match_id = match_id
         player.status = "countdown"
@@ -207,7 +213,7 @@ def _tick_match(world: WorldState, match: Match, dt: float, rules: MatchRules) -
         _bot_act(world, match, rules)
         for player in combatants:
             grounded = not player.on_plane and player.status == "alive"
-            _move(player, dt, rules) if grounded else None
+            _move(player, dt, rules, match) if grounded else None
     if match.phase == "playing":
         _apply_zone(world, match, dt)
         _maybe_finish(world, match)
@@ -376,6 +382,8 @@ def _apply_zone(world: WorldState, match: Match, dt: float) -> None:
 
 
 def _shoot(world: WorldState, match: Match, shooter: PlayerState, rules: MatchRules) -> tuple[bool, str]:
+    if shooter.vehicle:
+        return False, "Leave the vehicle first"
     if shooter.reload_left > 0:
         return False, "Reloading"
     weapon = WEAPONS.get(shooter.weapon or "")
@@ -545,6 +553,7 @@ def _eliminate(
     victim.move_x = 0.0
     victim.move_y = 0.0
     victim.on_plane = False
+    _release_vehicle(match, victim)
     if killer_id and killer_id != victim.player_id:
         killer = world.players.get(killer_id)
         if killer is not None:
@@ -627,14 +636,77 @@ def _dissolve(world: WorldState, match: Match) -> None:
     world.matches.pop(match.match_id, None)
 
 
-def _move(player: PlayerState, dt: float, rules: MatchRules) -> None:
+def _move(player: PlayerState, dt: float, rules: MatchRules, match: Match | None = None) -> None:
     move_x, move_y = player.move_x, player.move_y
     magnitude = math.hypot(move_x, move_y)
     if magnitude > 1:
         move_x /= magnitude
         move_y /= magnitude
-    player.x = min(rules.map_size, max(0.0, player.x + move_x * rules.speed * dt))
-    player.y = min(rules.map_size, max(0.0, player.y + move_y * rules.speed * dt))
+    speed = rules.speed
+    occupied = _occupied_vehicle(match, player) if match is not None else None
+    if occupied is not None:
+        speed = float(VEHICLES[occupied.kind]["speed"])
+    player.x = min(rules.map_size, max(0.0, player.x + move_x * speed * dt))
+    player.y = min(rules.map_size, max(0.0, player.y + move_y * speed * dt))
+    if occupied is not None:
+        occupied.x = player.x
+        occupied.y = player.y
+
+
+def _spawn_vehicles(match_id: str, rules: MatchRules) -> list[VehicleNode]:
+    rng = random.Random(f"{match_id}:vehicles")
+    margin = 20.0
+    span = max(1.0, rules.map_size - margin * 2)
+    nodes = []
+    for index in range(2):
+        nodes.append(
+            VehicleNode(
+                vehicle_id=f"{match_id}:vehicle:{index}",
+                kind="buggy",
+                x=margin + rng.random() * span,
+                y=margin + rng.random() * span,
+            )
+        )
+    return nodes
+
+
+def _board(match: Match, player: PlayerState, rules: MatchRules) -> tuple[bool, str]:
+    if player.vehicle:
+        return False, "Already in a vehicle"
+    nearest = None
+    nearest_distance = rules.pickup_radius
+    for node in match.vehicles:
+        if node.occupant is not None:
+            continue
+        distance = _distance_xy(player, node.x, node.y)
+        if distance <= nearest_distance:
+            nearest = node
+            nearest_distance = distance
+    if nearest is None:
+        return False, "No vehicle nearby"
+    nearest.occupant = player.player_id
+    player.vehicle = nearest.vehicle_id
+    return True, "Boarded"
+
+
+def _exit_vehicle(match: Match, player: PlayerState) -> tuple[bool, str]:
+    if _occupied_vehicle(match, player) is None:
+        return False, "Not in a vehicle"
+    _release_vehicle(match, player)
+    return True, "Left the vehicle"
+
+
+def _occupied_vehicle(match: Match | None, player: PlayerState) -> VehicleNode | None:
+    if match is None or not player.vehicle:
+        return None
+    return next((node for node in match.vehicles if node.vehicle_id == player.vehicle), None)
+
+
+def _release_vehicle(match: Match, player: PlayerState) -> None:
+    node = _occupied_vehicle(match, player)
+    if node is not None:
+        node.occupant = None
+    player.vehicle = None
 
 
 def _give_starter(player: PlayerState) -> None:
@@ -652,6 +724,7 @@ def _clear_loadout(player: PlayerState) -> None:
     player.mag = 0
     player.fire_cooldown = 0.0
     player.reload_left = 0.0
+    player.vehicle = None
 
 
 def _match_for(world: WorldState, player: PlayerState | None) -> Match | None:

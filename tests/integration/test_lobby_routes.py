@@ -55,3 +55,23 @@ async def test_items_and_lobby_membership(client):
 
     again = await client.post(f"/api/v1/lobby/teams/{team.json()['id']}/members", headers=headers)
     assert again.status_code == 409
+
+    ready = await client.post(f"/api/v1/lobby/{lobby_id}/ready", json={"ready": True}, headers=headers)
+    assert ready.status_code == 200
+    assert ready.json()["ready"] is True
+    unready = await client.post(f"/api/v1/lobby/{lobby_id}/ready", json={"ready": False}, headers=headers)
+    assert unready.status_code == 200
+    assert unready.json()["ready"] is False
+
+    stranger = await _token(client, "lobby_guest")
+    denied = await client.post(
+        f"/api/v1/lobby/{lobby_id}/ready",
+        json={"ready": True},
+        headers={"Authorization": f"Bearer {stranger}"},
+    )
+    assert denied.status_code == 409
+
+    left = await client.delete(f"/api/v1/lobby/{lobby_id}/members", headers=headers)
+    assert left.status_code == 204
+    missing = await client.delete(f"/api/v1/lobby/{lobby_id}/members", headers=headers)
+    assert missing.status_code == 404

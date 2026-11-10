@@ -21,6 +21,9 @@ WEAPONS = {
 
 HEALS = {"bandage": 20.0, "medkit": 60.0}
 
+# Development vehicle. These numbers are not original Rules of Survival values.
+VEHICLES = {"buggy": {"speed": 12.0, "seats": 1}}
+
 # item id, quantity per node, how many nodes to place
 LOOT_TABLE = (
     ("pistol", 1, 4),

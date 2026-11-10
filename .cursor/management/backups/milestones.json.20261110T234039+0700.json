@@ -1,0 +1,124 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-11-10T23:34:20+07:00",
+  "current_phase": "00",
+  "phases": [
+    {
+      "phase": "00",
+      "name": "Project discovery",
+      "status": "in_progress",
+      "summary": "RO-035 baseline is in review. Pytest on 2026-11-10 returned 1 failed, 64 passed, 1 skipped.",
+      "task_ids": [
+        "RO-001",
+        "RO-012",
+        "RO-035"
+      ]
+    },
+    {
+      "phase": "01",
+      "name": "Original game research",
+      "status": "in_progress",
+      "summary": "No authorized original specification is in the repository. RO-013 is ready. Client and gameplay research stay backlog.",
+      "task_ids": [
+        "RO-013",
+        "RO-014",
+        "RO-015"
+      ]
+    },
+    {
+      "phase": "02",
+      "name": "Architecture",
+      "status": "completed",
+      "summary": "RO-002 recorded the database architecture. ADR-0001 through ADR-0004 remain the accepted server decisions.",
+      "task_ids": [
+        "RO-002"
+      ]
+    },
+    {
+      "phase": "03",
+      "name": "Database foundation",
+      "status": "in_progress",
+      "summary": "Models, migration 93510e8bf194, imports, and database QA are recorded. RO-009 is ready and RO-011 is blocked on that review.",
+      "task_ids": [
+        "RO-003",
+        "RO-004",
+        "RO-005",
+        "RO-008",
+        "RO-009",
+        "RO-011"
+      ]
+    },
+    {
+      "phase": "04",
+      "name": "Core game services",
+      "status": "in_progress",
+      "summary": "Session checks, logout, durable leave and ready, and GET /ready are recorded. RO-017 and RO-036 are cancelled because that work landed in RO-039 and RO-044. RO-018 and RO-019 stay backlog.",
+      "task_ids": [
+        "RO-006",
+        "RO-007",
+        "RO-017",
+        "RO-018",
+        "RO-019",
+        "RO-036",
+        "RO-038",
+        "RO-039",
+        "RO-040",
+        "RO-043",
+        "RO-044"
+      ]
+    },
+    {
+      "phase": "05",
+      "name": "Gameplay engine",
+      "status": "in_progress",
+      "summary": "The deterministic simulator is recorded in RO-022. Movement, combat, and results evidence tasks are backlog. Original combat values are unknown.",
+      "task_ids": [
+        "RO-022",
+        "RO-029",
+        "RO-030",
+        "RO-031"
+      ]
+    },
+    {
+      "phase": "06",
+      "name": "Networking and client compatibility",
+      "status": "in_progress",
+      "summary": "The matrix and protocol validator remain recorded. RO-041 fixed the Locust WebSocket timeout without raising the 3 second auth timeout. RO-042 added two-client socket tests. 43 features remain unknown against original RoS.",
+      "task_ids": [
+        "RO-016",
+        "RO-020",
+        "RO-024",
+        "RO-028",
+        "RO-032",
+        "RO-033",
+        "RO-041",
+        "RO-042"
+      ]
+    },
+    {
+      "phase": "07",
+      "name": "Quality and performance",
+      "status": "in_progress",
+      "summary": "Recorded runner and monitoring stay in place. The Locust rerun on 2026-11-10 passed in 13.69s. RO-037 stays backlog.",
+      "task_ids": [
+        "RO-021",
+        "RO-023",
+        "RO-025",
+        "RO-026",
+        "RO-027",
+        "RO-037"
+      ]
+    },
+    {
+      "phase": "08",
+      "name": "Release and deployment",
+      "status": "in_progress",
+      "summary": "Database operations are documented. RO-045 is blocked because Docker did not answer and PostgreSQL was not executed. Compose was not started.",
+      "task_ids": [
+        "RO-010",
+        "RO-034",
+        "RO-045"
+      ]
+    }
+  ]
+}

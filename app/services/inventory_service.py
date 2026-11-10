@@ -14,6 +14,16 @@ class InventoryService:
         self.inventory = InventoryRepository(session)
         self.items = GameDataRepository(session)
 
+    async def view(self, player_id: str) -> dict:
+        holder = await self.inventory.inventory_for_player(player_id)
+        currencies = await self.inventory.currencies(player_id)
+        return {
+            "id": holder.id if holder else None,
+            "player_id": player_id,
+            "items": list(holder.items) if holder else [],
+            "currencies": currencies,
+        }
+
     async def add_item(self, player_id: str, item_code: str, quantity: int, *, commit: bool = True) -> InventoryItem:
         if not isinstance(quantity, int) or isinstance(quantity, bool) or quantity <= 0:
             raise AppError(422, "Quantity must be a positive integer")

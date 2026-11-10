@@ -9,6 +9,7 @@ from app.models.player import Player
 from app.schemas.lobby import (
     LobbyCreate,
     LobbyMemberResponse,
+    ReadyUpdate,
     LobbyResponse,
     TeamCreate,
     TeamMemberResponse,
@@ -44,6 +45,26 @@ async def join_lobby(
     return LobbyMemberResponse.model_validate(member, from_attributes=True)
 
 
+@router.delete("/{lobby_id}/members", status_code=204)
+async def leave_lobby(
+    lobby_id: str,
+    player: Player = Depends(current_player),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await LobbyService(db).leave(lobby_id, player.id)
+
+
+@router.post("/{lobby_id}/ready", response_model=LobbyMemberResponse)
+async def set_ready(
+    lobby_id: str,
+    body: ReadyUpdate,
+    player: Player = Depends(current_player),
+    db: AsyncSession = Depends(get_db),
+) -> LobbyMemberResponse:
+    member = await LobbyService(db).set_ready(lobby_id, player.id, body.ready)
+    return LobbyMemberResponse.model_validate(member, from_attributes=True)
+
+
 @router.post("/{lobby_id}/teams", response_model=TeamResponse, status_code=201)
 async def open_team(
     lobby_id: str,
@@ -53,6 +74,15 @@ async def open_team(
 ) -> TeamResponse:
     team = await LobbyService(db).create_team(lobby_id, body.code, body.name, player.id)
     return TeamResponse.model_validate(team, from_attributes=True)
+
+
+@router.delete("/teams/{team_id}/members", status_code=204)
+async def leave_team(
+    team_id: str,
+    player: Player = Depends(current_player),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await LobbyService(db).leave_team(team_id, player.id)
 
 
 @router.post("/teams/{team_id}/members", response_model=TeamMemberResponse, status_code=201)

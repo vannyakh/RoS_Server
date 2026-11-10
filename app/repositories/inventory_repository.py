@@ -35,5 +35,11 @@ class InventoryRepository:
             )
         )
 
+    async def currencies(self, player_id: str) -> list[PlayerCurrency]:
+        rows = await self.session.scalars(
+            select(PlayerCurrency).where(PlayerCurrency.player_id == player_id).order_by(PlayerCurrency.currency_code)
+        )
+        return list(rows.all())
+
     async def player_by_account(self, account_id: str) -> Player | None:
         return await self.session.scalar(select(Player).where(Player.account_id == account_id))

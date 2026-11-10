@@ -170,7 +170,7 @@
         "Keep the contract independent of official game packets"
       ],
       "skills": ["protocol-validation"],
-      "allowed_paths": ["tests/compatibility/**", "tools/protocol_validator/**", "app/networking/protocol.py"],
+      "allowed_paths": ["tests/compatibility/**", "tools/protocol_validator/**", "app/networking/protocol.py", "docs/reverse-engineering/CLIENT_ANALYSIS.md", "docs/reverse-engineering/DATA_FORMATS.md", "docs/reverse-engineering/NETWORK_INTERFACE.md"],
       "restricted_paths": [".env", "*.db", ".cursor/management/**"],
       "review_required": true,
       "active": true,
@@ -187,7 +187,7 @@
         "Avoid claiming original combat values"
       ],
       "skills": ["gameplay-testing"],
-      "allowed_paths": ["tests/compatibility/**", "tools/game_simulator/**", "testdata/**"],
+      "allowed_paths": ["tests/compatibility/**", "tools/game_simulator/**", "testdata/**", "docs/reverse-engineering/GAME_FUNCTIONS.md", "docs/reverse-engineering/UNKNOWN_BEHAVIOR.md"],
       "restricted_paths": [".env", "*.db", ".cursor/management/**"],
       "review_required": true,
       "active": true,

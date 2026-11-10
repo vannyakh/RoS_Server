@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 
+from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -73,6 +74,41 @@ class LobbyService:
         )
         self.session.add(member)
         await self._commit("Player is already on a team in this lobby")
+        await self.session.refresh(member)
+        return member
+
+    async def leave_team(self, team_id: str, player_id: str) -> None:
+        team = await self.lobbies.team(team_id)
+        if team is None:
+            raise AppError(404, "Team not found")
+        member = await self.lobbies.team_member(team.lobby_id, player_id)
+        if member is None or member.team_id != team_id:
+            raise AppError(404, "Player is not on the team")
+        await self.session.delete(member)
+        await self._commit()
+
+    async def leave(self, lobby_id: str, player_id: str) -> None:
+        lobby = await self.lobbies.by_id(lobby_id)
+        member = await self.lobbies.member(lobby_id, player_id)
+        if lobby is None or member is None:
+            raise AppError(404, "Player is not in the lobby")
+        await self.session.execute(
+            delete(TeamMember).where(TeamMember.lobby_id == lobby_id, TeamMember.player_id == player_id)
+        )
+        await self.session.delete(member)
+        await self.session.flush()
+        lobby.current_players = await self.lobbies.member_count(lobby_id)
+        await self._commit()
+
+    async def set_ready(self, lobby_id: str, player_id: str, ready: bool) -> LobbyMember:
+        lobby = await self.lobbies.by_id(lobby_id)
+        if lobby is None or lobby.status != "open":
+            raise AppError(409, "Lobby is not open")
+        member = await self.lobbies.member(lobby_id, player_id)
+        if member is None:
+            raise AppError(409, "Player must join the lobby first")
+        member.ready = ready
+        await self._commit()
         await self.session.refresh(member)
         return member
 

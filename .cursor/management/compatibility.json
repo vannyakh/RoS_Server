@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updated_at": "2026-11-10T23:00:00+07:00",
+  "updated_at": "2026-11-10T23:47:02+07:00",
   "source": "Inspection of this repository on 2026-11-10. Not an official Rules of Survival dataset.",
   "features": [
     {
@@ -69,14 +69,18 @@
       "original_behavior": "Unknown. No authorized original specification is in this repository.",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "reference_version": null,
-      "server_implementation": "No logout route revokes AccountSession.",
-      "implementation_status": "not_implemented",
-      "test_status": "not_run",
+      "server_implementation": "POST /api/v1/auth/logout sets revoked_at on the presented session. HTTP and WebSocket then reject that hash.",
+      "implementation_status": "implemented",
+      "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "No logout route revokes AccountSession.",
-      "evidence": "none",
-      "last_verified_at": null,
-      "related_tasks": []
+      "known_differences": "Logout revokes one stored session. Original Rules of Survival logout behavior is unknown.",
+      "evidence": "tests/integration/test_auth_session.py",
+      "last_verified_at": "2026-11-10T23:34:20+07:00",
+      "related_tasks": [
+        "RO-038",
+        "RO-039",
+        "RO-040"
+      ]
     },
     {
       "feature_id": "AUTH-006",
@@ -84,14 +88,17 @@
       "original_behavior": "Unknown. No authorized original specification is in this repository.",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "reference_version": null,
-      "server_implementation": "Active status is checked on HTTP and WebSocket. Suspended accounts are not covered by a test.",
+      "server_implementation": "HTTP and WebSocket load the session row after JWT decode and reject a missing, revoked, or expired row. The account must be active.",
       "implementation_status": "implemented",
-      "test_status": "not_run",
+      "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "Active status is checked on HTTP and WebSocket. Suspended accounts are not covered by a test.",
-      "evidence": "none",
-      "last_verified_at": null,
-      "related_tasks": []
+      "known_differences": "Suspended and closed accounts still have no dedicated test. Original validation behavior is unknown.",
+      "evidence": "tests/integration/test_auth_session.py",
+      "last_verified_at": "2026-11-10T23:34:20+07:00",
+      "related_tasks": [
+        "RO-038",
+        "RO-039"
+      ]
     },
     {
       "feature_id": "PLAY-001",
@@ -234,14 +241,16 @@
       "original_behavior": "Unknown. No authorized original specification is in this repository.",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "reference_version": null,
-      "server_implementation": "Leave is implemented for the in-memory queue, not the durable lobby table.",
-      "implementation_status": "partial",
+      "server_implementation": "DELETE /api/v1/lobby/{id}/members removes the durable member and that player's team rows, then recounts current_players.",
+      "implementation_status": "implemented",
       "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "Leave is implemented for the in-memory queue, not the durable lobby table.",
-      "evidence": "tests/unit/test_gameplay.py",
-      "last_verified_at": "2026-11-10T23:00:00+07:00",
-      "related_tasks": []
+      "known_differences": "The in-memory queue uses account ids. Durable membership uses player ids. Original leave behavior is unknown.",
+      "evidence": "tests/integration/test_lobby_routes.py",
+      "last_verified_at": "2026-11-10T23:34:20+07:00",
+      "related_tasks": [
+        "RO-043"
+      ]
     },
     {
       "feature_id": "LOB-004",
@@ -264,14 +273,16 @@
       "original_behavior": "Unknown. No authorized original specification is in this repository.",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "reference_version": null,
-      "server_implementation": "The column and the simulator track ready. No service or route updates it.",
-      "implementation_status": "partial",
+      "server_implementation": "POST /api/v1/lobby/{id}/ready sets the member ready flag while the lobby is open.",
+      "implementation_status": "implemented",
       "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "The column and the simulator track ready. No service or route updates it.",
-      "evidence": "tests/compatibility/lobby/test_lobby_rules.py",
-      "last_verified_at": "2026-11-10T23:00:00+07:00",
-      "related_tasks": []
+      "known_differences": "A missing member is rejected. Setting the same ready value again is accepted. Original ready behavior is unknown.",
+      "evidence": "tests/integration/test_lobby_routes.py",
+      "last_verified_at": "2026-11-10T23:34:20+07:00",
+      "related_tasks": [
+        "RO-043"
+      ]
     },
     {
       "feature_id": "LOB-006",
@@ -294,14 +305,16 @@
       "original_behavior": "Unknown. No authorized original specification is in this repository.",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "reference_version": null,
-      "server_implementation": "POST /api/v1/lobby/teams/{id}/members joins one team per lobby.",
+      "server_implementation": "A player joins one team per lobby and can leave that team without leaving the lobby.",
       "implementation_status": "implemented",
       "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "POST /api/v1/lobby/teams/{id}/members joins one team per lobby.",
-      "evidence": "tests/integration/test_lobby_routes.py",
-      "last_verified_at": "2026-11-10T23:00:00+07:00",
-      "related_tasks": []
+      "known_differences": "DELETE /api/v1/lobby/teams/{id}/members removes the team row only. Original team behavior is unknown.",
+      "evidence": "tests/integration/test_core_services.py",
+      "last_verified_at": "2026-11-10T23:40:39+07:00",
+      "related_tasks": [
+        "RO-047"
+      ]
     },
     {
       "feature_id": "MM-001",
@@ -369,14 +382,16 @@
       "original_behavior": "Unknown. No authorized original specification is in this repository.",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "reference_version": null,
-      "server_implementation": "A queued player can leave. In-match forfeit is separate.",
+      "server_implementation": "A stored participant can cancel that record. A queued player can leave the live queue. Forfeit is separate.",
       "implementation_status": "partial",
       "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "A queued player can leave. In-match forfeit is separate.",
-      "evidence": "tests/unit/test_gameplay.py",
-      "last_verified_at": "2026-11-10T23:00:00+07:00",
-      "related_tasks": []
+      "known_differences": "Stored cancel does not stop an in-memory match. Original cancellation is unknown.",
+      "evidence": "tests/integration/test_core_services.py",
+      "last_verified_at": "2026-11-10T23:40:39+07:00",
+      "related_tasks": [
+        "RO-048"
+      ]
     },
     {
       "feature_id": "MM-006",
@@ -474,14 +489,16 @@
       "original_behavior": "Unknown. No authorized original specification is in this repository.",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "reference_version": null,
-      "server_implementation": "Match loot is in memory. Durable stacks are a separate table.",
-      "implementation_status": "partial",
+      "server_implementation": "Authenticated players can read and change stored stacks and currency. Match loot stays in memory.",
+      "implementation_status": "implemented",
       "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "Match loot is in memory. Durable stacks are a separate table.",
-      "evidence": "tests/compatibility/inventory/test_pickup.py",
-      "last_verified_at": "2026-11-10T23:00:00+07:00",
-      "related_tasks": []
+      "known_differences": "Stored stacks use the development catalog. Match loot is separate. Original inventory is unknown.",
+      "evidence": "tests/integration/test_core_services.py",
+      "last_verified_at": "2026-11-10T23:40:39+07:00",
+      "related_tasks": [
+        "RO-046"
+      ]
     },
     {
       "feature_id": "GP-007",
@@ -504,14 +521,16 @@
       "original_behavior": "Unknown. No authorized original specification is in this repository.",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "reference_version": null,
-      "server_implementation": "No vehicle simulation is implemented.",
-      "implementation_status": "not_implemented",
-      "test_status": "not_run",
+      "server_implementation": "A development buggy uses speed 12 while boarded. On-foot speed stays 5. Shooting is rejected in the vehicle.",
+      "implementation_status": "implemented",
+      "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "No vehicle simulation is implemented.",
-      "evidence": "none",
-      "last_verified_at": null,
-      "related_tasks": []
+      "known_differences": "Speed 12 is a local value in app/game/items.py. Original vehicle behavior is unknown.",
+      "evidence": "tests/unit/test_simulation.py",
+      "last_verified_at": "2026-11-10T23:47:02+07:00",
+      "related_tasks": [
+        "RO-050"
+      ]
     },
     {
       "feature_id": "GP-009",
@@ -534,14 +553,16 @@
       "original_behavior": "Unknown. No authorized original specification is in this repository.",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "reference_version": null,
-      "server_implementation": "Phase timers exist in MatchRules and are not asserted against a clock.",
-      "implementation_status": "partial",
-      "test_status": "not_run",
+      "server_implementation": "Countdown advances on the match clock and changes phase at MatchRules.countdown.",
+      "implementation_status": "implemented",
+      "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "Phase timers exist in MatchRules and are not asserted against a clock.",
-      "evidence": "none",
-      "last_verified_at": null,
-      "related_tasks": []
+      "known_differences": "The clock uses this server's timers. Original match duration is unknown.",
+      "evidence": "tests/unit/test_simulation.py",
+      "last_verified_at": "2026-11-10T23:47:02+07:00",
+      "related_tasks": [
+        "RO-051"
+      ]
     },
     {
       "feature_id": "GP-011",

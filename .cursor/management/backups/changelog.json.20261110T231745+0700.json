@@ -1,0 +1,37 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-11-10T22:55:00+07:00",
+  "entries": [
+    {
+      "change_id": "CH-0001",
+      "date": "2026-11-10",
+      "version": "unreleased",
+      "category": "Documentation",
+      "title": "Add project-control registries",
+      "description": "Checkpoints, discoveries, compatibility, milestones, decisions, and changelog records were added beside the existing task registry. RO-001 through RO-028 were kept. No feature was marked compatible with original RoS.",
+      "task_id": "RO-012",
+      "agent": "cto",
+      "files_changed": [
+        ".cursor/management/tasks.json",
+        ".cursor/management/workflow.json",
+        ".cursor/management/team.json",
+        ".cursor/management/discoveries.json",
+        ".cursor/management/compatibility.json",
+        ".cursor/management/checkpoints.json",
+        ".cursor/management/milestones.json",
+        ".cursor/management/decisions.json",
+        ".cursor/management/changelog.json",
+        "tools/project_tracker/",
+        "scripts/validate_project_management.py",
+        "docs/project/",
+        "docs/reverse-engineering/",
+        "docs/architecture/decisions/"
+      ],
+      "migration_revision": null,
+      "tests": ["python scripts/validate_project_management.py"],
+      "breaking_change": false,
+      "related_discovery": "DIS-0001",
+      "git_commit": null
+    }
+  ]
+}

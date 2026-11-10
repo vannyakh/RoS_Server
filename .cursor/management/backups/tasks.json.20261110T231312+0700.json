@@ -1,0 +1,2068 @@
+{
+  "project": "RoS_Server",
+  "version": "1.1.0",
+  "updated_at": "2026-11-10T22:55:00+07:00",
+  "task_statuses": [
+    "backlog",
+    "research",
+    "ready",
+    "assigned",
+    "in_progress",
+    "blocked",
+    "review",
+    "testing",
+    "completed",
+    "cancelled"
+  ],
+  "priorities": [
+    "critical",
+    "high",
+    "medium",
+    "low"
+  ],
+  "tasks": [
+    {
+      "id": "RO-001",
+      "title": "Repository inspection",
+      "phase": "01",
+      "description": "Record the architecture, file layout, dependencies, and implementation status that existed before the normalized schema.",
+      "category": "inspection",
+      "assigned_agent": "backend-architect",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": [],
+      "research_references": [],
+      "files_allowed": [
+        "docs/DATABASE_IMPLEMENTATION_PLAN.md",
+        "docs/engineering/**"
+      ],
+      "acceptance_criteria": [
+        "Existing modules and the single players table are documented",
+        "Missing Alembic setup and in-memory inventory, match, and session types are identified",
+        "Recommendations preserve the working auth and tick behavior"
+      ],
+      "verification_commands": [
+        "python scripts/validate_agent_registry.py"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [
+        "python scripts/validate_agent_registry.py"
+      ],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-10T22:45:00+07:00",
+      "updated_at": "2026-11-10T22:45:00+07:00",
+      "completed_at": "2026-11-10T22:45:00+07:00",
+      "completion_report": {
+        "summary": "Inspection is recorded in docs/DATABASE_IMPLEMENTATION_PLAN.md. The old database was one players table. Inventory, matches, and sessions were in-memory. Startup used create_all.",
+        "files_changed": [
+          "docs/DATABASE_IMPLEMENTATION_PLAN.md"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line"
+        ],
+        "test_results": "34 passed, 1 skipped in 25.93s on 2026-11-10. Skipped test_postgres_account_roundtrip because POSTGRES_TEST_URL is unset.",
+        "migration_results": "Not part of this task. Later revision is 93510e8bf194.",
+        "review_findings": "Accepted by the CTO from the plan document and the passing suite. No separate security report; that work is RO-009.",
+        "remaining_issues": [
+          "Live PostgreSQL was not executed."
+        ]
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:45:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "backend-architect",
+          "note": "Registered after the inspection document and the 2026-11-10 test run."
+        }
+      ]
+    },
+    {
+      "id": "RO-002",
+      "title": "Database architecture",
+      "phase": "01",
+      "description": "Establish the async SQLAlchemy base, engine settings, naming convention, and relationship rules.",
+      "category": "architecture",
+      "assigned_agent": "database-engineer",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": [
+        "RO-001"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "app/infrastructure/database.py",
+        "app/models/types.py"
+      ],
+      "acceptance_criteria": [
+        "Async sessions exist for SQLite and PostgreSQL",
+        "UUID strings, UTC timestamps, and PortableJSON are the shared types",
+        "Production startup does not call create_all"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line"
+      ],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-10T22:45:00+07:00",
+      "updated_at": "2026-11-10T22:45:00+07:00",
+      "completed_at": "2026-11-10T22:45:00+07:00",
+      "completion_report": {
+        "summary": "app/infrastructure/database.py owns the naming convention, SQLite foreign keys, PostgreSQL pool, and a subprocess Alembic upgrade in development. app/models/types.py owns ids, timestamps, and PortableJSON.",
+        "files_changed": [
+          "app/infrastructure/database.py",
+          "app/models/types.py"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line"
+        ],
+        "test_results": "34 passed, 1 skipped in 25.93s on 2026-11-10. Skipped test_postgres_account_roundtrip because POSTGRES_TEST_URL is unset.",
+        "migration_results": "Startup upgrade is a subprocess so it does not share the server event loop.",
+        "review_findings": "QA evidence is the pytest run. Security review remains RO-009.",
+        "remaining_issues": [
+          "Live PostgreSQL pool settings were not exercised."
+        ]
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:45:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "database-engineer",
+          "note": "Registered from the existing engine and the 2026-11-10 test run."
+        }
+      ]
+    },
+    {
+      "id": "RO-003",
+      "title": "Core database models",
+      "phase": "01",
+      "description": "Add account, player, catalog, inventory, match, lobby, and configuration models with constraints.",
+      "category": "database",
+      "assigned_agent": "database-engineer",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": [
+        "RO-002"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "app/models/**"
+      ],
+      "acceptance_criteria": [
+        "Account and player are one-to-one and nickname is unique",
+        "Inventory quantities and currency balances cannot be negative",
+        "A player can appear once per match and once per lobby",
+        "Live coordinates are not columns"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/models tests/database -q --tb=line"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/models tests/database -q --tb=line"
+      ],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-10T22:45:00+07:00",
+      "updated_at": "2026-11-10T22:45:00+07:00",
+      "completed_at": "2026-11-10T22:45:00+07:00",
+      "completion_report": {
+        "summary": "Thirty application tables are mapped from app/models. Relationships use lazy='raise'. Password and token columns are hashes.",
+        "files_changed": [
+          "app/models/account.py",
+          "app/models/player.py",
+          "app/models/game_data.py",
+          "app/models/inventory.py",
+          "app/models/match.py",
+          "app/models/lobby.py",
+          "app/models/configuration.py"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line"
+        ],
+        "test_results": "34 passed, 1 skipped in 25.93s on 2026-11-10, including tests/models/test_constraints.py and tests/database/test_relationships.py.",
+        "migration_results": "Models are created by revision 93510e8bf194, not by create_all.",
+        "review_findings": "Constraint tests passed. Independent security review is still RO-009.",
+        "remaining_issues": [
+          "PostgreSQL constraints were not executed on a live server."
+        ]
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:45:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "database-engineer",
+          "note": "Registered from the model modules and the 2026-11-10 test run."
+        }
+      ]
+    },
+    {
+      "id": "RO-004",
+      "title": "Alembic migration framework",
+      "phase": "01",
+      "description": "Configure async Alembic and the initial revision, including the non-destructive legacy copy.",
+      "category": "migration",
+      "assigned_agent": "data-migration-engineer",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": [
+        "RO-002"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "alembic.ini",
+        "migrations/**"
+      ],
+      "acceptance_criteria": [
+        "Upgrade and downgrade succeed on an empty disposable SQLite file",
+        "A legacy players table is copied and retained as legacy_players",
+        "The development database upgrade does not drop legacy_players"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/migrations -q --tb=line"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/migrations -q --tb=line"
+      ],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-10T22:45:00+07:00",
+      "updated_at": "2026-11-10T22:45:00+07:00",
+      "completed_at": "2026-11-10T22:45:00+07:00",
+      "completion_report": {
+        "summary": "Revision 93510e8bf194 creates the schema. Upgrade renames the old players table to legacy_players, copies rows, and keeps the legacy table. Downgrade was limited to temporary files.",
+        "files_changed": [
+          "alembic.ini",
+          "migrations/env.py",
+          "migrations/versions/93510e8bf194_initial_database_schema.py"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests/migrations -q --tb=line"
+        ],
+        "test_results": "Included in the full run: 34 passed, 1 skipped in 25.93s on 2026-11-10. Migration tests passed, including the legacy copy.",
+        "migration_results": "ros_server.db is at 93510e8bf194. play_check and test_player were copied with their original ids. A backup exists at ros_server.db.pre-93510e8bf194.bak.",
+        "review_findings": "Disposable downgrade passed in pytest. Security review of the migration remains RO-009.",
+        "remaining_issues": [
+          "Downgrade was not run on ros_server.db, by design."
+        ]
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:45:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "data-migration-engineer",
+          "note": "Registered after the disposable migration tests and the development upgrade."
+        }
+      ]
+    },
+    {
+      "id": "RO-005",
+      "title": "Reference data and import framework",
+      "phase": "01",
+      "description": "Add idempotent catalog seeds and a dry-run importer that rolls back on error.",
+      "category": "migration",
+      "assigned_agent": "data-migration-engineer",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": [
+        "RO-003",
+        "RO-004"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "app/database/**",
+        "data/**"
+      ],
+      "acceptance_criteria": [
+        "Seed scripts can run twice without duplicate codes",
+        "Dry-run writes nothing",
+        "An invalid record rolls back the batch",
+        "Existing usernames are skipped"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/database/test_seeds.py tests/importers -q --tb=line"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/database/test_seeds.py tests/importers -q --tb=line"
+      ],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-10T22:45:00+07:00",
+      "updated_at": "2026-11-10T22:45:00+07:00",
+      "completed_at": "2026-11-10T22:45:00+07:00",
+      "completion_report": {
+        "summary": "Seeds upsert SOLO, DUO, SQUAD, TEST_MAP, and TEST_ITEM fixtures. The importer supports schema version 1, dry-run, and commit with rollback.",
+        "files_changed": [
+          "app/database/seeds/seed_all.py",
+          "app/database/importers/import_data.py",
+          "data/migration/accounts.json"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line",
+          "python -m app.database.importers.import_data --source .\\data\\migration --dry-run"
+        ],
+        "test_results": "Suite: 34 passed, 1 skipped in 25.93s. Dry-run of data/migration returned created [], skipped [], errors [].",
+        "migration_results": "Seeds were applied to ros_server.db after upgrade. No player rows were deleted.",
+        "review_findings": "Importer tests covered dry-run, duplicate username skip, and invalid-record rollback.",
+        "remaining_issues": []
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:45:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "data-migration-engineer",
+          "note": "Registered from seed tests, importer tests, and the development dry-run."
+        }
+      ]
+    },
+    {
+      "id": "RO-006",
+      "title": "Pydantic schemas",
+      "phase": "01",
+      "description": "Separate request and response schemas from the ORM models.",
+      "category": "api",
+      "assigned_agent": "api-engineer",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": [
+        "RO-003"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "app/schemas/**"
+      ],
+      "acceptance_criteria": [
+        "Account, player, inventory, match, lobby, and configuration schemas exist",
+        "Responses omit password_hash and token_hash",
+        "Collection responses can use the shared Page schema"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line"
+      ],
+      "review_agents": [
+        "security-engineer"
+      ],
+      "test_evidence": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line"
+      ],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-10T22:45:00+07:00",
+      "updated_at": "2026-11-10T22:45:00+07:00",
+      "completed_at": "2026-11-10T22:45:00+07:00",
+      "completion_report": {
+        "summary": "Pydantic v2 schemas live under app/schemas. Login still returns access_token, expires_in, and token_type. Profile responses expose stats without hashes.",
+        "files_changed": [
+          "app/schemas/account.py",
+          "app/schemas/player.py",
+          "app/schemas/inventory.py",
+          "app/schemas/match.py",
+          "app/schemas/lobby.py",
+          "app/schemas/configuration.py",
+          "app/schemas/common.py"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line"
+        ],
+        "test_results": "34 passed, 1 skipped in 25.93s on 2026-11-10. Live login response keys were access_token, expires_in, and token_type.",
+        "migration_results": "No schema migration in this task.",
+        "review_findings": "Response keys were checked on a live login. A written security review is still RO-009.",
+        "remaining_issues": []
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:45:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "api-engineer",
+          "note": "Registered from the schema modules and the login smoke check."
+        }
+      ]
+    },
+    {
+      "id": "RO-007",
+      "title": "Repository and service foundation",
+      "phase": "01",
+      "description": "Move queries into repositories and business rules into services, including register, inventory, lobby, and match finalization.",
+      "category": "api",
+      "assigned_agent": "api-engineer",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": [
+        "RO-003",
+        "RO-006"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "app/repositories/**",
+        "app/services/**",
+        "app/api/**"
+      ],
+      "acceptance_criteria": [
+        "Register creates account, player, and statistics in one transaction",
+        "Inventory and currency changes reject invalid amounts",
+        "Match finalization is transactional and rejects duplicate results",
+        "Routes do not contain the queries"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/repositories tests/integration -q --tb=line"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/repositories tests/integration -q --tb=line"
+      ],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-10T22:45:00+07:00",
+      "updated_at": "2026-11-10T22:45:00+07:00",
+      "completed_at": "2026-11-10T22:45:00+07:00",
+      "completion_report": {
+        "summary": "Repositories query with explicit loads. AccountService, InventoryService, LobbyService, and MatchService own the rules. Auth routes still delegate to the account service.",
+        "files_changed": [
+          "app/repositories/account_repository.py",
+          "app/services/account_service.py",
+          "app/services/inventory_service.py",
+          "app/services/match_service.py",
+          "app/api/v1/players.py"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line"
+        ],
+        "test_results": "34 passed, 1 skipped in 25.93s on 2026-11-10, including repository, lobby, and match finalization tests.",
+        "migration_results": "No new revision.",
+        "review_findings": "GET /health, login, and GET /api/v1/players/me returned 200 on the upgraded server.",
+        "remaining_issues": []
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:45:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "api-engineer",
+          "note": "Registered from the service tests and the live profile check."
+        }
+      ]
+    },
+    {
+      "id": "RO-008",
+      "title": "Database quality assurance",
+      "phase": "01",
+      "description": "Cover models, relationships, migrations, seeds, and imports, and keep a PostgreSQL test that runs only when a URL is configured.",
+      "category": "quality",
+      "assigned_agent": "qa-engineer",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": [
+        "RO-003",
+        "RO-004",
+        "RO-005"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "tests/**"
+      ],
+      "acceptance_criteria": [
+        "Constraint, relationship, migration, seed, and import tests exist",
+        "The suite passes on SQLite",
+        "The PostgreSQL test skips with an explicit reason when POSTGRES_TEST_URL is unset"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line"
+      ],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-10T22:45:00+07:00",
+      "updated_at": "2026-11-10T22:45:00+07:00",
+      "completed_at": "2026-11-10T22:45:00+07:00",
+      "completion_report": {
+        "summary": "tests/models, tests/database, tests/migrations, tests/importers, and tests/repositories cover the database foundation. The live PostgreSQL test skips unless POSTGRES_TEST_URL is set.",
+        "files_changed": [
+          "tests/models/test_constraints.py",
+          "tests/migrations/test_alembic.py",
+          "tests/importers/test_import.py",
+          "tests/database/test_postgres.py"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line"
+        ],
+        "test_results": "34 passed, 1 skipped in 25.93s on 2026-11-10. Skip is test_postgres_account_roundtrip. test_postgresql_dialect_uses_jsonb passed as a compile check only.",
+        "migration_results": "tests/migrations upgraded, downgraded, and upgraded a temporary database, and copied a hand-built legacy table.",
+        "review_findings": "CTO recorded the pytest output. This does not certify PostgreSQL execution.",
+        "remaining_issues": [
+          "Set POSTGRES_TEST_URL and run tests/database/test_postgres.py for a live PostgreSQL result."
+        ]
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:45:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "qa-engineer",
+          "note": "Registered from the 2026-11-10 pytest run. The skip remains visible."
+        }
+      ]
+    },
+    {
+      "id": "RO-009",
+      "title": "Database security review",
+      "phase": "01",
+      "description": "Independently review account storage, session hashes, response schemas, importer behavior, and migration safety.",
+      "category": "security",
+      "assigned_agent": "security-engineer",
+      "status": "ready",
+      "priority": "high",
+      "dependencies": [
+        "RO-003",
+        "RO-004"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "docs/engineering/reviews/RO-009-security.md"
+      ],
+      "acceptance_criteria": [
+        "Findings cite the files that were read",
+        "Password hashes and token hashes are confirmed absent from response schemas",
+        "The legacy upgrade is confirmed not to drop legacy_players",
+        "The review does not modify application code"
+      ],
+      "verification_commands": [
+        "python scripts/validate_agent_registry.py"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-10T22:45:00+07:00",
+      "updated_at": "2026-11-10T22:45:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:45:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "ready",
+          "from_agent": null,
+          "to_agent": "security-engineer",
+          "note": "Ready because the models and migration exist. No security report has been written."
+        }
+      ]
+    },
+    {
+      "id": "RO-010",
+      "title": "Database infrastructure",
+      "phase": "01",
+      "description": "Document PostgreSQL, Redis, Windows development, backup, and operational commands.",
+      "category": "infrastructure",
+      "assigned_agent": "devops-engineer",
+      "status": "completed",
+      "priority": "medium",
+      "dependencies": [
+        "RO-004"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "docker-compose.yml",
+        "Dockerfile",
+        "docs/DATABASE_OPERATIONS.md"
+      ],
+      "acceptance_criteria": [
+        "Compose defines PostgreSQL and Redis with placeholder passwords",
+        "Development upgrade and disposable downgrade are documented",
+        "The document states that a skipped PostgreSQL test is not a pass"
+      ],
+      "verification_commands": [
+        "python scripts/validate_agent_registry.py"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [
+        "python scripts/validate_agent_registry.py"
+      ],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-10T22:45:00+07:00",
+      "updated_at": "2026-11-10T22:45:00+07:00",
+      "completed_at": "2026-11-10T22:45:00+07:00",
+      "completion_report": {
+        "summary": "docker-compose.yml defines PostgreSQL 17 and Redis 7 with CHANGE_ME passwords and no published database ports. docs/DATABASE_OPERATIONS.md covers upgrade, backup-minded downgrade, and the PostgreSQL test switch.",
+        "files_changed": [
+          "docker-compose.yml",
+          "docs/DATABASE_OPERATIONS.md"
+        ],
+        "tests_executed": [
+          "Inspected docker-compose.yml and docs/DATABASE_OPERATIONS.md"
+        ],
+        "test_results": "Compose was not started. The Docker engine was not accepting connections, so this task does not claim a live PostgreSQL or Redis run.",
+        "migration_results": "Documented alembic upgrade head for an existing database after the server is stopped.",
+        "review_findings": "Placeholder passwords remain CHANGE_ME.",
+        "remaining_issues": [
+          "Compose has not been started in this environment."
+        ]
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:45:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "devops-engineer",
+          "note": "Registered from the Compose file and operations doc. Containers were not started."
+        }
+      ]
+    },
+    {
+      "id": "RO-011",
+      "title": "CTO integration review",
+      "phase": "01",
+      "description": "Review the database foundation only after seeds, services, QA, and the security review are complete.",
+      "category": "governance",
+      "assigned_agent": "cto",
+      "status": "blocked",
+      "priority": "critical",
+      "dependencies": [
+        "RO-005",
+        "RO-007",
+        "RO-008",
+        "RO-009"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        ".cursor/management/tasks.json",
+        "docs/engineering/**"
+      ],
+      "acceptance_criteria": [
+        "RO-009 has a file-cited security report and is completed",
+        "The test suite has been run again after that review",
+        "Remaining issues and the next milestone are written down",
+        "The registry validates"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line",
+        "python scripts/validate_agent_registry.py"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-10T22:45:00+07:00",
+      "updated_at": "2026-11-10T22:45:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": "RO-009 is still ready and has no security review report.",
+      "resolution_plan": "Run the security-engineer on RO-009 and write docs/engineering/reviews/RO-009-security.md. Complete RO-009 only after the CTO checks the cited files. Re-run the test suite and the registry validator, then move RO-011 from blocked to ready.",
+      "history": [
+        {
+          "at": "2026-11-10T22:45:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "blocked",
+          "from_agent": null,
+          "to_agent": "cto",
+          "note": "Blocked on the missing security review. Implementation and SQLite tests are already recorded on RO-001 through RO-008 and RO-010."
+        }
+      ]
+    },
+    {
+      "id": "RO-020",
+      "title": "Build compatibility matrix",
+      "phase": "02",
+      "description": "Record implementation, test, and original-RoS compatibility separately for each listed function.",
+      "category": "quality",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": [
+        "RO-001"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "docs/compatibility/**",
+        "testdata/reference/**"
+      ],
+      "acceptance_criteria": [
+        "Every requested function has a matrix row",
+        "No row is compatible without an authorized reference and a passing test",
+        "Unknown original behavior stays unknown"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/test_matrix.py -q --tb=line"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/test_matrix.py -q --tb=line"
+      ],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:52:00+07:00",
+      "updated_at": "2026-11-10T22:52:00+07:00",
+      "completed_at": "2026-11-10T22:52:00+07:00",
+      "completion_report": {
+        "summary": "43 functions are tracked. 0 are compatible and 43 are unknown. 26 are implemented, 10 partial, and 7 not implemented.",
+        "files_changed": [
+          "testdata/reference/compatibility_matrix.json",
+          "docs/compatibility/GAME_COMPATIBILITY_MATRIX.md"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/test_matrix.py -q --tb=line"
+        ],
+        "test_results": "54 passed, 1 skipped in 44.99s on 2026-11-10. Skip is test_postgres_account_roundtrip because POSTGRES_TEST_URL is unset.",
+        "migration_results": "No migration.",
+        "review_findings": "The matrix test rejected unproven compatible claims.",
+        "remaining_issues": [
+          "13 functions have test_status not_run."
+        ]
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:52:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Recorded after the compatibility framework tests passed."
+        }
+      ]
+    },
+    {
+      "id": "RO-021",
+      "title": "Build automated test runner",
+      "phase": "02",
+      "description": "Run pytest by category, feature, or id and write JSON and HTML reports.",
+      "category": "quality",
+      "assigned_agent": "qa-engineer",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": [
+        "RO-008"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "tools/test_runner/**",
+        "tests/regression/test_runner.py",
+        "docs/testing/TESTING_GUIDE.md"
+      ],
+      "acceptance_criteria": [
+        "The runner writes latest.json and latest.html",
+        "A URL containing ros_server.db exits 2",
+        "A feature run exits 0 when its tests pass"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/regression/test_runner.py -q --tb=line"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/regression/test_runner.py -q --tb=line"
+      ],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:52:00+07:00",
+      "updated_at": "2026-11-10T22:52:00+07:00",
+      "completed_at": "2026-11-10T22:52:00+07:00",
+      "completion_report": {
+        "summary": "python -m tools.test_runner supports --category, --feature, --id, and --all. It preserves the previous latest.json.",
+        "files_changed": [
+          "tools/test_runner/runner.py",
+          "docs/testing/TESTING_GUIDE.md"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests/regression/test_runner.py -q --tb=line"
+        ],
+        "test_results": "54 passed, 1 skipped in 44.99s on 2026-11-10. Skip is test_postgres_account_roundtrip because POSTGRES_TEST_URL is unset.",
+        "migration_results": "The runner refuses ros_server.db. Pytest uses test_ros.db.",
+        "review_findings": "The player feature report was generated during the regression test.",
+        "remaining_issues": []
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:52:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "qa-engineer",
+          "note": "Recorded after the compatibility framework tests passed."
+        }
+      ]
+    },
+    {
+      "id": "RO-022",
+      "title": "Build deterministic game simulator",
+      "phase": "02",
+      "description": "Simulate login, lobby, team, ready, match, combat, results, and statistics with a fixed seed.",
+      "category": "quality",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": [
+        "RO-007",
+        "RO-021"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "tools/game_simulator/**",
+        "tests/compatibility/gameplay/**",
+        "testdata/scenarios/**",
+        "testdata/expected_results/**"
+      ],
+      "acceptance_criteria": [
+        "Two runs with the same seed agree on the winner and totals",
+        "Movement and damage follow app.game rules",
+        "The scenario does not claim original RoS compatibility"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gameplay tests/compatibility/match_results -q --tb=line"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gameplay tests/compatibility/match_results -q --tb=line"
+      ],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:52:00+07:00",
+      "updated_at": "2026-11-10T22:52:00+07:00",
+      "completed_at": "2026-11-10T22:52:00+07:00",
+      "completion_report": {
+        "summary": "ScenarioRunner seed 7 eliminates bravo, records alpha as winner with placement 1, and repeats the same totals.",
+        "files_changed": [
+          "tools/game_simulator/runner.py",
+          "testdata/expected_results/solo_elimination.json"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gameplay -q --tb=line"
+        ],
+        "test_results": "54 passed, 1 skipped in 44.99s on 2026-11-10. Skip is test_postgres_account_roundtrip because POSTGRES_TEST_URL is unset.",
+        "migration_results": "Statistics are applied in memory with the same arithmetic as PersistenceService.",
+        "review_findings": "The scenario uses local pistol damage 22 and speed 5. It is not an original combat oracle.",
+        "remaining_issues": []
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:52:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Recorded after the compatibility framework tests passed."
+        }
+      ]
+    },
+    {
+      "id": "RO-023",
+      "title": "Build function execution tracker",
+      "phase": "02",
+      "description": "Record function lifecycle, redact secrets, and sample hot game ticks.",
+      "category": "infrastructure",
+      "assigned_agent": "observability-engineer",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": [
+        "RO-007"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "tools/function_tracker/**",
+        "app/observability/**",
+        "docs/observability/FUNCTION_TRACKING.md"
+      ],
+      "acceptance_criteria": [
+        "Records include the required ids, times, status, and trace id",
+        "Bearer tokens are redacted",
+        "Hot ticks can be dropped by sampling"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/unit/test_function_tracker.py tests/unit/test_observability.py -q --tb=line"
+      ],
+      "review_agents": [
+        "security-engineer"
+      ],
+      "test_evidence": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/unit/test_function_tracker.py tests/unit/test_observability.py -q --tb=line"
+      ],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:52:00+07:00",
+      "updated_at": "2026-11-10T22:52:00+07:00",
+      "completed_at": "2026-11-10T22:52:00+07:00",
+      "completion_report": {
+        "summary": "The tracker writes one JSON record per kept execution. HTTP, match persistence, and the game tick call it. Tick logging is sampled out by default.",
+        "files_changed": [
+          "tools/function_tracker/tracker.py",
+          "app/observability/http.py"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests/unit/test_function_tracker.py -q --tb=line"
+        ],
+        "test_results": "54 passed, 1 skipped in 44.99s on 2026-11-10. Skip is test_postgres_account_roundtrip because POSTGRES_TEST_URL is unset.",
+        "migration_results": "Database operations are timed for the Prometheus histogram and are not logged per tick.",
+        "review_findings": "The unit test redacted a bearer token and dropped a hot tick at sample rate 0.",
+        "remaining_issues": [
+          "RO-009 has not separately reviewed the log fields."
+        ]
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:52:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "observability-engineer",
+          "note": "Recorded after the compatibility framework tests passed."
+        }
+      ]
+    },
+    {
+      "id": "RO-024",
+      "title": "Build documented protocol validation",
+      "phase": "02",
+      "description": "Validate this server's JSON messages and reject malformed input.",
+      "category": "quality",
+      "assigned_agent": "protocol-test-engineer",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": [
+        "RO-007"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "tools/protocol_validator/**",
+        "tests/compatibility/authentication/**"
+      ],
+      "acceptance_criteria": [
+        "Valid version-1 messages parse",
+        "Malformed JSON and unknown types fail",
+        "The validator does not claim an official packet format"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/authentication tests/unit/test_protocol.py -q --tb=line"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/authentication tests/unit/test_protocol.py -q --tb=line"
+      ],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:52:00+07:00",
+      "updated_at": "2026-11-10T22:52:00+07:00",
+      "completed_at": "2026-11-10T22:52:00+07:00",
+      "completion_report": {
+        "summary": "tools.protocol_validator uses the existing Pydantic message models. Malformed input returns ok false.",
+        "files_changed": [
+          "tools/protocol_validator/validator.py",
+          "tests/compatibility/authentication/test_login.py"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/authentication -q --tb=line"
+        ],
+        "test_results": "54 passed, 1 skipped in 44.99s on 2026-11-10. Skip is test_postgres_account_roundtrip because POSTGRES_TEST_URL is unset.",
+        "migration_results": "No migration.",
+        "review_findings": "This covers the private JSON contract only.",
+        "remaining_issues": []
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:52:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "protocol-test-engineer",
+          "note": "Recorded after the compatibility framework tests passed."
+        }
+      ]
+    },
+    {
+      "id": "RO-025",
+      "title": "Build Locust performance tests",
+      "phase": "02",
+      "description": "Measure a short player load against a disposable server.",
+      "category": "quality",
+      "assigned_agent": "performance-engineer",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": [
+        "RO-021"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "tools/load_generator/**",
+        "tests/performance/**",
+        "docs/performance/**"
+      ],
+      "acceptance_criteria": [
+        "Locust runs headless against a temporary database",
+        "The report includes requests, failures, and latency percentiles",
+        "The report does not treat the configured match size as capacity"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/performance/test_load.py -q --tb=line"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/performance/test_load.py -q --tb=line"
+      ],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:52:00+07:00",
+      "updated_at": "2026-11-10T22:52:00+07:00",
+      "completed_at": "2026-11-10T22:52:00+07:00",
+      "completion_report": {
+        "summary": "Two users ran for a requested 10 seconds. The aggregate row was 4 requests, 0 failures, average 145.5 ms, p50 180 ms, p95 180 ms, p99 180 ms.",
+        "files_changed": [
+          "tools/load_generator/locustfile.py",
+          "reports/performance/measured.json",
+          "docs/performance/PERFORMANCE_BASELINE.md"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests/performance/test_load.py -q --tb=line"
+        ],
+        "test_results": "54 passed, 1 skipped in 44.99s on 2026-11-10. Skip is test_postgres_account_roundtrip because POSTGRES_TEST_URL is unset.",
+        "migration_results": "The load server used a temporary SQLite file.",
+        "review_findings": "Failures were 0. The sample is not a capacity test.",
+        "remaining_issues": [
+          "The aggregate row contains 4 requests, so the sustained task loop was not demonstrated."
+        ]
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:52:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "performance-engineer",
+          "note": "Recorded after the compatibility framework tests passed."
+        }
+      ]
+    },
+    {
+      "id": "RO-026",
+      "title": "Build Prometheus and Grafana monitoring",
+      "phase": "02",
+      "description": "Expose ros_* metrics and add scrape, alert, and dashboard configuration.",
+      "category": "infrastructure",
+      "assigned_agent": "devops-engineer",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": [
+        "RO-010",
+        "RO-023"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "app/observability/**",
+        "monitoring/**",
+        "docs/observability/MONITORING_GUIDE.md"
+      ],
+      "acceptance_criteria": [
+        "/metrics returns the named series",
+        "Labels do not include player ids",
+        "Dashboard and alert files exist"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/unit/test_observability.py -q --tb=line"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/unit/test_observability.py -q --tb=line"
+      ],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:52:00+07:00",
+      "updated_at": "2026-11-10T22:52:00+07:00",
+      "completed_at": "2026-11-10T22:52:00+07:00",
+      "completion_report": {
+        "summary": "The test client fetched /metrics and found the HTTP, tick, database, and function series. Grafana and Prometheus processes were not started.",
+        "files_changed": [
+          "app/observability/metrics.py",
+          "monitoring/grafana/dashboards/server.json",
+          "monitoring/prometheus/prometheus.yml"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests/unit/test_observability.py -q --tb=line"
+        ],
+        "test_results": "54 passed, 1 skipped in 44.99s on 2026-11-10. Skip is test_postgres_account_roundtrip because POSTGRES_TEST_URL is unset.",
+        "migration_results": "Query timing uses a SQLAlchemy cursor listener.",
+        "review_findings": "Dashboard JSON and alert rules are configuration only.",
+        "remaining_issues": [
+          "Prometheus and Grafana were not started."
+        ]
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:52:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "devops-engineer",
+          "note": "Recorded after the compatibility framework tests passed."
+        }
+      ]
+    },
+    {
+      "id": "RO-027",
+      "title": "Build regression reporting",
+      "phase": "02",
+      "description": "Classify new, fixed, and unchanged failures between two test reports.",
+      "category": "quality",
+      "assigned_agent": "qa-engineer",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": [
+        "RO-021"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "tools/report_generator/**",
+        "tests/regression/**",
+        "docs/testing/REGRESSION_GUIDE.md"
+      ],
+      "acceptance_criteria": [
+        "New, fixed, and unchanged failures are distinguished",
+        "Compatibility regressions are called out",
+        "A failed regression command blocks completion"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/regression/test_report_compare.py -q --tb=line"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/regression/test_report_compare.py -q --tb=line"
+      ],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:52:00+07:00",
+      "updated_at": "2026-11-10T22:52:00+07:00",
+      "completed_at": "2026-11-10T22:52:00+07:00",
+      "completion_report": {
+        "summary": "compare_reports classifies new, fixed, and unchanged failures. The regression test passed.",
+        "files_changed": [
+          "tools/report_generator/compare.py",
+          "docs/testing/REGRESSION_GUIDE.md"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests/regression -q --tb=line"
+        ],
+        "test_results": "54 passed, 1 skipped in 44.99s on 2026-11-10. Skip is test_postgres_account_roundtrip because POSTGRES_TEST_URL is unset.",
+        "migration_results": "No migration.",
+        "review_findings": "There is no stored earlier failing suite to list as fixed product failures.",
+        "remaining_issues": []
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:52:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "qa-engineer",
+          "note": "Recorded after the compatibility framework tests passed."
+        }
+      ]
+    },
+    {
+      "id": "RO-028",
+      "title": "Compatibility and security review",
+      "phase": "02",
+      "description": "Review the matrix, tests, and load sample before any original-compatibility claim.",
+      "category": "governance",
+      "assigned_agent": "cto",
+      "status": "completed",
+      "priority": "critical",
+      "dependencies": [
+        "RO-020",
+        "RO-022",
+        "RO-023",
+        "RO-024",
+        "RO-025",
+        "RO-026",
+        "RO-027"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "docs/engineering/reviews/RO-028-compatibility.md",
+        ".cursor/management/tasks.json"
+      ],
+      "acceptance_criteria": [
+        "No feature is marked compatible without an authorized reference",
+        "The suite result is recorded",
+        "RO-009 remains open if its own report is missing"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line",
+        "python scripts/validate_agent_registry.py"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line",
+        "python scripts/validate_agent_registry.py"
+      ],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:52:00+07:00",
+      "updated_at": "2026-11-10T22:52:00+07:00",
+      "completed_at": "2026-11-10T22:52:00+07:00",
+      "completion_report": {
+        "summary": "The review found 0 compatible rows and 43 unknown rows. The suite passed with one PostgreSQL skip.",
+        "files_changed": [
+          "docs/engineering/reviews/RO-028-compatibility.md"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests -q --tb=line"
+        ],
+        "test_results": "54 passed, 1 skipped in 44.99s on 2026-11-10. Skip is test_postgres_account_roundtrip because POSTGRES_TEST_URL is unset.",
+        "migration_results": "No migration was run for this review.",
+        "review_findings": "RO-009 is still ready and is not closed by this review.",
+        "remaining_issues": [
+          "Live PostgreSQL was not executed.",
+          "The Locust sample did not sustain a 10 second task rate."
+        ]
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:52:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "completed",
+          "from_agent": null,
+          "to_agent": "cto",
+          "note": "Recorded after the compatibility framework tests passed."
+        }
+      ]
+    },
+    {
+      "id": "RO-012",
+      "title": "Project control and reverse-engineering tracker",
+      "phase": "00",
+      "description": "Add checkpoint, discovery, compatibility, changelog, and roadmap registries beside the existing task registry. Do not delete RO-001 through RO-028.",
+      "category": "governance",
+      "assigned_agent": "cto",
+      "status": "review",
+      "priority": "critical",
+      "dependencies": [
+        "RO-001"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        ".cursor/management/**",
+        "tools/project_tracker/**",
+        "scripts/validate_project_management.py",
+        "docs/project/**",
+        "docs/architecture/decisions/**",
+        "docs/engineering/TASK_WORKFLOW.md",
+        "docs/engineering/TEAM_STRUCTURE.md",
+        "docs/engineering/AGENT_ASSIGNMENT_GUIDE.md",
+        "docs/engineering/ARCHITECTURE_DECISIONS.md",
+        "reports/**",
+        "CHANGELOG.md",
+        "AGENTS.md",
+        ".cursor/agents/cto.md",
+        "tests/management/**"
+      ],
+      "acceptance_criteria": [
+        "Existing task ids and completion reports remain",
+        "Validation passes for the agent registry and the new registries",
+        "No feature is marked compatible",
+        "QA has not yet approved completion"
+      ],
+      "verification_commands": [
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "updated_at": "2026-11-10T22:55:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "cto",
+          "note": "Opened to extend the registries without replacing recorded work."
+        },
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": "backlog",
+          "to_status": "ready",
+          "from_agent": "cto",
+          "to_agent": "cto",
+          "note": "RO-001 is completed, so the tracker can be built."
+        },
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": "ready",
+          "to_status": "assigned",
+          "from_agent": "cto",
+          "to_agent": "cto",
+          "note": "The CTO owns management registries."
+        },
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": "assigned",
+          "to_status": "in_progress",
+          "from_agent": "cto",
+          "to_agent": "cto",
+          "note": "Registries, schemas, and the status CLI were added in this session."
+        },
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": "in_progress",
+          "to_status": "review",
+          "from_agent": "cto",
+          "to_agent": "cto",
+          "note": "Left in review until QA runs the validator. The CTO does not complete its own task."
+        }
+      ]
+    },
+    {
+      "id": "RO-013",
+      "title": "Original game research index",
+      "phase": "01",
+      "description": "Write the research index from repository evidence. Separate observed facts, interpretation, and hypotheses. Do not invent original server behavior.",
+      "category": "research",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "ready",
+      "priority": "high",
+      "dependencies": [
+        "RO-001",
+        "RO-020"
+      ],
+      "research_references": [
+        "testdata/reference/provenance.json",
+        "docs/compatibility/GAME_COMPATIBILITY_MATRIX.md"
+      ],
+      "files_allowed": [
+        "docs/reverse-engineering/RESEARCH_INDEX.md"
+      ],
+      "acceptance_criteria": [
+        "Every entry names a source path",
+        "Confirmed facts and hypotheses are separate",
+        "Missing original behavior is marked unknown"
+      ],
+      "verification_commands": [
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "updated_at": "2026-11-10T22:55:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Research starts after the repository inspection and the compatibility matrix."
+        },
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": "backlog",
+          "to_status": "ready",
+          "from_agent": "game-compatibility-engineer",
+          "to_agent": "game-compatibility-engineer",
+          "note": "RO-001 and RO-020 are completed. No original specification was found."
+        }
+      ]
+    },
+    {
+      "id": "RO-014",
+      "title": "Client, data format, and network research",
+      "phase": "01",
+      "description": "Document permitted observations of client builds, data files, and this server's JSON interface. Do not bypass authentication, pinning, or access controls, and do not record secrets.",
+      "category": "research",
+      "assigned_agent": "protocol-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-013"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "docs/reverse-engineering/CLIENT_ANALYSIS.md",
+        "docs/reverse-engineering/DATA_FORMATS.md",
+        "docs/reverse-engineering/NETWORK_INTERFACE.md"
+      ],
+      "acceptance_criteria": [
+        "This server's protocol is labeled as this server's protocol",
+        "No official packet format is invented",
+        "Each discovery has a source"
+      ],
+      "verification_commands": [
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "updated_at": "2026-11-10T22:55:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "protocol-test-engineer",
+          "note": "Waiting for the research index."
+        }
+      ]
+    },
+    {
+      "id": "RO-015",
+      "title": "Game function research",
+      "phase": "01",
+      "description": "Document which gameplay functions are local contracts and which original behaviors are still unknown.",
+      "category": "research",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-013"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "docs/reverse-engineering/GAME_FUNCTIONS.md",
+        "docs/reverse-engineering/UNKNOWN_BEHAVIOR.md"
+      ],
+      "acceptance_criteria": [
+        "Local rules cite app/game/rules.py or app/game/items.py",
+        "Original weapon, map, and damage values stay unknown without a source"
+      ],
+      "verification_commands": [
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "updated_at": "2026-11-10T22:55:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Waiting for the research index."
+        }
+      ]
+    },
+    {
+      "id": "RO-016",
+      "title": "Keep the compatibility registry aligned",
+      "phase": "06",
+      "description": "When the matrix changes, update the management compatibility registry through the CTO. A local pass still leaves original compatibility unknown.",
+      "category": "compatibility",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-012",
+        "RO-020"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "docs/compatibility/**",
+        "testdata/reference/**"
+      ],
+      "acceptance_criteria": [
+        "Feature ids already in the matrix are still present",
+        "compatible is used only with an authorized reference and evidence"
+      ],
+      "verification_commands": [
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "updated_at": "2026-11-10T22:55:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Waiting until the project-control task leaves review."
+        }
+      ]
+    },
+    {
+      "id": "RO-017",
+      "title": "Logout and session revocation",
+      "phase": "04",
+      "description": "AUTH-005 is not implemented. Add a logout path that revokes the stored session hash only after the security review and the database integration review.",
+      "category": "api",
+      "assigned_agent": "api-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-009",
+        "RO-011"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "app/api/v1/auth.py",
+        "app/services/auth_service.py",
+        "app/schemas/auth.py"
+      ],
+      "acceptance_criteria": [
+        "Logout revokes the AccountSession hash",
+        "Response schemas still omit password and token hashes",
+        "Original RoS compatibility stays unknown"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/integration/test_auth.py -q --tb=line"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "updated_at": "2026-11-10T22:55:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "api-engineer",
+          "note": "Blocked by the open security review and RO-011."
+        }
+      ]
+    },
+    {
+      "id": "RO-018",
+      "title": "Experience and progression rewards",
+      "phase": "04",
+      "description": "PLAY-005, PLAY-007, RS-004, and RS-006 are partial or not implemented. Define the server contract only after original behavior is researched or explicitly marked as a local rule.",
+      "category": "api",
+      "assigned_agent": "api-engineer",
+      "status": "backlog",
+      "priority": "medium",
+      "dependencies": [
+        "RO-011",
+        "RO-015"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "app/api/v1/players.py",
+        "app/services/player_service.py",
+        "app/schemas/player.py",
+        "app/services/persistence_service.py"
+      ],
+      "acceptance_criteria": [
+        "The contract states whether rewards are local rules or original behavior",
+        "A test covers the chosen contract",
+        "Compatibility status remains unknown without an authorized reference"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/player tests/compatibility/match_results -q --tb=line"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "updated_at": "2026-11-10T22:55:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "api-engineer",
+          "note": "Waiting for research and the database integration review."
+        }
+      ]
+    },
+    {
+      "id": "RO-019",
+      "title": "Lobby and team contract gaps",
+      "phase": "04",
+      "description": "Lobby join, leave, ready, and team routes are partial. Close the gaps against this server's rules after RO-011, and keep original lobby behavior unknown.",
+      "category": "api",
+      "assigned_agent": "api-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-011",
+        "RO-015"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "app/services/lobby_service.py",
+        "app/repositories/lobby_repository.py",
+        "app/api/v1/lobby.py",
+        "app/schemas/lobby.py"
+      ],
+      "acceptance_criteria": [
+        "Durable lobby membership and in-memory queue behavior are both described",
+        "Team membership has a test",
+        "No original client packet is invented"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/lobby -q --tb=line"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "updated_at": "2026-11-10T22:55:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "api-engineer",
+          "note": "Waiting for research and the database integration review."
+        }
+      ]
+    },
+    {
+      "id": "RO-029",
+      "title": "Movement contract evidence",
+      "phase": "05",
+      "description": "Record the local movement contract from app/game/rules.py and the scenario tests. Do not treat that contract as original RoS movement.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-015",
+        "RO-022"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "tests/compatibility/gameplay/**"
+      ],
+      "acceptance_criteria": [
+        "The test cites the speed value's source file",
+        "The compatibility row for GP-002 stays unknown"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gameplay -q --tb=line"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "updated_at": "2026-11-10T22:55:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Waiting for game-function research. The simulator from RO-022 already exists."
+        }
+      ]
+    },
+    {
+      "id": "RO-030",
+      "title": "Combat and weapons contract evidence",
+      "phase": "05",
+      "description": "Record local pistol and rifle values as server rules. Equipment and vehicles stay unimplemented until a separate contract exists.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-029"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "tests/compatibility/weapons/**"
+      ],
+      "acceptance_criteria": [
+        "Damage numbers cite app/game/items.py",
+        "GP-007 and GP-008 remain not implemented",
+        "Original compatibility stays unknown"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/weapons -q --tb=line"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "updated_at": "2026-11-10T22:55:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Waiting for the movement contract evidence."
+        }
+      ]
+    },
+    {
+      "id": "RO-031",
+      "title": "Match results contract evidence",
+      "phase": "05",
+      "description": "Placement and kills are local results. Experience and currency rewards are not granted. Keep that distinction in the evidence.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "medium",
+      "dependencies": [
+        "RO-030"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "tests/compatibility/match_results/**"
+      ],
+      "acceptance_criteria": [
+        "RS-001 through RS-003 cite their tests",
+        "RS-004 through RS-006 stay not implemented unless this task changes them with a written contract"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/match_results -q --tb=line"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "updated_at": "2026-11-10T22:55:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Waiting for the combat contract evidence."
+        }
+      ]
+    },
+    {
+      "id": "RO-032",
+      "title": "Networking evidence for this server",
+      "phase": "06",
+      "description": "Extend evidence for this server's JSON messages. Do not implement an official game protocol or bypass protected services.",
+      "category": "networking",
+      "assigned_agent": "protocol-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-014",
+        "RO-024"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "tools/protocol_validator/**",
+        "tests/compatibility/authentication/**"
+      ],
+      "acceptance_criteria": [
+        "Valid and invalid messages are both tested",
+        "The report says the messages are this server's contract"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/authentication -q --tb=line"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "updated_at": "2026-11-10T22:55:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "protocol-test-engineer",
+          "note": "Waiting for client and network research. RO-024 already built the validator."
+        }
+      ]
+    },
+    {
+      "id": "RO-033",
+      "title": "Client compatibility verdict",
+      "phase": "06",
+      "description": "Decide whether any feature can move off unknown. The default remains unknown until an authorized reference and a passing comparison exist.",
+      "category": "compatibility",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "backlog",
+      "priority": "critical",
+      "dependencies": [
+        "RO-016",
+        "RO-032"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "docs/compatibility/**"
+      ],
+      "acceptance_criteria": [
+        "Every changed row cites a source",
+        "No row becomes compatible from a local test alone"
+      ],
+      "verification_commands": [
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "cto",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "unknown",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "updated_at": "2026-11-10T22:55:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Waiting for registry alignment and network evidence."
+        }
+      ]
+    },
+    {
+      "id": "RO-034",
+      "title": "Release readiness",
+      "phase": "08",
+      "description": "Prepare the deployment record after the database integration review. Do not start Compose or downgrade a database in this task.",
+      "category": "infrastructure",
+      "assigned_agent": "devops-engineer",
+      "status": "backlog",
+      "priority": "medium",
+      "dependencies": [
+        "RO-010",
+        "RO-011",
+        "RO-026"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        "docs/DATABASE_OPERATIONS.md",
+        "docker-compose.yml",
+        "Dockerfile"
+      ],
+      "acceptance_criteria": [
+        "The release note lists the migration revision and the unverified compatibility count",
+        "Backup and recovery steps are cited",
+        "Compose is not started unless the user asks"
+      ],
+      "verification_commands": [
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "cto",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-10T22:55:00+07:00",
+      "updated_at": "2026-11-10T22:55:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-10T22:55:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "devops-engineer",
+          "note": "Waiting for RO-011. Monitoring from RO-026 is already recorded."
+        }
+      ]
+    }
+  ]
+}

@@ -25,19 +25,21 @@ def test_locust_profile_measures_a_short_run(tmp_path):
     env["JWT_SECRET"] = "test-secret-key-for-pytest-is-long-enough-for-hs256"
     env["APP_ENV"] = "development"
     env["DEBUG"] = "false"
+    log_path = tmp_path / "server.log"
+    log_file = log_path.open("w", encoding="utf-8")
     server = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(port)],
         env=env,
-        stdout=subprocess.PIPE,
+        stdout=log_file,
         stderr=subprocess.STDOUT,
-        text=True,
     )
     host = f"http://127.0.0.1:{port}"
     try:
         deadline = time.time() + 30
         while time.time() < deadline:
             if server.poll() is not None:
-                raise AssertionError(server.stdout.read() if server.stdout else "server exited")
+                log_file.flush()
+                raise AssertionError(log_path.read_text(encoding="utf-8") or "server exited")
             try:
                 with urllib.request.urlopen(host + "/health", timeout=1) as response:
                     if response.status == 200:
@@ -98,6 +100,7 @@ def test_locust_profile_measures_a_short_run(tmp_path):
         destination.mkdir(parents=True, exist_ok=True)
         (destination / "measured.json").write_text(json.dumps(measured, indent=2), encoding="utf-8")
     finally:
+        log_file.close()
         server.terminate()
         try:
             server.wait(timeout=10)

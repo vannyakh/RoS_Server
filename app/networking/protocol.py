@@ -28,7 +28,7 @@ class PlayerInput(BaseModel):
 
 
 class PlayerAction(BaseModel):
-    action: Literal["shoot", "reload", "pickup", "use", "equip", "jump", "discard"]
+    action: Literal["shoot", "reload", "pickup", "use", "equip", "jump", "discard", "board", "exit"]
     loot_id: str | None = Field(default=None, max_length=80)
     item_id: str | None = Field(default=None, max_length=32)
 

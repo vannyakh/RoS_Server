@@ -38,3 +38,16 @@ class MatchResultCreate(BaseModel):
     kills: int = Field(default=0, ge=0)
     score: int = Field(default=0, ge=0)
     rewards: dict = Field(default_factory=dict)
+
+
+class MatchRecordCreate(BaseModel):
+    match_code: str = Field(min_length=1, max_length=36)
+    max_players: int = Field(ge=1, le=100)
+
+
+class MatchTransition(BaseModel):
+    status: str = Field(pattern="^(lobby|running|cancelled)$")
+
+
+class MatchFinalize(BaseModel):
+    results: list[MatchResultCreate] = Field(min_length=1)

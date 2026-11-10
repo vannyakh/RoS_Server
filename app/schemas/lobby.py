@@ -27,6 +27,10 @@ class LobbyMemberResponse(BaseModel):
     ready: bool
 
 
+class ReadyUpdate(BaseModel):
+    ready: bool
+
+
 class LobbyCreate(BaseModel):
     code: str = Field(min_length=1, max_length=36)
     max_players: int = Field(ge=1, le=100)
