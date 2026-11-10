@@ -1,0 +1,43 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-11-10T23:00:00+07:00",
+  "current_phase": "01",
+  "phases": [
+    {
+      "phase": "01",
+      "name": "Database foundation",
+      "status": "in_progress",
+      "summary": "RO-009 is ready and RO-011 stays blocked until that security review is recorded.",
+      "task_ids": [
+        "RO-001",
+        "RO-002",
+        "RO-003",
+        "RO-004",
+        "RO-005",
+        "RO-006",
+        "RO-007",
+        "RO-008",
+        "RO-009",
+        "RO-010",
+        "RO-011"
+      ]
+    },
+    {
+      "phase": "02",
+      "name": "Compatibility and validation",
+      "status": "completed",
+      "summary": "RO-020 through RO-028 are completed. Original Rules of Survival behavior stays unknown.",
+      "task_ids": [
+        "RO-020",
+        "RO-021",
+        "RO-022",
+        "RO-023",
+        "RO-024",
+        "RO-025",
+        "RO-026",
+        "RO-027",
+        "RO-028"
+      ]
+    }
+  ]
+}

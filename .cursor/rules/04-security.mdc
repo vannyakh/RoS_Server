@@ -1,0 +1,21 @@
+---
+description: Authentication storage, secrets, and import boundaries.
+globs: app/**/*.py
+alwaysApply: false
+---
+
+# Security
+
+- Store passwords only as Argon2 hashes. Store access tokens only as SHA-256 hashes.
+- Login failure and unknown-user failure return the same generic 401.
+- The in-memory login limit stays 5 failures per 60 seconds per host.
+- Do not print `JWT_SECRET`, password hashes, or raw tokens in logs, docs, or task reports.
+- Do not commit `.env`.
+- Importers hash passwords on the way in, skip existing usernames, and do not replace currency balances.
+- Do not import data taken from another game's private backend.
+- Account `status` controls access. A suspended or closed account cannot use a previously issued token.
+
+```text
+Bad:  AccountResponse includes password_hash
+Good: AccountResponse includes id, username, status, and timestamps
+```

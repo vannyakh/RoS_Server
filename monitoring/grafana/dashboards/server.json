@@ -1,0 +1,17 @@
+{
+  "title": "RoS Server",
+  "uid": "ros-server",
+  "schemaVersion": 39,
+  "refresh": "10s",
+  "panels": [
+    {"id": 1, "title": "Server overview", "type": "stat", "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4}, "targets": [{"expr": "ros_active_sessions", "refId": "A"}]},
+    {"id": 2, "title": "API performance", "type": "timeseries", "gridPos": {"x": 6, "y": 0, "w": 9, "h": 4}, "targets": [{"expr": "histogram_quantile(0.95, sum(rate(ros_http_request_duration_seconds_bucket[5m])) by (le))", "refId": "A"}]},
+    {"id": 3, "title": "Database performance", "type": "timeseries", "gridPos": {"x": 15, "y": 0, "w": 9, "h": 4}, "targets": [{"expr": "histogram_quantile(0.95, sum(rate(ros_database_query_duration_seconds_bucket[5m])) by (le))", "refId": "A"}]},
+    {"id": 4, "title": "Active player sessions", "type": "stat", "gridPos": {"x": 0, "y": 4, "w": 6, "h": 4}, "targets": [{"expr": "ros_active_sessions", "refId": "A"}]},
+    {"id": 5, "title": "Lobby statistics", "type": "stat", "gridPos": {"x": 6, "y": 4, "w": 6, "h": 4}, "targets": [{"expr": "ros_active_lobbies", "refId": "A"}]},
+    {"id": 6, "title": "Match statistics", "type": "stat", "gridPos": {"x": 12, "y": 4, "w": 6, "h": 4}, "targets": [{"expr": "ros_active_matches", "refId": "A"}]},
+    {"id": 7, "title": "Gameplay simulation", "type": "timeseries", "gridPos": {"x": 0, "y": 8, "w": 12, "h": 4}, "targets": [{"expr": "rate(ros_game_tick_overruns_total[5m])", "refId": "A"}]},
+    {"id": 8, "title": "Errors", "type": "timeseries", "gridPos": {"x": 12, "y": 8, "w": 12, "h": 4}, "targets": [{"expr": "sum(rate(ros_http_requests_total{status=~\"5..\"}[5m]))", "refId": "A"}]},
+    {"id": 9, "title": "Function and pool health", "type": "timeseries", "gridPos": {"x": 0, "y": 12, "w": 24, "h": 4}, "targets": [{"expr": "ros_database_pool_connections", "refId": "A"}, {"expr": "sum(rate(ros_function_executions_total[5m]))", "refId": "B"}]}
+  ]
+}

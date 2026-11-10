@@ -1,0 +1,17 @@
+---
+description: Validation rules for this server's JSON client messages.
+globs: app/networking/**/*.py
+alwaysApply: false
+---
+
+# Protocol validation
+
+- Validate version, type, sequence, and payload with the Pydantic models in `app/networking/protocol.py`.
+- Reject malformed JSON and unknown message types before they touch the match.
+- Cover each supported message with a valid example and an invalid example.
+- This protocol is the private server contract. Do not compare it to official game packets or bypass certificate pinning.
+
+```text
+Bad:  accept a message with version 2 because a client sent it
+Good: return the version-1 error payload and close the socket when auth is missing
+```

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "discoveries.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "updated_at", "discoveries"],
+  "properties": {
+    "version": {"type": "string", "minLength": 1},
+    "updated_at": {"type": "string", "minLength": 1},
+    "discoveries": {"type": "array", "items": {"$ref": "#/$defs/discovery"}}
+  },
+  "$defs": {
+    "discovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "discovery_id",
+        "title",
+        "category",
+        "description",
+        "observed_fact",
+        "interpretation",
+        "hypothesis",
+        "implementation_impact",
+        "source_type",
+        "source_reference",
+        "source_version",
+        "observed_behavior",
+        "evidence_path",
+        "confidence",
+        "status",
+        "related_features",
+        "related_tasks",
+        "discovered_by",
+        "created_at",
+        "reviewed_at"
+      ],
+      "properties": {
+        "discovery_id": {"type": "string", "pattern": "^DIS-[0-9]{4}$"},
+        "title": {"type": "string", "minLength": 1},
+        "category": {"type": "string", "minLength": 1},
+        "description": {"type": "string", "minLength": 1},
+        "observed_fact": {"type": "string", "minLength": 1},
+        "interpretation": {"type": "string", "minLength": 1},
+        "hypothesis": {"type": "string", "minLength": 1},
+        "implementation_impact": {"type": "string", "minLength": 1},
+        "source_type": {"type": "string", "minLength": 1},
+        "source_reference": {"type": "string", "minLength": 1},
+        "source_version": {"type": ["string", "null"]},
+        "observed_behavior": {"type": "string", "minLength": 1},
+        "evidence_path": {"type": "string"},
+        "confidence": {"enum": ["confirmed", "high", "medium", "low", "unknown"]},
+        "status": {"enum": ["new", "investigating", "verified", "rejected", "archived"]},
+        "related_features": {"type": "array", "items": {"type": "string"}},
+        "related_tasks": {"type": "array", "items": {"type": "string"}},
+        "discovered_by": {"type": "string", "minLength": 1},
+        "created_at": {"type": "string", "minLength": 1},
+        "reviewed_at": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

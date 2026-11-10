@@ -1,0 +1,19 @@
+---
+description: Logs, metrics, and traces must stay free of secrets and unbounded labels.
+globs: app/observability/**/*.py
+alwaysApply: false
+---
+
+# Observability
+
+- Log function records as one JSON object. Include the lifecycle stage that ran.
+- Redact bearer tokens and passwords. Do not log raw tokens or password hashes.
+- Prometheus labels are method, route template, status, feature, and function id.
+- Do not use player id, session id, or request id as a metric label.
+- Sample or aggregate game ticks. Do not write a database row per tick.
+- Sentry export runs only when `SENTRY_DSN` is set.
+
+```text
+Bad:  Counter("requests", ["player_id"])
+Good: Counter("ros_http_requests_total", ["method", "path", "status"])
+```

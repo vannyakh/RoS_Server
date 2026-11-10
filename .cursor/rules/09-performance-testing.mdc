@@ -1,0 +1,18 @@
+---
+description: Load-test evidence rules. A setting is not a measured capacity.
+globs: tests/performance/**/*.py
+alwaysApply: false
+---
+
+# Performance testing
+
+- Record requests, failures, average latency, p50, p95, and p99 from the tool output.
+- Say how many simulated players ran and for how long.
+- Do not treat `MAX_PLAYERS_PER_MATCH` as measured server capacity.
+- Run load tests against a disposable database, never `ros_server.db`.
+- Optimize only after a profile shows the bottleneck.
+
+```text
+Bad:  the server supports 100 players because max_players_per_match is 100
+Good: 2 users for 10 seconds produced the counts in reports/performance/measured.json
+```

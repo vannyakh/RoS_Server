@@ -1,0 +1,27 @@
+---
+description: Engineering governance for RoS_Server. Task registry ownership, evidence, and protected files.
+alwaysApply: true
+---
+
+# Project governance
+
+The source of truth for task state is `.cursor/management/tasks.json`. Conversation progress is not completion.
+
+- The CTO agent is the only role that assigns or reassigns tasks in the registry.
+- Specialists may recommend changes. They must not edit `tasks.json` or `team.json`.
+- A task is completed only after the verification commands have been run and the result is recorded.
+- Do not mark work complete from an agent's summary alone.
+- Do not start a task whose dependencies are not `completed`.
+- Do not give two active tasks the same write path. Active statuses are `assigned` and `in_progress`.
+
+Protected without explicit user approval:
+
+- `.env` and any secret value
+- `ros_server.db` and other live database files
+- rewriting an already applied migration revision
+- deleting `legacy_players` or player-owned rows
+
+```text
+Bad:  set RO-009 status to completed because the schema "looks safe"
+Good: leave RO-009 ready until a review report cites the files that were read
+```

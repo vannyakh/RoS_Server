@@ -1,0 +1,40 @@
+{
+  "version": "1.1.0",
+  "statuses": [
+    "backlog",
+    "research",
+    "ready",
+    "assigned",
+    "in_progress",
+    "blocked",
+    "review",
+    "testing",
+    "completed",
+    "cancelled"
+  ],
+  "priorities": ["critical", "high", "medium", "low"],
+  "active_statuses": ["assigned", "in_progress"],
+  "requires_completed_dependencies": [
+    "research",
+    "ready",
+    "assigned",
+    "in_progress",
+    "review",
+    "testing",
+    "completed"
+  ],
+  "transitions": {
+    "backlog": ["research", "ready", "cancelled"],
+    "research": ["ready", "backlog", "blocked", "cancelled"],
+    "ready": ["assigned", "blocked", "cancelled"],
+    "assigned": ["in_progress", "ready", "blocked", "cancelled"],
+    "in_progress": ["review", "blocked", "cancelled"],
+    "blocked": ["ready", "assigned", "cancelled"],
+    "review": ["testing", "in_progress", "blocked", "cancelled"],
+    "testing": ["completed", "in_progress", "blocked", "cancelled"],
+    "completed": [],
+    "cancelled": []
+  },
+  "registry_owner": "cto",
+  "report_template": "TASK ID:\nAGENT:\nPHASE:\nSTATUS:\n\nIMPLEMENTATION:\nFILES CREATED:\nFILES MODIFIED:\nDISCOVERIES:\nDATABASE CHANGES:\nAPI CHANGES:\nGAME FUNCTION CHANGES:\nTESTS EXECUTED:\nTEST RESULTS:\nCOMPATIBILITY EVIDENCE:\nKNOWN ISSUES:\nRECOMMENDATION:\n\nOBJECTIVE:\nIMPLEMENTATION SUMMARY:\nSECURITY CONSIDERATIONS:\nDEPENDENCIES:\n"
+}

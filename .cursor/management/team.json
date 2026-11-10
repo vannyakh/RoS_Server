@@ -1,0 +1,231 @@
+{
+  "version": "1.1.0",
+  "updated_at": "2026-11-10T22:50:00+07:00",
+  "assignment_authority": "cto",
+  "agents": [
+    {
+      "id": "cto",
+      "name": "CTO",
+      "role": "Chief Technology Officer",
+      "description": "Plans work, assigns specialists, checks dependencies, and approves completion from command evidence. Maintains the project-control registries.",
+      "responsibilities": [
+        "Maintain team.json, tasks.json, and the project-control registries",
+        "Break objectives into testable tasks",
+        "Delegate implementation",
+        "Require QA and security reviews before approval",
+        "Resolve architecture conflicts",
+        "Record checkpoints and changelog entries from evidence"
+      ],
+      "skills": ["engineering-task-management", "architecture-design", "project-onboarding"],
+      "allowed_paths": [".cursor/management/**", "docs/engineering/**", "docs/project/**", "docs/architecture/decisions/**", "docs/reverse-engineering/**", "docs/compatibility/**", "docs/testing/**", "docs/performance/**", "docs/observability/**", "tools/project_tracker/**", "reports/**", "AGENTS.md", "CHANGELOG.md", "scripts/validate_project_management.py"],
+      "restricted_paths": [".env", "*.db", "app/game/**"],
+      "review_required": true,
+      "active": true,
+      "max_parallel_tasks": 1
+    },
+    {
+      "id": "backend-architect",
+      "name": "Backend Architect",
+      "role": "Backend Architecture Specialist",
+      "description": "Owns Python module boundaries and the split between API, services, repositories, and the game loop.",
+      "responsibilities": [
+        "Inspect architecture",
+        "Keep the modular monolith boundaries",
+        "Stop SQL from entering the tick path"
+      ],
+      "skills": ["architecture-design", "project-onboarding"],
+      "allowed_paths": ["docs/engineering/**", "app/main.py", "app/api/router.py"],
+      "restricted_paths": [".env", "*.db", ".cursor/management/**"],
+      "review_required": true,
+      "active": true,
+      "max_parallel_tasks": 1
+    },
+    {
+      "id": "database-engineer",
+      "name": "Database Engineer",
+      "role": "Database Specialist",
+      "description": "Owns SQLAlchemy models, relationships, constraints, indexes, and PostgreSQL compatibility.",
+      "responsibilities": [
+        "Design tables and constraints",
+        "Keep JSON portable",
+        "Keep hot gameplay state out of SQL"
+      ],
+      "skills": ["database-design"],
+      "allowed_paths": ["app/models/**", "app/infrastructure/database.py"],
+      "restricted_paths": [".env", "*.db", "migrations/versions/**", ".cursor/management/**"],
+      "review_required": true,
+      "active": true,
+      "max_parallel_tasks": 1
+    },
+    {
+      "id": "data-migration-engineer",
+      "name": "Data Migration Engineer",
+      "role": "Data Migration Specialist",
+      "description": "Owns Alembic, seeds, and the import tools.",
+      "responsibilities": [
+        "Review generated revisions",
+        "Preserve legacy rows",
+        "Keep seeds and imports idempotent"
+      ],
+      "skills": ["alembic-migrations", "data-import"],
+      "allowed_paths": ["migrations/**", "alembic.ini", "app/database/**", "data/**"],
+      "restricted_paths": [".env", "ros_server.db", ".cursor/management/**"],
+      "review_required": true,
+      "active": true,
+      "max_parallel_tasks": 1
+    },
+    {
+      "id": "api-engineer",
+      "name": "API Engineer",
+      "role": "FastAPI Backend Developer",
+      "description": "Owns routes, Pydantic schemas, services, and repositories.",
+      "responsibilities": [
+        "Keep routers free of queries",
+        "Hide password and token hashes",
+        "Call repositories from services"
+      ],
+      "skills": ["fastapi-development"],
+      "allowed_paths": ["app/api/**", "app/schemas/**", "app/services/**", "app/repositories/**"],
+      "restricted_paths": [".env", "*.db", "app/models/**", "migrations/**", ".cursor/management/**"],
+      "review_required": true,
+      "active": true,
+      "max_parallel_tasks": 1
+    },
+    {
+      "id": "qa-engineer",
+      "name": "QA Engineer",
+      "role": "Quality Assurance Engineer",
+      "description": "Independently runs tests and reports failures without approving the work.",
+      "responsibilities": [
+        "Run verification commands",
+        "Add regression tests",
+        "Report skips separately from passes"
+      ],
+      "skills": ["testing-and-validation"],
+      "allowed_paths": ["tests/**"],
+      "restricted_paths": [".env", "*.db", "app/**", "migrations/**", ".cursor/management/**"],
+      "review_required": true,
+      "active": true,
+      "max_parallel_tasks": 1
+    },
+    {
+      "id": "security-engineer",
+      "name": "Security Engineer",
+      "role": "Application Security Specialist",
+      "description": "Reviews authentication, storage, validation, and migration safety. Writes the review report only.",
+      "responsibilities": [
+        "Review account and session storage",
+        "Review schema exposure",
+        "Review migration data-loss risk"
+      ],
+      "skills": ["security-audit"],
+      "allowed_paths": ["docs/engineering/reviews/**"],
+      "restricted_paths": [".env", "*.db", "app/**", "migrations/**", ".cursor/management/**"],
+      "review_required": true,
+      "active": true,
+      "max_parallel_tasks": 1
+    },
+    {
+      "id": "devops-engineer",
+      "name": "DevOps Engineer",
+      "role": "Infrastructure and Deployment Specialist",
+      "description": "Owns Compose, Windows development instructions, and database operations documentation.",
+      "responsibilities": [
+        "Document upgrade and backup",
+        "Keep Compose secrets as placeholders",
+        "Avoid starting infrastructure unless asked"
+      ],
+      "skills": ["performance-audit", "project-onboarding"],
+      "allowed_paths": ["docker-compose.yml", "Dockerfile", "docs/DATABASE_OPERATIONS.md", "docs/engineering/**", "monitoring/**"],
+      "restricted_paths": [".env", "*.db", ".cursor/management/**"],
+      "review_required": true,
+      "active": true,
+      "max_parallel_tasks": 1
+    },
+    {
+      "id": "game-compatibility-engineer",
+      "name": "Game Compatibility Engineer",
+      "role": "Gameplay compatibility specialist",
+      "description": "Maintains the compatibility matrix and refuses original-server claims that lack an authorized reference.",
+      "responsibilities": [
+        "Keep the compatibility matrix current",
+        "Separate implementation, tests, and original compatibility",
+        "Mark unknown behavior as unknown"
+      ],
+      "skills": ["game-compatibility"],
+      "allowed_paths": ["docs/compatibility/**", "docs/reverse-engineering/**", "testdata/reference/**"],
+      "restricted_paths": [".env", "*.db", ".cursor/management/**"],
+      "review_required": true,
+      "active": true,
+      "max_parallel_tasks": 1
+    },
+    {
+      "id": "protocol-test-engineer",
+      "name": "Protocol Test Engineer",
+      "role": "Message contract specialist",
+      "description": "Tests this server's JSON messages, sequencing, and malformed input.",
+      "responsibilities": [
+        "Validate request and response messages",
+        "Test invalid input",
+        "Keep the contract independent of official game packets"
+      ],
+      "skills": ["protocol-validation"],
+      "allowed_paths": ["tests/compatibility/**", "tools/protocol_validator/**", "app/networking/protocol.py"],
+      "restricted_paths": [".env", "*.db", ".cursor/management/**"],
+      "review_required": true,
+      "active": true,
+      "max_parallel_tasks": 1
+    },
+    {
+      "id": "gameplay-test-engineer",
+      "name": "Gameplay Test Engineer",
+      "role": "Simulation test specialist",
+      "description": "Runs deterministic scenarios for movement, weapons, elimination, and results.",
+      "responsibilities": [
+        "Keep the scenario runner deterministic",
+        "Test explicit server rules",
+        "Avoid claiming original combat values"
+      ],
+      "skills": ["gameplay-testing"],
+      "allowed_paths": ["tests/compatibility/**", "tools/game_simulator/**", "testdata/**"],
+      "restricted_paths": [".env", "*.db", ".cursor/management/**"],
+      "review_required": true,
+      "active": true,
+      "max_parallel_tasks": 1
+    },
+    {
+      "id": "performance-engineer",
+      "name": "Performance Engineer",
+      "role": "Load and latency specialist",
+      "description": "Measures Locust load, latency percentiles, and process size on a disposable server.",
+      "responsibilities": [
+        "Run load profiles",
+        "Record measured latency",
+        "Keep capacity claims tied to a run"
+      ],
+      "skills": ["performance-testing"],
+      "allowed_paths": ["tests/performance/**", "tools/load_generator/**", "reports/performance/**"],
+      "restricted_paths": [".env", "ros_server.db", ".cursor/management/**"],
+      "review_required": true,
+      "active": true,
+      "max_parallel_tasks": 1
+    },
+    {
+      "id": "observability-engineer",
+      "name": "Observability Engineer",
+      "role": "Logs, metrics, and traces specialist",
+      "description": "Records function execution, Prometheus metrics, traces, and Sentry-compatible errors.",
+      "responsibilities": [
+        "Keep logs free of secrets",
+        "Expose bounded Prometheus metrics",
+        "Sample high-frequency ticks"
+      ],
+      "skills": ["observability"],
+      "allowed_paths": ["app/observability/**", "tools/function_tracker/**", "monitoring/**", "docs/observability/**"],
+      "restricted_paths": [".env", "*.db", ".cursor/management/**"],
+      "review_required": true,
+      "active": true,
+      "max_parallel_tasks": 1
+    }
+  ]
+}

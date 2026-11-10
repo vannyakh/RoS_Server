@@ -1,0 +1,21 @@
+---
+description: Python, FastAPI, SQLAlchemy 2, and Pydantic v2 conventions.
+globs: app/**/*.py
+alwaysApply: false
+---
+
+# Python backend
+
+- Python 3.12, FastAPI, SQLAlchemy 2.x, Pydantic v2.
+- Network and database I/O are async. Do not call blocking database drivers inside an async route.
+- UUID primary keys are strings from `app.models.types.new_id`.
+- Timestamps are UTC.
+- The column named `metadata` is mapped as the attribute `details`.
+- Relationships use `lazy="raise"`. Load collections with `selectinload` in the repository that needs them.
+- Response schemas must not include `password_hash` or `token_hash`.
+- Raise `AppError` for expected client errors. Do not return a 200 with an error body.
+
+```python
+# Bad: result = session.query(Player).all()
+# Good: result = await session.scalars(select(Player).limit(page_size))
+```

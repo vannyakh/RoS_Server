@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compatibility.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "updated_at", "source", "features"],
+  "properties": {
+    "version": {"type": "string", "minLength": 1},
+    "updated_at": {"type": "string", "minLength": 1},
+    "source": {"type": "string", "minLength": 1},
+    "features": {"type": "array", "items": {"$ref": "#/$defs/feature"}}
+  },
+  "$defs": {
+    "feature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "feature_id",
+        "feature_name",
+        "original_behavior",
+        "original_reference",
+        "reference_version",
+        "server_implementation",
+        "implementation_status",
+        "test_status",
+        "compatibility_status",
+        "known_differences",
+        "evidence",
+        "last_verified_at",
+        "related_tasks"
+      ],
+      "properties": {
+        "feature_id": {"type": "string", "minLength": 1},
+        "feature_name": {"type": "string", "minLength": 1},
+        "original_behavior": {"type": "string"},
+        "original_reference": {"type": "string"},
+        "reference_version": {"type": ["string", "null"]},
+        "server_implementation": {"type": "string"},
+        "implementation_status": {"enum": ["not_implemented", "partial", "implemented"]},
+        "test_status": {"enum": ["not_run", "passing", "failing"]},
+        "compatibility_status": {
+          "enum": ["unknown", "researching", "documented", "implemented", "partially_compatible", "compatible", "incompatible", "not_applicable"]
+        },
+        "known_differences": {"type": "string"},
+        "evidence": {"type": "string"},
+        "last_verified_at": {"type": ["string", "null"]},
+        "related_tasks": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

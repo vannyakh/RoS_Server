@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tasks.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["project", "version", "updated_at", "task_statuses", "priorities", "tasks"],
+  "properties": {
+    "project": {"const": "RoS_Server"},
+    "version": {"type": "string", "minLength": 1},
+    "updated_at": {"type": "string", "minLength": 1},
+    "task_statuses": {
+      "type": "array",
+      "minItems": 10,
+      "items": {
+        "enum": ["backlog", "research", "ready", "assigned", "in_progress", "blocked", "review", "testing", "completed", "cancelled"]
+      }
+    },
+    "priorities": {
+      "type": "array",
+      "minItems": 4,
+      "items": {"enum": ["critical", "high", "medium", "low"]}
+    },
+    "tasks": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/task"}
+    }
+  },
+  "$defs": {
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "phase",
+        "description",
+        "category",
+        "assigned_agent",
+        "status",
+        "priority",
+        "dependencies",
+        "research_references",
+        "files_allowed",
+        "acceptance_criteria",
+        "verification_commands",
+        "review_agents",
+        "test_evidence",
+        "compatibility_status",
+        "created_at",
+        "updated_at",
+        "completed_at",
+        "completion_report",
+        "block_reason",
+        "resolution_plan",
+        "history"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^RO-[0-9]{3}$"},
+        "title": {"type": "string", "minLength": 1},
+        "phase": {"type": "string", "pattern": "^[0-9]{2}$"},
+        "description": {"type": "string", "minLength": 1},
+        "category": {
+          "enum": ["inspection", "architecture", "database", "migration", "api", "quality", "security", "infrastructure", "governance", "research", "gameplay", "networking", "compatibility", "performance", "observability"]
+        },
+        "assigned_agent": {"type": "string", "minLength": 1},
+        "status": {
+          "enum": ["backlog", "research", "ready", "assigned", "in_progress", "blocked", "review", "testing", "completed", "cancelled"]
+        },
+        "priority": {"enum": ["critical", "high", "medium", "low"]},
+        "dependencies": {"type": "array", "items": {"type": "string"}},
+        "research_references": {"type": "array", "items": {"type": "string"}},
+        "files_allowed": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "acceptance_criteria": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "verification_commands": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "review_agents": {"type": "array", "items": {"type": "string"}},
+        "test_evidence": {"type": "array", "items": {"type": "string"}},
+        "compatibility_status": {
+          "enum": ["unknown", "researching", "documented", "implemented", "partially_compatible", "compatible", "incompatible", "not_applicable"]
+        },
+        "created_at": {"type": "string", "minLength": 1},
+        "updated_at": {"type": "string", "minLength": 1},
+        "completed_at": {"type": ["string", "null"]},
+        "completion_report": {"type": ["object", "null"]},
+        "block_reason": {"type": ["string", "null"]},
+        "resolution_plan": {"type": ["string", "null"]},
+        "history": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/history"}
+        }
+      }
+    },
+    "history": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "actor", "from_status", "to_status", "from_agent", "to_agent", "note"],
+      "properties": {
+        "at": {"type": "string", "minLength": 1},
+        "actor": {"type": "string", "minLength": 1},
+        "from_status": {"type": ["string", "null"]},
+        "to_status": {"type": "string", "minLength": 1},
+        "from_agent": {"type": ["string", "null"]},
+        "to_agent": {"type": "string", "minLength": 1},
+        "note": {"type": "string"}
+      }
+    }
+  }
+}

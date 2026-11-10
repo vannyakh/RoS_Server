@@ -1,0 +1,20 @@
+---
+description: How specialist agents share the repository without conflicting edits.
+alwaysApply: true
+---
+
+# Agent coordination
+
+Before editing, read `.cursor/management/team.json` and the task assigned to you.
+
+- Write only paths listed in that task's `files_allowed`.
+- Refuse the task when another `assigned` or `in_progress` task lists an overlapping path.
+- Shared files have one owner: `app/infrastructure/database.py` belongs to the active database task, `alembic.ini` and `migrations/**` belong to the active migration task, and `.cursor/management/*.json` belongs to the CTO.
+- QA and security report findings. They do not rewrite the implementation in the same task.
+- Return the task report format from `.cursor/management/workflow.json`.
+- A specialist does not set its own task to `completed`.
+
+```text
+Bad:  api-engineer edits app/models/account.py during RO-007
+Good: api-engineer stays inside app/schemas, app/repositories, and app/services
+```

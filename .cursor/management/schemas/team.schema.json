@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "team.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "updated_at", "assignment_authority", "agents"],
+  "properties": {
+    "version": {"type": "string", "minLength": 1},
+    "updated_at": {"type": "string", "minLength": 1},
+    "assignment_authority": {"const": "cto"},
+    "agents": {
+      "description": "Specialist registry, including the compatibility and validation roles.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "role",
+          "description",
+          "responsibilities",
+          "skills",
+          "allowed_paths",
+          "restricted_paths",
+          "review_required",
+          "active",
+          "max_parallel_tasks"
+        ],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+          "name": {"type": "string", "minLength": 1},
+          "role": {"type": "string", "minLength": 1},
+          "description": {"type": "string", "minLength": 1},
+          "responsibilities": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "skills": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "allowed_paths": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "restricted_paths": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "review_required": {"type": "boolean"},
+          "active": {"type": "boolean"},
+          "max_parallel_tasks": {"type": "integer", "minimum": 1}
+        }
+      }
+    }
+  }
+}

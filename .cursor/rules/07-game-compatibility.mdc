@@ -1,0 +1,18 @@
+---
+description: How to record game compatibility without treating local tests as original RoS proof.
+globs: tests/compatibility/**/*.py
+alwaysApply: false
+---
+
+# Game compatibility
+
+- Every implemented feature needs a test and a row in `testdata/reference/compatibility_matrix.json`.
+- `compatibility_status` stays `unknown` until an authorized original specification or oracle is cited.
+- A passing local test is test evidence. It is not an original-server compatibility claim.
+- Do not invent weapon stats, map data, or packet formats and label them as original.
+- `python -m tools.compatibility_checker` is not required; call `audit(load_matrix())` and keep it empty of false `compatible` rows.
+
+```text
+Bad:  compatibility_status = compatible because the lobby test passed
+Good: compatibility_status = unknown, test_status = passing, evidence = the test path
+```

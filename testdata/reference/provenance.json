@@ -1,0 +1,24 @@
+{
+  "datasets": [
+    {
+      "path": "testdata/reference/compatibility_matrix.json",
+      "source": "Written from inspection of this repository. Not an official Rules of Survival reference.",
+      "version": "1"
+    },
+    {
+      "path": "testdata/fixtures/synthetic_player.json",
+      "source": "Synthetic local fixture. No production user and no original game account.",
+      "version": "1"
+    },
+    {
+      "path": "testdata/scenarios/solo_elimination.json",
+      "source": "Scenario for app.game rules. Not an official match recording.",
+      "version": "1"
+    },
+    {
+      "path": "testdata/expected_results/solo_elimination.json",
+      "source": "Expected outcome of pistol damage 22 against health 100 and speed 5, from app/game/items.py and app/game/rules.py.",
+      "version": "1"
+    }
+  ]
+}

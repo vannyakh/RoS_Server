@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "checkpoints.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "updated_at", "checkpoints"],
+  "properties": {
+    "version": {"type": "string", "minLength": 1},
+    "updated_at": {"type": "string", "minLength": 1},
+    "checkpoints": {"type": "array", "items": {"$ref": "#/$defs/checkpoint"}}
+  },
+  "$defs": {
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "checkpoint_id",
+        "checkpoint_name",
+        "timestamp",
+        "current_phase",
+        "overall_status",
+        "completed_tasks",
+        "in_progress_tasks",
+        "blocked_tasks",
+        "next_tasks",
+        "completed_features",
+        "incomplete_features",
+        "compatibility_summary",
+        "test_summary",
+        "known_bugs",
+        "architecture_changes",
+        "database_changes",
+        "modified_files",
+        "git_commit",
+        "risks",
+        "next_actions",
+        "created_by"
+      ],
+      "properties": {
+        "checkpoint_id": {"type": "string", "pattern": "^CP-[0-9]{4}$"},
+        "checkpoint_name": {"type": "string", "minLength": 1},
+        "timestamp": {"type": "string", "minLength": 1},
+        "current_phase": {"type": "string", "minLength": 1},
+        "overall_status": {"type": "string", "minLength": 1},
+        "completed_tasks": {"type": "array", "items": {"type": "string"}},
+        "in_progress_tasks": {"type": "array", "items": {"type": "string"}},
+        "blocked_tasks": {"type": "array", "items": {"type": "string"}},
+        "next_tasks": {"type": "array", "items": {"type": "string"}},
+        "completed_features": {"type": "array", "items": {"type": "string"}},
+        "incomplete_features": {"type": "array", "items": {"type": "string"}},
+        "compatibility_summary": {"type": "string"},
+        "test_summary": {"type": "string"},
+        "known_bugs": {"type": "array", "items": {"type": "string"}},
+        "architecture_changes": {"type": "array", "items": {"type": "string"}},
+        "database_changes": {"type": "array", "items": {"type": "string"}},
+        "modified_files": {"type": "array", "items": {"type": "string"}},
+        "git_commit": {"type": ["string", "null"]},
+        "risks": {"type": "array", "items": {"type": "string"}},
+        "next_actions": {"type": "array", "items": {"type": "string"}},
+        "created_by": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

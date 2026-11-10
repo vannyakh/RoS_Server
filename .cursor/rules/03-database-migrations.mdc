@@ -1,0 +1,20 @@
+---
+description: Alembic revision rules for SQLite development and PostgreSQL production.
+globs: migrations/**/*.py
+alwaysApply: false
+---
+
+# Database migrations
+
+- Schema changes go through Alembic. `Base.metadata.create_all` is not the production path.
+- `migrations/env.py` reads `DATABASE_URL`, then application settings.
+- One revision must run on SQLite and PostgreSQL. Use `PortableJSON` for JSON / JSONB.
+- Review a generated revision before it is applied to `ros_server.db`.
+- Upgrade of the legacy `players` table renames it to `legacy_players` and copies rows. It does not drop the legacy table.
+- Downgrade is for a disposable database. Do not downgrade the development database without a backup and explicit approval.
+- Do not edit `93510e8bf194` after it has been applied. Add a new revision.
+
+```text
+Bad:  op.drop_table("legacy_players") inside upgrade()
+Good: keep legacy_players, then copy into accounts, players, and player_statistics
+```

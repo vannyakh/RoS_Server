@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "items": [
+    {
+      "code": "TEST_ITEM",
+      "name": "Test Item",
+      "description": "Development fixture.",
+      "category": "misc",
+      "max_stack": 20
+    }
+  ]
+}

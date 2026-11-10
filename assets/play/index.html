@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RoS Match</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; font: 16px/1.4 system-ui, sans-serif; background: #10140f; color: #e7f0df; }
+    header, #log { padding: 12px; }
+    form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    input, button { font: inherit; padding: 10px 12px; border-radius: 8px; border: 1px solid #3d4a36; background: #1b2418; color: inherit; }
+    button { cursor: pointer; }
+    #view { display: block; width: 100%; height: 62vh; background: #182016; touch-action: none; }
+    #bar { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 12px 16px; }
+    #log { min-height: 2.6em; color: #c9d7b8; }
+  </style>
+</head>
+<body>
+  <header>
+    <form id="account">
+      <input id="username" autocomplete="username" placeholder="username" required>
+      <input id="password" type="password" autocomplete="current-password" placeholder="password (12+)" required>
+      <button type="button" id="register">Register</button>
+      <button type="submit" id="login">Login and connect</button>
+    </form>
+  </header>
+  <canvas id="view"></canvas>
+  <div id="bar">
+    <button type="button" id="join">Join match</button>
+    <button type="button" id="jump">Jump</button>
+    <button type="button" id="shoot">Shoot</button>
+    <button type="button" id="reload">Reload</button>
+    <button type="button" id="pickup">Pickup</button>
+    <button type="button" id="heal">Heal</button>
+    <button type="button" id="swap">Swap weapon</button>
+    <button type="button" id="leave">Leave</button>
+  </div>
+  <p id="log">Log in, then join a match. WASD moves, the pointer aims, and click shoots.</p>
+  <script>
+    const canvas = document.getElementById("view");
+    const log = document.getElementById("log");
+    const keys = new Set();
+    const state = { socket: null, seq: 0, ready: false, self: null, aimX: 1, aimY: 0, pointer: null };
+
+    function note(text) { log.textContent = text; }
+
+    function resize() {
+      canvas.width = canvas.clientWidth * devicePixelRatio;
+      canvas.height = canvas.clientHeight * devicePixelRatio;
+    }
+    addEventListener("resize", resize);
+    resize();
+
+    async function post(path, body) {
+      const response = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText);
+      return payload;
+    }
+
+    function account() {
+      return {
+        username: document.getElementById("username").value.trim(),
+        password: document.getElementById("password").value
+      };
+    }
+
+    document.getElementById("register").onclick = async () => {
+      try {
+        const created = await post("/api/v1/auth/register", account());
+        note("Registered " + created.username + ". Log in to play.");
+      } catch (error) { note(error.message); }
+    };
+
+    document.getElementById("account").onsubmit = async (event) => {
+      event.preventDefault();
+      try {
+        const token = (await post("/api/v1/auth/login", account())).access_token;
+        connect(token);
+      } catch (error) { note(error.message); }
+    };
+
+    function connect(token) {
+      if (state.socket) state.socket.close();
+      const url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/api/v1/ws";
+      const socket = new WebSocket(url);
+      state.socket = socket;
+      state.seq = 0;
+      state.ready = false;
+      socket.onopen = () => send("auth", { token });
+      socket.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type === "auth.ok") {
+          state.ready = true;
+          note("Connected. Join a match when you are ready.");
+        } else if (message.type === "state") {
+          state.self = message.payload;
+          draw();
+        } else if (message.type === "error") {
+          note(message.payload.detail);
+        } else if (message.payload && message.payload.detail) {
+          note(message.payload.detail);
+        }
+      };
+      socket.onclose = () => { state.ready = false; note("Disconnected."); };
+    }
+
+    function send(type, payload) {
+      const socket = state.socket;
+      if (!socket || socket.readyState !== WebSocket.OPEN) return;
+      state.seq += 1;
+      socket.send(JSON.stringify({ version: 1, type, sequence: state.seq, payload: payload || {} }));
+    }
+
+    function action(name, extra) {
+      send("player.action", Object.assign({ action: name }, extra || {}));
+    }
+
+    document.getElementById("join").onclick = () => send("lobby.join");
+    document.getElementById("jump").onclick = () => action("jump");
+    document.getElementById("shoot").onclick = () => action("shoot");
+    document.getElementById("reload").onclick = () => action("reload");
+    document.getElementById("leave").onclick = () => {
+      const self = state.self;
+      if (self && self.status === "queued") send("lobby.leave");
+      else send("match.forfeit");
+    };
+    document.getElementById("pickup").onclick = () => {
+      const loot = nearestLoot();
+      if (loot) action("pickup", { loot_id: loot.loot_id });
+      else note("No loot nearby.");
+    };
+    document.getElementById("heal").onclick = () => {
+      const inventory = (state.self && state.self.match && state.self.match.self.inventory) || {};
+      if (inventory.bandage) action("use", { item_id: "bandage" });
+      else if (inventory.medkit) action("use", { item_id: "medkit" });
+      else note("No healing item.");
+    };
+    document.getElementById("swap").onclick = () => {
+      const self = state.self && state.self.match && state.self.match.self;
+      if (!self) return;
+      const next = Object.keys(self.inventory).find((item) => (item === "pistol" || item === "rifle") && item !== self.weapon);
+      if (next) action("equip", { item_id: next });
+    };
+
+    addEventListener("keydown", (event) => {
+      keys.add(event.key.toLowerCase());
+      if (event.key.toLowerCase() === "f") document.getElementById("pickup").click();
+      if (event.key.toLowerCase() === "r") action("reload");
+      if (event.key.toLowerCase() === "e") document.getElementById("heal").click();
+      if (event.key.toLowerCase() === "q") action("jump");
+    });
+    addEventListener("keyup", (event) => keys.delete(event.key.toLowerCase()));
+    canvas.addEventListener("pointerdown", (event) => { aimAt(event); action("shoot"); });
+    canvas.addEventListener("pointermove", aimAt);
+
+    function aimAt(event) {
+      const rect = canvas.getBoundingClientRect();
+      state.pointer = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    }
+
+    function nearestLoot() {
+      const self = state.self;
+      if (!self || !self.match) return null;
+      let best = null;
+      let bestDistance = 2.5;
+      for (const loot of self.match.loot) {
+        const distance = Math.hypot(loot.x - self.x, loot.y - self.y);
+        if (distance <= bestDistance) { best = loot; bestDistance = distance; }
+      }
+      return best;
+    }
+
+    setInterval(() => {
+      if (!state.ready) return;
+      send("heartbeat");
+    }, 5000);
+
+    setInterval(() => {
+      if (!state.ready || !state.self) return;
+      let moveX = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
+      let moveY = (keys.has("w") || keys.has("arrowup") ? 1 : 0) - (keys.has("s") || keys.has("arrowdown") ? 1 : 0);
+      const scale = Math.hypot(moveX, moveY);
+      if (scale > 1) { moveX /= scale; moveY /= scale; }
+      let aimX = state.aimX;
+      let aimY = state.aimY;
+      if (state.pointer && canvas.clientWidth) {
+        const dx = state.pointer.x - canvas.clientWidth / 2;
+        const dy = canvas.clientHeight / 2 - state.pointer.y;
+        const length = Math.hypot(dx, dy) || 1;
+        aimX = dx / length;
+        aimY = dy / length;
+        state.aimX = aimX;
+        state.aimY = aimY;
+      }
+      send("player.input", { move_x: moveX, move_y: moveY, aim_x: aimX, aim_y: aimY });
+    }, 100);
+
+    function draw() {
+      const self = state.self;
+      if (!self) return;
+      const ctx = canvas.getContext("2d");
+      const width = canvas.width;
+      const height = canvas.height;
+      const scale = Math.min(width, height) / 80 * devicePixelRatio;
+      const toX = (x) => width / 2 + (x - self.x) * scale;
+      const toY = (y) => height / 2 - (y - self.y) * scale;
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#203024";
+      ctx.fillRect(0, 0, width, height);
+      const match = self.match;
+      if (match) {
+        ctx.beginPath();
+        ctx.strokeStyle = "#d7e26a";
+        ctx.lineWidth = 2;
+        ctx.arc(toX(match.zone.x), toY(match.zone.y), match.zone.radius * scale, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.strokeStyle = "#8aa35a";
+        ctx.arc(toX(match.zone.next_x), toY(match.zone.next_y), match.zone.next_radius * scale, 0, Math.PI * 2);
+        ctx.stroke();
+        for (const loot of match.loot) {
+          ctx.fillStyle = loot.item_id === "rifle" || loot.item_id === "pistol" ? "#f0d090" : "#9ad0ff";
+          ctx.fillRect(toX(loot.x) - 4, toY(loot.y) - 4, 8, 8);
+        }
+        for (const player of match.players) {
+          ctx.beginPath();
+          ctx.fillStyle = player.player_id === self.player_id ? "#f4fff4" : player.bot ? "#e07060" : "#7eb6ff";
+          ctx.arc(toX(player.x), toY(player.y), 7, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.fillStyle = "#f4fff4";
+      ctx.font = `${14 * devicePixelRatio}px system-ui`;
+      const gear = match ? match.self : null;
+      const line = [
+        self.status,
+        "HP " + self.health,
+        gear && gear.weapon ? gear.weapon + " " + gear.mag : "unarmed",
+        match ? match.phase + " alive " + match.alive : "not in a match",
+        "kills " + self.kills
+      ].join("   ");
+      canvas.dataset.status = line;
+      ctx.fillText(line, 16, 28 * devicePixelRatio);
+    }
+  </script>
+</body>
+</html>

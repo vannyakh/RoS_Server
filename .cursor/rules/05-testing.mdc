@@ -1,0 +1,18 @@
+---
+description: Pytest expectations for database and API changes.
+globs: tests/**/*.py
+alwaysApply: false
+---
+
+# Testing
+
+- Use pytest and pytest-asyncio. Tests set `DATABASE_URL` to `sqlite+aiosqlite:///./test_ros.db` before the app is imported.
+- A schema change needs a model or migration test on a disposable database.
+- Downgrade tests use a temporary file, never `ros_server.db`.
+- Seed and import tests must pass when run twice.
+- A skipped PostgreSQL test is not a PostgreSQL pass. Say that it was skipped and why.
+- Run `python scripts/validate_agent_registry.py` after editing the task registry.
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests -q --tb=line
+```

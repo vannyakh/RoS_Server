@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "milestones.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "updated_at", "current_phase", "phases"],
+  "properties": {
+    "version": {"type": "string"},
+    "updated_at": {"type": "string"},
+    "current_phase": {"type": "string"},
+    "phases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["phase", "name", "status", "summary", "task_ids"],
+        "properties": {
+          "phase": {"type": "string"},
+          "name": {"type": "string"},
+          "status": {"enum": ["not_started", "in_progress", "completed", "blocked"]},
+          "summary": {"type": "string"},
+          "task_ids": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    }
+  }
+}

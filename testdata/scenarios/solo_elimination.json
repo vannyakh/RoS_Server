@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "source": "Independent server scenario",
+  "version": "1",
+  "seed": 7,
+  "players": ["alpha", "bravo"],
+  "notes": "Uses this server's match rules. Does not replay an original Rules of Survival match."
+}

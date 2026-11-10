@@ -1,0 +1,28 @@
+---
+description: Modular monolith boundaries for the FastAPI game server.
+globs: app/**/*.py
+alwaysApply: false
+---
+
+# Architecture
+
+Python 3.12 modular monolith. PostgreSQL is the production database. SQLite is the development database. Redis is for temporary shared state, not durable player records.
+
+Dependency direction:
+
+```text
+app/api  ->  app/services  ->  app/repositories  ->  app/models
+app/networking and app/game -> app/services
+```
+
+- Routers validate input and call a service. They do not commit transactions or build queries.
+- Repositories query. Services own business rules and transaction boundaries.
+- The 20 Hz tick in `app/game/` must not open a database session.
+- Live positions stay in memory. Durable totals are written when a match result exists.
+- The JSON game protocol is this server's protocol. Do not document or implement official Rules of Survival packet formats.
+- Reference rows use original `TEST_*` fixtures and stable codes. Do not add proprietary item statistics.
+
+```python
+# Bad: a route loads ORM rows and updates balances itself
+# Good: the route calls InventoryService, which uses InventoryRepository
+```

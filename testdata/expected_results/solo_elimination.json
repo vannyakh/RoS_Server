@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "source": "app/game/items.py pistol damage 22 and app/game/rules.py speed 5",
+  "version": "1",
+  "movement_delta": 5.0,
+  "winner_id": "alpha",
+  "stats": {
+    "alpha": {"kills": 1, "wins": 1, "matches": 1},
+    "bravo": {"kills": 0, "wins": 0, "matches": 1}
+  }
+}
