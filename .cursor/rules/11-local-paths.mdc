@@ -1,0 +1,17 @@
+---
+description: Keep machine paths out of rules, skills, and agent files.
+alwaysApply: true
+---
+
+# Local paths
+
+Project data stays on this machine. Rules, skills, and agent files use paths inside the repository.
+
+- Write `app/`, `tests/`, `docs/`, and `.cursor/management/`.
+- Do not write a user profile, home directory, drive letter, or absolute path.
+- Do not copy a local path into a skill, agent prompt, commit message, or shared note.
+
+```text
+Bad: C:\Users\<name>\Desktop\RoS_Server\app
+Good: app/
+```

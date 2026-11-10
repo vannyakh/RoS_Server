@@ -8,7 +8,7 @@ This note separates configuration that was read from commands that were executed
 
 | Action | Result | Label |
 | --- | --- | --- |
-| `.\.venv\Scripts\python.exe --version` in `C:\Users\LUFY\Desktop\RoS_Server` | Exit code 0. Output: `Python 3.12.10` | Confirmed fact |
+| `.\.venv\Scripts\python.exe --version` in the repository root | Exit code 0. Output: `Python 3.12.10` | Confirmed fact |
 | Read `Dockerfile`, `docker-compose.yml`, `requirements.txt`, `pytest.ini`, `README.md`, `.gitignore`, and `docs/DATABASE_OPERATIONS.md` | All seven files were readable | Confirmed fact |
 | Docker Compose, image build, container start, `docker` CLI | Not run | Confirmed fact |
 | `pip`, `pytest`, `alembic`, `uvicorn`, PostgreSQL, and Redis | Not run | Confirmed fact |
