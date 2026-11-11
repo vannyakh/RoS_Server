@@ -8,6 +8,7 @@ from app.models.account import Account
 from app.repositories.player_repository import PlayerRepository
 from app.schemas.player import PlayerProfile, PlayerUpdate
 from app.services.account_service import normalize_username
+from app.services.cosmetics_service import wallet_snapshot
 
 
 async def update_profile(session: AsyncSession, account: Account, data: PlayerUpdate) -> PlayerProfile:
@@ -43,6 +44,7 @@ async def profile_for_account(session: AsyncSession, account: Account) -> Player
     repository = PlayerRepository(session)
     player = await repository.by_account_id(account.id)
     statistics = await repository.statistics_for_account(account.id)
+    wallet = await wallet_snapshot(session, player) if player is not None else {}
     return PlayerProfile(
         id=account.id,
         username=account.username,
@@ -53,4 +55,8 @@ async def profile_for_account(session: AsyncSession, account: Account) -> Player
         player_id=player.id if player else None,
         nickname=player.nickname if player else account.username,
         level=player.level if player else 1,
+        coin=wallet.get("coin", 0),
+        diamond=wallet.get("diamond", 0),
+        equipped_skin=wallet.get("equipped_skin"),
+        owned_skins=wallet.get("owned_skins", []),
     )

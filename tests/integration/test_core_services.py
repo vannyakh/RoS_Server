@@ -23,8 +23,10 @@ async def test_inventory_stack_and_currency(client):
 
     empty = await client.get("/api/v1/inventory", headers=headers)
     assert empty.status_code == 200
-    assert empty.json()["items"] == []
-    assert empty.json()["currencies"] == []
+    assert len(empty.json()["items"]) == 1
+    balances = {row["currency_code"]: row["balance"] for row in empty.json()["currencies"]}
+    assert balances["coin"] == 500
+    assert balances["diamond"] == 20
 
     added = await client.post(
         "/api/v1/inventory/items",

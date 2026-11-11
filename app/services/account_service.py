@@ -55,6 +55,9 @@ class AccountService:
         self.session.add(player)
         await self.session.flush()
         self.session.add(PlayerStatistics(player_id=player.id))
+        from app.services.cosmetics_service import ensure_starter
+
+        await ensure_starter(self.session, player, commit=False)
         try:
             if commit:
                 await self.session.commit()

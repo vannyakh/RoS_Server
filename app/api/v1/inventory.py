@@ -4,9 +4,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import current_player
+from app.core.exceptions import AppError
 from app.infrastructure.database import get_db
 from app.models.player import Player
 from app.schemas.inventory import CurrencyChange, CurrencyResponse, InventoryItemResponse, InventoryResponse, ItemQuantityChange
+from app.services.cosmetics_service import WALLET_CODES
 from app.services.inventory_service import InventoryService
 
 router = APIRouter(prefix="/inventory", tags=["Inventory"])
@@ -46,5 +48,7 @@ async def change_currency(
     player: Player = Depends(current_player),
     db: AsyncSession = Depends(get_db),
 ) -> CurrencyResponse:
+    if body.currency_code in WALLET_CODES:
+        raise AppError(409, "Coin and diamond change through the cosmetics routes")
     row = await InventoryService(db).apply_currency(player.id, body.currency_code, body.amount, body.reason)
     return CurrencyResponse.model_validate(row, from_attributes=True)

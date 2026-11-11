@@ -72,7 +72,7 @@ Clients use the versioned JSON contract in `docs/NETWORK_PROTOCOL.md` and `docs/
 
 Message types and fields are the ones implemented in `app/networking/protocol.py` and `app/networking/websocket.py`. A binary or protobuf protocol is not adopted. Choosing one later is an architecture decision with tests, written beside the code that implements it.
 
-Original client packet research stays in `docs/reverse-engineering/`. It is not copied into this contract.
+Original client packet research stays in `docs/reverse-engineering/`. It is not copied into this contract. Evidence labels, the unsupported-client conclusion, and the custom-server shape are in `docs/PROTOCOL_RESEARCH.md`, `docs/COMPATIBILITY.md`, `docs/GAME_RULES.md`, `docs/CUSTOM_SERVER_ARCHITECTURE.md`, and `protocol_research/`.
 
 ## 4. Data architecture
 

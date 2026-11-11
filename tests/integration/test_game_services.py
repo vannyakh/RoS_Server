@@ -220,4 +220,6 @@ async def test_stored_match_blocks_a_second_active_match_and_does_not_pay_reward
     assert profile.json()["kills"] == 0
     inventory = await client.get("/api/v1/inventory", headers=headers)
     assert inventory.status_code == 200
-    assert inventory.json()["currencies"] == []
+    balances = {row["currency_code"]: row["balance"] for row in inventory.json()["currencies"]}
+    assert balances["coin"] == 500
+    assert balances["diamond"] == 20

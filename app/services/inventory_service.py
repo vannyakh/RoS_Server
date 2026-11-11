@@ -60,7 +60,15 @@ class InventoryService:
         await self.session.refresh(row)
         return row
 
-    async def apply_currency(self, player_id: str, currency_code: str, amount: int, reason: str) -> PlayerCurrency:
+    async def apply_currency(
+        self,
+        player_id: str,
+        currency_code: str,
+        amount: int,
+        reason: str,
+        *,
+        commit: bool = True,
+    ) -> PlayerCurrency:
         if not isinstance(amount, int) or isinstance(amount, bool) or amount == 0:
             raise AppError(422, "Currency amount must be a non-zero integer")
         row = await self.inventory.currency(player_id, currency_code)
@@ -81,8 +89,11 @@ class InventoryService:
                 reason=reason,
             )
         )
-        await self.session.commit()
-        await self.session.refresh(row)
+        if commit:
+            await self.session.commit()
+            await self.session.refresh(row)
+        else:
+            await self.session.flush()
         return row
 
     async def _holder(self, player_id: str) -> PlayerInventory:

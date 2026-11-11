@@ -90,6 +90,8 @@ The original client has no confirmed gameplay connection. It stopped on the patc
 
 Confirmed. A finished human result carries kills, win, and placement into the pending result list. Experience, currency rewards, and rank from that result are not applied by this simulation.
 
+Confirmed. A separate account wallet starts a new player at 500 coin and 20 diamond and grants the `recruit` skin. `field_jacket` costs 200 coin. `night_ops` costs 15 diamond. Those prices are an independent catalog in `app/services/cosmetics_service.py`. Match completion does not add coin or diamond.
+
 Unknown. Original ranking and rewards.
 
 ## Not implemented

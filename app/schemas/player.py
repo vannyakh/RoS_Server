@@ -15,6 +15,10 @@ class PlayerProfile(BaseModel):
     player_id: str | None = None
     nickname: str | None = None
     level: int = 1
+    coin: int = 0
+    diamond: int = 0
+    equipped_skin: str | None = None
+    owned_skins: list[str] = Field(default_factory=list)
 
 
 class PlayerResponse(BaseModel):
