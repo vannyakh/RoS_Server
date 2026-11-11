@@ -1,6 +1,7 @@
 """WebSocket authentication, two clients, disconnect, and reconnect."""
 
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 PASSWORD = "StrongTestPassword123!"
 
@@ -51,6 +52,26 @@ def test_two_clients_disconnect_and_reconnect():
         with client.websocket_connect("/api/v1/ws") as again:
             welcome = _auth(again, alpha)
             assert welcome["type"] == "auth.ok"
+
+
+def test_a_second_connection_replaces_the_first():
+    from app.main import app
+
+    with TestClient(app) as client:
+        token = _token(client, "ws_replace")
+        with client.websocket_connect("/api/v1/ws") as first:
+            assert _auth(first, token)["type"] == "auth.ok"
+            with client.websocket_connect("/api/v1/ws") as second:
+                assert _auth(second, token)["type"] == "auth.ok"
+                closed = False
+                for _ in range(20):
+                    try:
+                        first.receive_json()
+                    except WebSocketDisconnect as exc:
+                        assert exc.code == 4000
+                        closed = True
+                        break
+                assert closed
 
 
 def test_revoked_token_is_rejected_on_websocket():

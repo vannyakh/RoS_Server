@@ -8,7 +8,7 @@ The following original behaviors have no authorized source in this repository. T
 - Original maps, zones, and match duration.
 - Original weapon, damage, equipment, and vehicle values.
 - Original reward and currency rules.
-- Original client packet formats.
+- Original client packet formats. The sibling NeoX package identifies the engine and version only. It does not document packets.
 
 Local behavior that exists here is still not original behavior:
 

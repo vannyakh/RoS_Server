@@ -34,9 +34,9 @@
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "implementation_status": "implemented",
       "compatibility_status": "unknown",
-      "test_status": "not_run",
-      "evidence": "none",
-      "known_differences": "A SHA-256 token hash is stored. No test asserts the session row.",
+      "test_status": "passing",
+      "evidence": "tests/integration/test_auth_session.py",
+      "known_differences": "A SHA-256 token hash is stored and checked on each authenticated request. Logout sets revoked_at.",
       "priority": "high"
     },
     {
@@ -48,7 +48,7 @@
       "compatibility_status": "unknown",
       "test_status": "passing",
       "evidence": "tests/compatibility/authentication/test_login.py",
-      "known_differences": "Expiration is the JWT exp claim.",
+      "known_differences": "A request is rejected when the JWT exp has passed or the stored session expires_at has passed.",
       "priority": "high"
     },
     {
@@ -107,8 +107,8 @@
       "implementation_status": "implemented",
       "compatibility_status": "unknown",
       "test_status": "passing",
-      "evidence": "tests/compatibility/player/test_profile.py",
-      "known_differences": "Nickname is unique and defaults from the username.",
+      "evidence": "tests/integration/test_game_services.py",
+      "known_differences": "Nickname is unique, stored in lowercase, and can be changed by the authenticated player. Level and account username cannot.",
       "priority": "medium"
     },
     {
@@ -192,7 +192,7 @@
       "compatibility_status": "unknown",
       "test_status": "passing",
       "evidence": "tests/integration/test_lobby_routes.py",
-      "known_differences": "The in-memory queue uses account ids. Durable membership uses player ids. Original leave behavior is unknown.",
+      "known_differences": "The in-memory queue uses account ids. Durable membership uses player ids. The last member to leave closes the lobby. There is no leader column.",
       "priority": "medium"
     },
     {
@@ -204,7 +204,7 @@
       "compatibility_status": "unknown",
       "test_status": "passing",
       "evidence": "tests/compatibility/lobby/test_lobby_rules.py",
-      "known_differences": "Capacity is a service check, not a single database constraint.",
+      "known_differences": "Capacity is reserved with a conditional update of current_players. A player can still be a member of more than one lobby.",
       "priority": "high"
     },
     {
@@ -490,9 +490,9 @@
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "implementation_status": "not_implemented",
       "compatibility_status": "unknown",
-      "test_status": "not_run",
-      "evidence": "none",
-      "known_differences": "No experience is granted at match end.",
+      "test_status": "passing",
+      "evidence": "tests/integration/test_game_services.py",
+      "known_differences": "No experience is granted at match end. A rewards object on a stored result is saved and not applied. Repeating finalization is rejected.",
       "priority": "medium"
     },
     {
@@ -502,9 +502,9 @@
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "implementation_status": "not_implemented",
       "compatibility_status": "unknown",
-      "test_status": "not_run",
-      "evidence": "none",
-      "known_differences": "Currency tables exist. Match completion does not pay them.",
+      "test_status": "passing",
+      "evidence": "tests/integration/test_game_services.py",
+      "known_differences": "Currency tables exist. Match completion does not pay them, including when the result payload names a currency amount.",
       "priority": "medium"
     },
     {

@@ -45,4 +45,4 @@ class PlayerStatisticsResponse(BaseModel):
 
 class PlayerUpdate(BaseModel):
     nickname: str | None = Field(default=None, min_length=3, max_length=32)
-    avatar_id: str | None = None
+    avatar_id: str | None = Field(default=None, max_length=36)

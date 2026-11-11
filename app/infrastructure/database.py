@@ -28,7 +28,9 @@ class Base(DeclarativeBase):
 
 def _engine_options() -> dict:
     if settings.database_url.startswith("sqlite"):
-        return {"poolclass": NullPool}
+        # timeout is sqlite3's busy wait, in seconds. Concurrent lobby joins must wait
+        # for the writer instead of failing the request immediately.
+        return {"poolclass": NullPool, "connect_args": {"timeout": 5}}
     return {"pool_pre_ping": True, "pool_size": 10, "max_overflow": 20}
 
 
@@ -42,6 +44,7 @@ def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record) -> None:
     if settings.database_url.startswith("sqlite"):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA busy_timeout=5000")
         cursor.close()
 
 

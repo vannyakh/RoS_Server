@@ -2,11 +2,13 @@
 
 from datetime import datetime, timezone
 
+from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppError
 from app.models.match import Match, MatchParticipant, MatchResult, MatchStatistics
+from app.models.player import Player
 from app.models.types import utc_now
 from app.repositories.match_repository import MatchRepository
 
@@ -59,10 +61,26 @@ class MatchService:
             raise AppError(409, "Match is not accepting players")
         if await self.matches.participant(match_id, player_id) is not None:
             raise AppError(409, "Player is already in the match")
-        if match.current_players >= match.max_players:
+        await self.session.execute(update(Player).where(Player.id == player_id).values(updated_at=utc_now()))
+        active = await self.matches.active_match_id(player_id)
+        if active is not None:
+            await self.session.rollback()
+            raise AppError(409, "Player is already in an active match")
+        reserved = await self.session.execute(
+            update(Match)
+            .where(
+                Match.id == match_id,
+                Match.status.in_(("scheduled", "lobby")),
+                Match.current_players < Match.max_players,
+            )
+            .values(current_players=Match.current_players + 1)
+            .execution_options(synchronize_session=False)
+        )
+        if reserved.rowcount != 1:
+            await self.session.rollback()
             raise AppError(409, "Match is full")
+        self.session.expire(match, ["current_players"])
         participant = MatchParticipant(match_id=match_id, player_id=player_id, joined_at=datetime.now(timezone.utc))
-        match.current_players += 1
         self.session.add(participant)
         await self.session.commit()
         await self.session.refresh(participant)

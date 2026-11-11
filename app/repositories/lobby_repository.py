@@ -18,6 +18,12 @@ class LobbyRepository:
             select(LobbyMember).where(LobbyMember.lobby_id == lobby_id, LobbyMember.player_id == player_id)
         )
 
+    async def members(self, lobby_id: str) -> list[LobbyMember]:
+        rows = await self.session.scalars(
+            select(LobbyMember).where(LobbyMember.lobby_id == lobby_id).order_by(LobbyMember.joined_at)
+        )
+        return list(rows.all())
+
     async def member_count(self, lobby_id: str) -> int:
         value = await self.session.scalar(
             select(func.count()).select_from(LobbyMember).where(LobbyMember.lobby_id == lobby_id)

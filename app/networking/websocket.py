@@ -1,6 +1,7 @@
 """Authenticated WebSocket session."""
 
 import asyncio
+import logging
 
 from fastapi import APIRouter, WebSocket
 from pydantic import ValidationError
@@ -15,6 +16,7 @@ from app.networking.protocol import format_error, parse_action, parse_input, par
 from app.networking.validation import MAX_MESSAGE_BYTES, RateLimiter, SequenceTracker
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 _AUTH_TIMEOUT = 5
 _IDLE_TIMEOUT = 15
 
@@ -77,6 +79,9 @@ async def _player_id_for_token(token: str) -> str | None:
         async with SessionLocal() as session:
             account = await AccountService(session).account_for_token(token)
     except AppError:
+        return None
+    except Exception as exc:
+        logger.warning("WebSocket session lookup failed: %s", type(exc).__name__)
         return None
     return account.id
 

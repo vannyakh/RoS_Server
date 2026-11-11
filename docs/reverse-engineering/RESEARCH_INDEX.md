@@ -17,6 +17,7 @@ No authorized original Rules of Survival specification, client build, or packet 
 | DIS-0009 | high | verified | The Locust timeout cleared after server output was written to a file. The auth timeout stayed 3 seconds. Source: `reports/phase-01/PHASE-01_REPORT.md`. |
 | DIS-0010 | confirmed | verified | Two logins in one second shared a session hash until each token included `jti`. Source: `tests/integration/test_auth_session.py`. |
 | DIS-0011 | high | verified | A public search on 2026-11-10 did not return an authorized client protocol. Shutdown notices and one unofficial forum page were not used as packet sources. |
+| DIS-0012 | confirmed | verified | A sibling client archive holds NeoX package `com.netease.chiji` `1.610637.617289`. It is not stored in this service repository, and it has not been shown to speak this JSON API. |
 
 ## How to add a finding
 

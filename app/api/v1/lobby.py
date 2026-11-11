@@ -35,6 +35,26 @@ async def open_lobby(
     return LobbyResponse.model_validate(created, from_attributes=True)
 
 
+@router.get("/{lobby_id}", response_model=LobbyResponse)
+async def lobby_detail(
+    lobby_id: str,
+    player: Player = Depends(current_player),
+    db: AsyncSession = Depends(get_db),
+) -> LobbyResponse:
+    found = await LobbyService(db).details(lobby_id, player.id)
+    return LobbyResponse.model_validate(found, from_attributes=True)
+
+
+@router.get("/{lobby_id}/members", response_model=list[LobbyMemberResponse])
+async def lobby_members(
+    lobby_id: str,
+    player: Player = Depends(current_player),
+    db: AsyncSession = Depends(get_db),
+) -> list[LobbyMemberResponse]:
+    rows = await LobbyService(db).list_members(lobby_id, player.id)
+    return [LobbyMemberResponse.model_validate(row, from_attributes=True) for row in rows]
+
+
 @router.post("/{lobby_id}/members", response_model=LobbyMemberResponse, status_code=201)
 async def join_lobby(
     lobby_id: str,

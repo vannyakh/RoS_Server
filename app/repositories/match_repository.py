@@ -16,6 +16,17 @@ class MatchRepository:
     async def by_code(self, match_code: str) -> Match | None:
         return await self.session.scalar(select(Match).where(Match.match_code == match_code))
 
+    async def active_match_id(self, player_id: str) -> str | None:
+        return await self.session.scalar(
+            select(Match.id)
+            .join(MatchParticipant, MatchParticipant.match_id == Match.id)
+            .where(
+                MatchParticipant.player_id == player_id,
+                MatchParticipant.left_at.is_(None),
+                Match.status.in_(("scheduled", "lobby", "running")),
+            )
+        )
+
     async def participant(self, match_id: str, player_id: str) -> MatchParticipant | None:
         return await self.session.scalar(
             select(MatchParticipant).where(

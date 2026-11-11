@@ -59,6 +59,31 @@ async def test_token_without_a_session_row_is_rejected(client):
     assert rejected.status_code == 401
 
 
+async def test_missing_token_is_rejected(client):
+    response = await client.get("/api/v1/players/me")
+    assert response.status_code == 401
+
+
+async def test_expired_session_row_is_rejected(client):
+    from sqlalchemy import update
+
+    from app.core.security import hash_token
+    from app.infrastructure.database import SessionLocal
+    from app.models.account import AccountSession
+
+    token = await _login(client, "session_row_expired")
+    assert (await client.get("/api/v1/players/me", headers=_headers(token))).status_code == 200
+    async with SessionLocal() as session:
+        await session.execute(
+            update(AccountSession)
+            .where(AccountSession.token_hash == hash_token(token))
+            .values(expires_at=datetime.now(timezone.utc) - timedelta(seconds=5))
+        )
+        await session.commit()
+    rejected = await client.get("/api/v1/players/me", headers=_headers(token))
+    assert rejected.status_code == 401
+
+
 async def test_expired_jwt_is_rejected(client):
     from app.core.config import settings
 
