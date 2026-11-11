@@ -335,8 +335,8 @@
       "implementation_status": "implemented",
       "compatibility_status": "unknown",
       "test_status": "passing",
-      "evidence": "tests/compatibility/gameplay/test_scenario.py",
-      "known_differences": "Speed is 5 map units per second from app/game/rules.py.",
+      "evidence": "tests/unit/test_runtime_session.py",
+      "known_differences": "Speed is 5 map units per second from app/game/rules.py. A match blocker rejects the destination point and slides along one axis. A step can pass a blocker thinner than the movement.",
       "priority": "critical"
     },
     {

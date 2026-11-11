@@ -5,6 +5,7 @@ import math
 import random
 from uuid import uuid4
 
+from app.game.collision import slide
 from app.game.items import HEALS, LOOT_TABLE, MAX_STACK, MAX_WEAPONS, VEHICLES, WEAPONS, is_weapon, weapon_count
 from app.game.rules import MatchRules
 from app.game.state import LootNode, Match, MatchResult, PlayerState, VehicleNode, WorldState
@@ -646,8 +647,12 @@ def _move(player: PlayerState, dt: float, rules: MatchRules, match: Match | None
     occupied = _occupied_vehicle(match, player) if match is not None else None
     if occupied is not None:
         speed = float(VEHICLES[occupied.kind]["speed"])
-    player.x = min(rules.map_size, max(0.0, player.x + move_x * speed * dt))
-    player.y = min(rules.map_size, max(0.0, player.y + move_y * speed * dt))
+    next_x = min(rules.map_size, max(0.0, player.x + move_x * speed * dt))
+    next_y = min(rules.map_size, max(0.0, player.y + move_y * speed * dt))
+    if match is not None:
+        next_x, next_y = slide(player.x, player.y, next_x, next_y, match.blockers)
+    player.x = next_x
+    player.y = next_y
     if occupied is not None:
         occupied.x = player.x
         occupied.y = player.y

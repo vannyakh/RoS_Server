@@ -32,7 +32,7 @@ Movement and aim share `player.input` (`move_x`, `move_y`, `aim_x`, `aim_y`, eac
 
 ## Engineering team
 
-Task state lives in `.cursor/management/tasks.json`. Roles, assignment, and the CTO commands are documented in `docs/engineering/TEAM_STRUCTURE.md` and `docs/engineering/AGENT_ASSIGNMENT_GUIDE.md`.
+Shared agent instructions are `AGENTS.md`. The system shape is `docs/ARCHITECTURE.md`. Task state lives in `.cursor/management/tasks.json`. Roles, assignment, and the CTO commands are documented in `docs/engineering/TEAM_STRUCTURE.md` and `docs/engineering/AGENT_ASSIGNMENT_GUIDE.md`.
 
 ```powershell
 python scripts/validate_agent_registry.py

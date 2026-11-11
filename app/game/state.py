@@ -32,6 +32,14 @@ class PlayerState:
     vehicle: str | None = None
 
 
+@dataclass(frozen=True)
+class Blocker:
+    minimum_x: float
+    minimum_y: float
+    maximum_x: float
+    maximum_y: float
+
+
 @dataclass
 class VehicleNode:
     vehicle_id: str
@@ -77,6 +85,7 @@ class Match:
     recorded: bool = False
     loot: list[LootNode] = field(default_factory=list)
     vehicles: list[VehicleNode] = field(default_factory=list)
+    blockers: list[Blocker] = field(default_factory=list)
     events: list[dict] = field(default_factory=list)
     elimination_order: list[str] = field(default_factory=list)
 

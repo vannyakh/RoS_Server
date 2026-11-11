@@ -74,6 +74,45 @@ def test_a_second_connection_replaces_the_first():
                 assert closed
 
 
+def test_two_clients_send_input_and_a_shot_is_rejected_outside_a_match():
+    from app.main import app
+
+    def until(websocket, message_type: str) -> dict:
+        for _ in range(30):
+            message = websocket.receive_json()
+            if message["type"] == message_type:
+                return message
+        raise AssertionError(message_type)
+
+    with TestClient(app) as client:
+        alpha = _token(client, "ws_move_alpha")
+        bravo = _token(client, "ws_move_bravo")
+        with client.websocket_connect("/api/v1/ws") as first, client.websocket_connect("/api/v1/ws") as second:
+            assert _auth(first, alpha)["type"] == "auth.ok"
+            assert _auth(second, bravo)["type"] == "auth.ok"
+            first.send_json(
+                {
+                    "version": 1,
+                    "type": "player.input",
+                    "sequence": 2,
+                    "payload": {"move_x": 1, "move_y": 0, "aim_x": 1, "aim_y": 0},
+                }
+            )
+            second.send_json(
+                {
+                    "version": 1,
+                    "type": "player.action",
+                    "sequence": 2,
+                    "payload": {"action": "shoot"},
+                }
+            )
+            move = until(first, "player.input.ack")
+            shot = until(second, "player.action.ack")
+            assert isinstance(move["payload"]["tick"], int)
+            assert shot["payload"]["ok"] is False
+            assert shot["payload"]["detail"] == "Not in a match"
+
+
 def test_revoked_token_is_rejected_on_websocket():
     from app.main import app
 

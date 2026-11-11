@@ -40,7 +40,7 @@ No authorized original specification is checked in. Every current row stays `unk
 | MM-005 | Match cancellation | partial | unknown | passing | medium | tests/integration/test_core_services.py |
 | MM-006 | Match start | implemented | unknown | passing | critical | tests/compatibility/gameplay/test_scenario.py |
 | GP-001 | Player state | implemented | unknown | passing | critical | tests/unit/test_engine.py |
-| GP-002 | Movement | implemented | unknown | passing | critical | tests/compatibility/gameplay/test_scenario.py |
+| GP-002 | Movement | implemented | unknown | passing | critical | tests/unit/test_runtime_session.py |
 | GP-003 | Health | implemented | unknown | passing | high | tests/unit/test_gameplay.py |
 | GP-004 | Damage | implemented | unknown | passing | high | tests/compatibility/weapons/test_shot.py |
 | GP-005 | Weapon handling | implemented | unknown | passing | high | tests/compatibility/weapons/test_shot.py |
@@ -86,7 +86,7 @@ No authorized original specification is checked in. Every current row stays `unk
 - `MM-005` original_reference: No authorized original Rules of Survival specification is in this repository. Known differences: Stored cancel does not stop an in-memory match. Original cancellation is unknown.
 - `MM-006` original_reference: No authorized original Rules of Survival specification is in this repository. Known differences: Start moves through countdown and drop using local timers.
 - `GP-001` original_reference: No authorized original Rules of Survival specification is in this repository. Known differences: State is in memory and is not an original client snapshot.
-- `GP-002` original_reference: No authorized original Rules of Survival specification is in this repository. Known differences: Speed is 5 map units per second from app/game/rules.py.
+- `GP-002` original_reference: No authorized original Rules of Survival specification is in this repository. Known differences: Speed is 5 map units per second from app/game/rules.py. A match blocker rejects the destination point and slides along one axis. A step can pass a blocker thinner than the movement.
 - `GP-003` original_reference: No authorized original Rules of Survival specification is in this repository. Known differences: Health starts at 100. Zone damage uses local rates.
 - `GP-004` original_reference: No authorized original Rules of Survival specification is in this repository. Known differences: Damage numbers are independent test values, not original weapon tables.
 - `GP-005` original_reference: No authorized original Rules of Survival specification is in this repository. Known differences: Pistol and rifle values live in app/game/items.py.
