@@ -104,6 +104,24 @@ Confirmed fact. A new socket for the same account replaces the previous one. The
 
 Confirmed fact. `lobby.join` on the socket is the in-memory queue, not `POST /api/v1/lobby/{lobby_id}/members`.
 
+## Map catalog
+
+Confirmed fact. Map routes were added with the map content system. The public catalog lists published versions only. Drafts stay on the admin routes. Request and response fields, hashes, and error cases are in `docs/MAP_API_CONTRACT.md`.
+
+| Method | Actual path | Authentication | Current behavior |
+| --- | --- | --- | --- |
+| GET | `/api/v1/maps` | none | Page of published maps. |
+| GET | `/api/v1/maps/{map_id}` | none | Latest published detail, or 404. |
+| GET | `/api/v1/maps/{map_id}/versions` | none | Published versions only. |
+| GET | `/api/v1/maps/{map_id}/manifest` | none | Manifest with real SHA-256 file hashes. Optional `version`. |
+| GET | `/api/v1/maps/{map_id}/assets/{asset_id}` | none | Published asset bytes. The response has no filesystem path. |
+| POST | `/api/v1/admin/maps` | bearer, `MAP_PUBLISHERS` | 201 draft definition. |
+| PATCH | `/api/v1/admin/maps/{map_id}` | bearer, `MAP_PUBLISHERS` | Draft metadata. Dimensions are rejected after a version is published. |
+| POST | `/api/v1/admin/maps/{map_id}/versions` | bearer, `MAP_PUBLISHERS` | 201 draft version, regions, objects, spawns, and points of interest. |
+| POST | `/api/v1/admin/maps/{map_id}/assets` | bearer, `MAP_PUBLISHERS` | Multipart asset registration. |
+| POST | `/api/v1/admin/maps/{map_id}/publish` | bearer, `MAP_PUBLISHERS` | Validates stored bytes, then publishes. |
+| POST | `/api/v1/admin/maps/{map_id}/pin` | bearer, `MAP_PUBLISHERS` | 204. Stores the exact version and manifest hash on a match. |
+
 ## Not implemented
 
 Confirmed fact. These were requested by the game-services plan and are not routes:

@@ -14,6 +14,15 @@ from app.models.game_data import (
 )
 from app.models.inventory import CurrencyTransaction, InventoryItem, PlayerCurrency, PlayerInventory
 from app.models.lobby import Lobby, LobbyMember, Team, TeamMember
+from app.models.map_content import (
+    MapAsset,
+    MapObject,
+    MapPointOfInterest,
+    MapPublication,
+    MapRegion,
+    MapSpawnPoint,
+    MapVersion,
+)
 from app.models.match import Match, MatchParticipant, MatchResult, MatchStatistics
 from app.models.player import Player, PlayerProgression, PlayerStatistics
 
@@ -32,7 +41,14 @@ __all__ = [
     "Lobby",
     "LobbyMember",
     "LoginHistory",
+    "MapAsset",
     "MapDefinition",
+    "MapObject",
+    "MapPointOfInterest",
+    "MapPublication",
+    "MapRegion",
+    "MapSpawnPoint",
+    "MapVersion",
     "Match",
     "MatchParticipant",
     "MatchResult",

@@ -7,3 +7,5 @@ __pycache__/
 .pytest_cache/
 reports/player/
 logs/*.log
+storage/game_assets/maps/**
+!storage/game_assets/maps/.gitkeep

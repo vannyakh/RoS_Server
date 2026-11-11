@@ -23,6 +23,8 @@ class Match(IdMixin, CreatedAtMixin, Base):
     match_code: Mapped[str] = mapped_column(String(36), unique=True, nullable=False)
     game_mode_id: Mapped[str | None] = mapped_column(ForeignKey("game_modes.id", ondelete="RESTRICT"), nullable=True)
     map_id: Mapped[str | None] = mapped_column(ForeignKey("map_definitions.id", ondelete="RESTRICT"), nullable=True)
+    map_version_id: Mapped[str | None] = mapped_column(ForeignKey("map_versions.id", ondelete="RESTRICT"), nullable=True)
+    manifest_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="scheduled", nullable=False)
     max_players: Mapped[int] = mapped_column(default=100, nullable=False)
     current_players: Mapped[int] = mapped_column(default=0, nullable=False)
@@ -31,6 +33,7 @@ class Match(IdMixin, CreatedAtMixin, Base):
 
     game_mode: Mapped["GameMode | None"] = relationship(lazy="raise")
     map_definition: Mapped["MapDefinition | None"] = relationship(lazy="raise")
+    map_version: Mapped["MapVersion | None"] = relationship(lazy="raise")
     participants: Mapped[list["MatchParticipant"]] = relationship(
         back_populates="match",
         cascade="all, delete-orphan",

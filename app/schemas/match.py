@@ -27,6 +27,8 @@ class MatchRecordResponse(BaseModel):
     current_players: int
     game_mode_id: str | None = None
     map_id: str | None = None
+    map_version_id: str | None = None
+    manifest_hash: str | None = None
     started_at: datetime | None = None
     ended_at: datetime | None = None
     created_at: datetime

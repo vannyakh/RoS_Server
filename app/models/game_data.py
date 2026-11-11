@@ -28,6 +28,7 @@ class MapDefinition(_Definition, Base):
 
     width: Mapped[int] = mapped_column(default=200, nullable=False)
     height: Mapped[int] = mapped_column(default=200, nullable=False)
+    versions: Mapped[list["MapVersion"]] = relationship(back_populates="map_definition", lazy="raise")
 
 
 class ItemDefinition(_Definition, Base):

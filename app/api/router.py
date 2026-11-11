@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 
-from app.api.v1 import auth, health, inventory, items, lobby, match_records, matches, players
+from app.api.v1 import admin_maps, auth, health, inventory, items, lobby, match_records, maps, matches, players
 from app.networking.websocket import router as websocket_router
 
 
@@ -15,4 +15,6 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(match_records.router, prefix="/api/v1")
     app.include_router(items.router, prefix="/api/v1")
     app.include_router(inventory.router, prefix="/api/v1")
+    app.include_router(maps.router, prefix="/api/v1")
+    app.include_router(admin_maps.router, prefix="/api/v1")
     app.include_router(websocket_router)

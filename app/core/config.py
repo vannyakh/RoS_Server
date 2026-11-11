@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     max_players_per_match: int = 100
     bot_fill: int = 7
     queue_wait_seconds: float = 2.0
+    map_publishers: str = ""
+    map_storage_dir: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
