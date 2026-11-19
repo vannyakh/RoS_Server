@@ -76,8 +76,14 @@ class Reader:
     def i8(self):
         return self._fixed("<b")
 
+    def i16(self):
+        return self._fixed("<h")
+
     def i32(self):
         return self._fixed("<i")
+
+    def u64(self):
+        return self._fixed("<Q")
 
     def u32(self):
         return self._fixed("<I")

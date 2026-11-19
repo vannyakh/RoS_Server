@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     gateway_api_key: str = ""
     # Diamonds (original-client "yuanbao") a new gateway player starts with.
     gateway_starting_yuanbao: int = 100000
+    # Season the original client is in; its Stats page "Season" tab reads this season's records.
+    gateway_current_season: int = 1
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

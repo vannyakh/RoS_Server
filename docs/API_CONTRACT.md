@@ -137,6 +137,18 @@ Confirmed fact. Map routes were added with the map content system. The public ca
 
 Both return `account_id`, `username`, `status`, `can_play`, `is_new`, `nickname`, `char_type`. The first resolve creates account `gw_<uid>` with a player profile, statistics and starter items. That account has no usable password. `is_new` is true until a character is set. `can_play` is false when an operator suspended or banned the account; the gateway then sends no login reply. The uid comes from the Mercury login name (`<uid>@...`). The gateway derives that uid per device from the `ci=` device id the client sends on every SDK request (a 10-digit number from 9000000000 to 9999999999), so each device gets its own account. `CBP_GID` pins one uid for all devices and `DEVICE_UIDS=off` restores the shared uid `9000000001`.
 
+### Player profile (My Page, Stats, Credit)
+
+| Method | Path | Body | Result |
+| --- | --- | --- | --- |
+| GET | `/api/v1/gateway/accounts/{external_uid}/profile` | none | `nickname`, `level`, `char_type`, `portrait`, `rank_score`, `space_likes`, `current_season`, `credit`, `records`. |
+| POST | `/api/v1/gateway/accounts/{external_uid}/matches` | `placement` (1–200), optional `season`, `queue` (`total`, `ranked`, `matching`), `team_mode` (`solo`, `dual`, `quad`, `five`), `kills`, `deaths`, `assists`, `damage`, `head_shots`, `hits`, `fires`, `fight_time_seconds`, `collect_count`, `heal_count`, `kill_distance_dm`, `move_distance_dm`, `rank_score_delta` | Adds one finished match and returns the profile. |
+| POST | `/api/v1/gateway/accounts/{external_uid}/credit/claim` | none | `awards` (prop ids granted once, then cleared) and `credit`. |
+
+`records` rows are keyed by `season` (0 = all time), `queue` and `team_mode` (`overall` plus the four sizes). Each row holds `fight_count`, `win_count`, `top5_count`, `kill_count`, `death_count`, `assist_count`, `damage`, `head_shot_count`, `hit_count`, `fire_count`, `fight_time_seconds`, `collect_count`, `heal_count`, and per-match maxima `max_round_kill`, `max_round_assist`, `max_round_heal`, `max_kill_distance_dm`, `max_move_distance_dm`, `max_fight_time_seconds`. Distances are decimetres, the unit the client divides for display. A match adds to its own mode and to `overall`, for its season (default `GATEWAY_CURRENT_SEASON`) and for season 0, and also to the web profile's `PlayerStatistics`. `placement` 1 counts a win and 1–5 a top-five finish. `rank_score_delta` moves `rank_score`, floored at 0.
+
+`credit` is `score` (starts at 100), `status_last_week` (0 none, 1 silver, 2 gold, 3 diamond), `weeks` (consecutive authenticated weeks), `gifts` (unclaimed weekly reward prop ids) and `records` (latest 20 changes: `delta`, `reason`, `score_after`, `note`, `created_at`). The gateway turns this profile into the client's `onGetRecordData`, `onGetBaseInfo`, `queryPersonalInfoCB`, `queryCreditScoreCB` and `syncCreditStatus` replies (`bigworld_gateway/server/profile_screens.py`).
+
 Operators manage these accounts through the admin routes. `GET /api/v1/admin/players` rows include `nickname` and `client` (`game` or `web`), and the search matches nicknames. `GET /api/v1/admin/players/{account_id}` includes `gateway` (`external_uid`, `char_type`, `last_login_at`, `last_ip`), or null for web accounts. `PATCH /api/v1/admin/players/{account_id}/profile` with `nickname`, `char_type` (game-client accounts only) and a required `reason` needs `players.manage`, is written to the audit log, and reaches the game on its next login.
 
 ## Not implemented

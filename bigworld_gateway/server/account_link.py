@@ -192,5 +192,19 @@ def set_outfit(body, wear):
     return None if not data or "_error" in data else data
 
 
+def get_profile():
+    """My Page / Stats / Credit data (RoS_Server GatewayProfile) or None if not linked/down."""
+    path = _uid_path("profile")
+    data = _call("GET", path, None) if path else None
+    return None if not data or "_error" in data else data
+
+
+def claim_credit_reward():
+    """{"awards": [prop ids], "credit": {...}} for the Claim button, or None if not linked/down."""
+    path = _uid_path("credit/claim")
+    data = _call("POST", path, {}) if path else None
+    return None if not data or "_error" in data else data
+
+
 def current():
     return _current

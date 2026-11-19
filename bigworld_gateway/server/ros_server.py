@@ -9,6 +9,7 @@ import threading
 import athlete_requests  # client->server Athlete calls by name (server/athlete_requests.py)
 import account_link  # RoS_Server account link (/api/v1/gateway); off when GATEWAY_API_KEY is empty
 import bwdefs   # BigWorld .def parser (server/bwdefs.py)
+import profile_screens  # My Page / Stats / Credit replies (server/profile_screens.py)
 
 CERT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "certs")
 HTTPS_PORT = 443
@@ -646,6 +647,10 @@ def _child_props_with_portrait(D, portrait):
                             else bwdefs.encode_default(sub, fdef) for name, sub, fdef in fields)
             return struct.pack("<I", 1) + elem
     return None
+
+
+PROFILE_REQUESTS = {"requireRecordData", "requireBaseInfo", "queryPersonalInfo", "queryPersonalSpaceLikeCnt",
+                    "queryCreditStatus", "queryCreditScore", "requireCreditReward"}
 
 
 def get_account_name():
@@ -1315,6 +1320,10 @@ class GateUDP(asyncio.DatagramProtocol):
                 print(f"      [BASEAPP] equipAppearance {pid} ({kind}) body={outfit.body} wear={outfit.wear}")
                 return calls + athlete_method("onNotifyEquipedAppearance", struct.pack("<i", pid))
 
+            # My Page / Stats / Credit screens (server/profile_screens.py), from RoS_Server's profile.
+            if name in PROFILE_REQUESTS:
+                return self._profile_reply(addr, name, rd)
+
             # Avatar upload: token for the FilePicker upload, then the chosen file id.
             if name == "requestFilePickerToken":
                 return athlete_method("onRequestFilePickerToken", _bw_blob(b"ros-local-filepicker") + struct.pack("<i", 0))
@@ -1325,6 +1334,48 @@ class GateUDP(asyncio.DatagramProtocol):
                 return athlete_method("onSetPortrait", _bw_blob(fid.encode()))
         except Exception as e:
             print(f"      [BASEAPP] Error handling Athlete.{name}: {e!r}")
+        return b""
+
+    def _profile_reply(self, addr, name, rd):
+        """Answer one My Page / Stats / Credit request. Other players' gids get this player's
+        own data only when they ask about themselves; anyone else gets an empty profile."""
+        py = athlete_requests.py
+        own_gid = account_link.current_gid()
+        profile = account_link.get_profile()
+        u64 = lambda v: struct.pack("<Q", v)
+        if name == "requireRecordData":
+            gid, record_type = rd.u64(), rd.i16()
+            data = profile_screens.record_data(profile if gid == own_gid else None, record_type)
+            print(f"      [BASEAPP] requireRecordData gid={gid} type={record_type} -> {list(data)}")
+            return athlete_method("onGetRecordData", u64(gid) + py(data))
+        if name == "requireBaseInfo":
+            gid = rd.u64()
+            nick, score, level = profile_screens.base_info(profile if gid == own_gid else None, get_account_name())
+            return athlete_method("onGetBaseInfo", u64(gid) + _bw_blob(nick.encode()) + b"\x00" + u64(score)
+                                  + struct.pack("<iii", 0, 0, level) + _bw_blob(b""))
+        if name == "queryPersonalInfo":
+            gid = rd.u64()
+            linked = account_link.current() or {}
+            info = profile_screens.personal_info(profile if gid == own_gid else None, gid, get_account_name(),
+                                                 get_account_char(), linked.get("portrait", ""))
+            return athlete_method("queryPersonalInfoCB", u64(gid) + py(info))
+        if name == "queryPersonalSpaceLikeCnt":
+            return athlete_method("queryPersonalSpaceLikeCntCB", u64(own_gid) +
+                                  struct.pack("<i", profile_screens.space_likes(profile)))
+        score, status, weeks, gifts, rows = profile_screens.credit(profile)
+        sync = athlete_method("syncCreditStatus", struct.pack("<ii", status, weeks) + py(gifts))
+        if name == "queryCreditStatus":
+            return athlete_method("queryCreditStatusCB", struct.pack("<i", status))
+        if name == "queryCreditScore":
+            return athlete_method("queryCreditScoreCB", struct.pack("<i", score) + py(rows)) + sync
+        if name == "requireCreditReward":
+            claimed = account_link.claim_credit_reward() or {"awards": []}
+            awards = [int(p) for p in claimed["awards"]]
+            print(f"      [BASEAPP] requireCreditReward -> {awards}")
+            after = {"credit": claimed.get("credit") or (profile or {}).get("credit")}
+            _score, status, weeks, gifts, _rows = profile_screens.credit(after)
+            return (self._grant_props(awards) + athlete_method("requireCreditRewardCB", py(awards)) +
+                    athlete_method("syncCreditStatus", struct.pack("<ii", status, weeks) + py(gifts)))
         return b""
 
     def _diamond_props(self, addr):

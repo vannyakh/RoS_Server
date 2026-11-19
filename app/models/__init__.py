@@ -12,7 +12,7 @@ from app.models.game_data import (
     VehicleDefinition,
     WeaponDefinition,
 )
-from app.models.gateway import GatewayIdentity, GatewayItem
+from app.models.gateway import GatewayBattleRecord, GatewayCreditRecord, GatewayIdentity, GatewayItem
 from app.models.inventory import CurrencyTransaction, InventoryItem, PlayerCurrency, PlayerInventory
 from app.models.lobby import Lobby, LobbyMember, Team, TeamMember
 from app.models.map_content import (
@@ -40,6 +40,8 @@ __all__ = [
     "FeatureConfiguration",
     "GameConfiguration",
     "GatewayIdentity",
+    "GatewayBattleRecord",
+    "GatewayCreditRecord",
     "GatewayItem",
     "GameMode",
     "InventoryItem",

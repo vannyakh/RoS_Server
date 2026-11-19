@@ -12,13 +12,17 @@ from app.schemas.gateway import (
     EXTERNAL_UID_PATTERN,
     GatewayAccount,
     GatewayCharacterRequest,
+    GatewayCreditClaim,
+    GatewayMatchReport,
     GatewayOutfit,
+    GatewayProfile,
     GatewayPurchaseRequest,
     GatewayPurchaseResult,
     GatewayState,
     GatewayPortraitRequest,
     GatewayResolveRequest,
 )
+from app.services.gateway_profile_service import GatewayProfileService
 from app.services.gateway_service import GatewayService
 
 router = APIRouter(prefix="/gateway", tags=["Gateway"])
@@ -99,3 +103,40 @@ async def set_outfit(
     db: AsyncSession = Depends(get_db),
 ) -> GatewayOutfit:
     return await GatewayService(db).set_outfit(external_uid, body)
+
+
+@router.get(
+    "/accounts/{external_uid}/profile",
+    response_model=GatewayProfile,
+    dependencies=[Depends(require_gateway_key)],
+)
+async def get_profile(
+    external_uid: str = Path(pattern=EXTERNAL_UID_PATTERN),
+    db: AsyncSession = Depends(get_db),
+) -> GatewayProfile:
+    return await GatewayProfileService(db).profile(external_uid)
+
+
+@router.post(
+    "/accounts/{external_uid}/matches",
+    response_model=GatewayProfile,
+    dependencies=[Depends(require_gateway_key)],
+)
+async def record_match(
+    body: GatewayMatchReport,
+    external_uid: str = Path(pattern=EXTERNAL_UID_PATTERN),
+    db: AsyncSession = Depends(get_db),
+) -> GatewayProfile:
+    return await GatewayProfileService(db).record_match(external_uid, body)
+
+
+@router.post(
+    "/accounts/{external_uid}/credit/claim",
+    response_model=GatewayCreditClaim,
+    dependencies=[Depends(require_gateway_key)],
+)
+async def claim_credit_reward(
+    external_uid: str = Path(pattern=EXTERNAL_UID_PATTERN),
+    db: AsyncSession = Depends(get_db),
+) -> GatewayCreditClaim:
+    return await GatewayProfileService(db).claim_credit_reward(external_uid)
