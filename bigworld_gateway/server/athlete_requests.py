@@ -15,6 +15,21 @@ import time
 import bwdefs
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
+
+# Game clock. The client's date-gated data ends in 2022 (season 21: 2022.03.16-05.24, last
+# monthly Supreme box until 2022.12.30), so a real 2026 clock shows "LEFT -1640 days" and blank
+# boxes. Every timestamp sent to the client uses this clock: GAME_DATE (UTC), advancing in real
+# time from server start. GAME_DATE=real uses the real clock.
+_START = time.time()
+
+
+def game_now():
+    spec = os.environ.get("GAME_DATE", "2022-04-20 12:00:00")
+    if spec == "real":
+        return time.time()
+    import calendar
+    base = calendar.timegm(time.strptime(spec, "%Y-%m-%d %H:%M:%S"))
+    return base + (time.time() - _START)
 _EXTRACT = os.path.join(_HERE, "extract")
 DIRECT = 57
 _names = None
@@ -152,7 +167,7 @@ class SupplyState:
         self.free_times = {}
 
     def note_free(self, sid):
-        self.free_ts[sid] = int(time.time())
+        self.free_ts[sid] = int(game_now())
         self.free_times[sid] = self.free_times.get(sid, 0) + 1
 
 
@@ -163,6 +178,57 @@ def hallprop_price(pid):
         with open(os.path.join(_EXTRACT, "hallprop_prices.json"), encoding="utf-8") as f:
             _prices = {int(k): tuple(v) for k, v in json.load(f)["prices"].items()}
     return _prices.get(int(pid))
+
+
+_mall = None
+
+
+def _mall_table():
+    """extract/mall_goods.json: the client's own mall_utils tables (createMallGoodsInfo of the
+    available goods, per-location id lists, mall good -> hall prop id)."""
+    global _mall
+    if _mall is None:
+        with open(os.path.join(_EXTRACT, "mall_goods.json"), encoding="utf-8") as f:
+            raw = json.load(f)
+        _mall = {"info": {int(k): v for k, v in raw["info"].items()},
+                 "appearance": {int(k): v for k, v in raw["appearance_info"].items()},
+                 "by_type": {int(k): set(v) for k, v in raw["ids_by_type"].items()},
+                 "props": {int(k): int(v) for k, v in raw["props"].items()}}
+    return _mall
+
+
+def mall_goods(types=0):
+    """onQueryAvailableMallGoods* dict {mallGoodID: {NAME, CURRENCY_ID, PRICE, DISCOUNT, BUY_TIMES}}
+    for a GoodsLocationType bit mask (0 = ALL; bits without a display field also get all)."""
+    t = _mall_table()
+    if not types:
+        return dict(t["info"])
+    ids, known = set(), False
+    for bit, members in t["by_type"].items():
+        if types & bit:
+            ids |= members
+            known = True
+    if not known:
+        return dict(t["info"])
+    return {k: v for k, v in t["info"].items() if k in ids}
+
+
+def appearance_mall_goods():
+    return dict(_mall_table()["appearance"])
+
+
+def mall_good_price(gid, num=1):
+    """(currency id, total price after the good's DISCOUNT %) or None if not for sale."""
+    t = _mall_table()
+    g = t["info"].get(int(gid)) or t["appearance"].get(int(gid))
+    if not g:
+        return None
+    return int(g["CURRENCY_ID"]), int(g["PRICE"]) * int(g.get("DISCOUNT", 100)) // 100 * max(int(num), 1)
+
+
+def mall_good_prop(gid):
+    """Hall prop the mall good gives (None for suit goods)."""
+    return _mall_table()["props"].get(int(gid))
 
 
 class Wallet:
@@ -211,21 +277,99 @@ def appearance_type(pid):
     return _types.get(int(pid))
 
 
+_slots = None
+
+
+def _slot_table():
+    global _slots
+    if _slots is None:
+        with open(os.path.join(_EXTRACT, "appearance_slots.json"), encoding="utf-8") as f:
+            raw = json.load(f)
+        _slots = {"items": {int(k): (v[0], v[1], int(v[2] or 0)) for k, v in raw["items"].items()},
+                  "suits": {int(k): v for k, v in raw["suits"].items()}}
+    return _slots
+
+
+def appearance_slot(pid):
+    """(list "body"/"wear"/"weapon"/"vehicle"/"theme", slot key, gender 0/1/2) or None."""
+    return _slot_table()["items"].get(int(pid))
+
+
+def appearance_suit(sid):
+    """{"name", "gender", "items"} of a clothes suit (SET page), or None."""
+    return _slot_table()["suits"].get(int(sid))
+
+
 class Outfit:
-    """Per-session worn appearance: body parts (face, hair...) and wearables (clothes...).
-    Without the client's slot table, equipping again the same id takes it off; other items stay."""
+    """Per-session equipped appearance lists and the shown lists (equipped + tried on), as the
+    client's DtsAppearance types keep them: an item replaces whatever sits in the same slot of
+    its list (clothes slot, body/decoration category, the same gun, the same vehicle);
+    equipping an equipped item again takes it off. The lobby theme is a single id."""
+
+    LISTS = ("body", "wear", "weapon", "vehicle")
 
     def __init__(self):
-        self.body = []
-        self.wear = []
+        for k in self.LISTS:
+            setattr(self, k, [])
+            setattr(self, "show_" + k, None)     # None: same as equipped
+        self.theme = 0
+
+    @staticmethod
+    def kind(pid):
+        s = appearance_slot(pid)
+        return s[0] if s else None
+
+    @staticmethod
+    def _same_slot(a, b):
+        sa, sb = appearance_slot(a), appearance_slot(b)
+        return bool(sa and sb and sa[0] == sb[0] and sa[1] == sb[1])
+
+    @classmethod
+    def _swap(cls, items, pid):
+        return [i for i in items if i != pid and not cls._same_slot(i, pid)] + [pid]
+
+    def shown(self, kind):
+        v = getattr(self, "show_" + kind)
+        return list(getattr(self, kind) if v is None else v)
 
     def equip(self, pid):
-        """Returns "body", "wear" or None (type the outfit lists do not track)."""
-        kind = {"BobyAppearanceType": "body", "WearableApperanceType": "wear"}.get(appearance_type(pid))
-        if kind:
+        """Returns the list kind changed ("theme" too), or None for untracked types."""
+        kind = self.kind(pid)
+        if kind == "theme":
+            self.theme = int(pid)
+        elif kind:
             items = getattr(self, kind)
-            if pid in items:
-                items.remove(pid)
-            else:
-                items.append(pid)
+            setattr(self, kind, [i for i in items if i != pid] if pid in items else self._swap(items, pid))
+            setattr(self, "show_" + kind, None)
         return kind
+
+    def try_on(self, pid):
+        """Show `pid` without equipping it. Returns the kind or None."""
+        kind = self.kind(pid)
+        if kind and kind != "theme":
+            setattr(self, "show_" + kind, self._swap(self.shown(kind), pid))
+        return kind
+
+    def try_off(self, pid):
+        """Take a shown item off; the equipped item of that slot (if any) comes back."""
+        kind = self.kind(pid)
+        if kind and kind != "theme":
+            shown = [i for i in self.shown(kind) if i != pid]
+            back = [i for i in getattr(self, kind) if i != pid and self._same_slot(i, pid)]
+            setattr(self, "show_" + kind, shown + [i for i in back if i not in shown])
+        return kind
+
+    def cancel_try_on(self):
+        for k in self.LISTS:
+            setattr(self, "show_" + k, None)
+
+    def to_dict(self):
+        return {**{k: list(getattr(self, k)) for k in self.LISTS}, "theme": self.theme}
+
+    @classmethod
+    def from_dict(cls, d):
+        o = cls()
+        for k in cls.LISTS:
+            setattr(o, k, [int(i) for i in (d or {}).get(k, [])])
+        o.theme = int((d or {}).get("theme") or 0)
+        return o

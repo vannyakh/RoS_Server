@@ -23,3 +23,9 @@ set UNLOCK_ALL=off
 rem server heartbeat packets caused REASON_CORRUPTED_PACKET relog loops; keep off
 set HALL_HEARTBEAT=0
 set FRAG_BODY=700
+rem --- lobby date (2026-11-19) ---
+rem Game data ends in 2022: the server clock runs from GAME_DATE. LDPlayer's own date is set to
+rem 2022-04-20 too, so the monthly Supreme page (device clock) works: keep SysEnableMonthSupply ON
+rem here. On a device with the real 2026 date, remove this line (server default turns it off).
+if "%GAME_DATE%"=="" set GAME_DATE=2022-04-20 12:00:00
+set LOBBY_SWITCHES_OFF=SysEnableHuiliuRecallSystem,EnableRecallPlayer,EnableNewRecallPlayer

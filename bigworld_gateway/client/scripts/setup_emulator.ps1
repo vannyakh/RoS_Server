@@ -18,18 +18,27 @@ $caFile = Get-ChildItem "$script:RosServerDir\certs\*.0" | Select-Object -First 
 Write-Host "Emulator serial: $serial"
 Start-Sleep 2
 
+# Some LDPlayer builds keep adbd unprivileged after "adb root"; run root commands through su then.
+$asRoot = ((& $adb @adbArgs shell "id -u") -join "").Trim() -eq "0"
+function Invoke-RootShell([string]$cmd) {
+    if ($asRoot) { & $adb @adbArgs shell $cmd } else { & $adb @adbArgs shell "su -c '$cmd'" }
+}
+if (-not $asRoot) { Write-Host "adb shell is not root; using su" }
+
 if ($Undo) {
-    & $adb @adbArgs shell "iptables -t nat -D OUTPUT -p udp --dport 53 -j DNAT --to-destination ${PC_IP}:53 2>/dev/null; umount /system/etc/security/cacerts 2>/dev/null; settings put global private_dns_mode opportunistic"
+    Invoke-RootShell "iptables -t nat -D OUTPUT -p udp --dport 53 -j DNAT --to-destination ${PC_IP}:53 2>/dev/null; umount /system/etc/security/cacerts 2>/dev/null; settings put global private_dns_mode opportunistic"
     "Reverted."
     exit
 }
 
-& $adb @adbArgs shell "settings put global private_dns_mode off"
+Invoke-RootShell "settings put global private_dns_mode off"
 & $adb @adbArgs push $caFile.FullName "/data/local/tmp/$($caFile.Name)" | Out-Null
 # /system is read-only (system-as-root), so overlay the cacerts dir with a tmpfs copy (lost on emulator reboot).
 $n = $caFile.Name
-& $adb @adbArgs shell "D=/system/etc/security/cacerts; if [ ! -f `$D/$n ]; then mkdir -p /data/local/tmp/cacerts_bak; cp `$D/* /data/local/tmp/cacerts_bak/; mount -t tmpfs tmpfs `$D; cp /data/local/tmp/cacerts_bak/* `$D/; cp /data/local/tmp/$n `$D/; chmod 644 `$D/*; chcon u:object_r:system_file:s0 `$D/*; fi; ls -l `$D/$n"
-& $adb @adbArgs shell "iptables -t nat -C OUTPUT -p udp --dport 53 -j DNAT --to-destination ${PC_IP}:53 2>/dev/null || iptables -t nat -A OUTPUT -p udp --dport 53 -j DNAT --to-destination ${PC_IP}:53; iptables -t nat -L OUTPUT -n | grep 53"
+Invoke-RootShell "D=/system/etc/security/cacerts; if [ ! -f `$D/$n ]; then mkdir -p /data/local/tmp/cacerts_bak; cp `$D/* /data/local/tmp/cacerts_bak/; mount -t tmpfs tmpfs `$D; cp /data/local/tmp/cacerts_bak/* `$D/; cp /data/local/tmp/$n `$D/; chmod 644 `$D/*; chcon u:object_r:system_file:s0 `$D/*; fi; ls -l `$D/$n"
+Invoke-RootShell "iptables -t nat -C OUTPUT -p udp --dport 53 -j DNAT --to-destination ${PC_IP}:53 2>/dev/null || iptables -t nat -A OUTPUT -p udp --dport 53 -j DNAT --to-destination ${PC_IP}:53; iptables -t nat -L OUTPUT -n | grep 53"
+$check = ((Invoke-RootShell "iptables -t nat -L OUTPUT -n | grep -c ${PC_IP}:53") -join "").Trim()
+if ($check -eq "0" -or -not $check) { throw "DNS redirect was not applied (no root on the emulator?)" }
 
 # Install custom loginapp.pubkey so client encrypts login with our key
 $pubKey = "$script:RosServerDir\server_keys\loginapp.pubkey"

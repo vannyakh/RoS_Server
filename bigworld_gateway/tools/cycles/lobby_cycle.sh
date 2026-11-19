@@ -8,10 +8,15 @@ A="/c/LDPlayer/LDPlayer9/adb.exe -s ${ADB_SERIAL:-emulator-5554}"
 WAIT=${1:-60}
 before=$(grep -c 'notice_pc_hw.txt' logs/server.log)
 $A shell am force-stop com.netease.chiji; $A logcat -G 16M 2>/dev/null; $A logcat -c
+# frida-server must NOT run at launch: the DCTOOL device check (libunisdkdctool) crashes the
+# game ~2 s after the notice fetch when it sees it (breakpad, 2026-11-19). Start it after the menu.
+$A shell "for p in \$(pidof frida-server); do kill -9 \$p; done" 2>/dev/null
 $A shell monkey -p com.netease.chiji -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
 i=0; until [ "$(grep -c 'notice_pc_hw.txt' logs/server.log)" -gt "$before" ] || [ $i -ge 80 ]; do sleep 3; i=$((i+1)); done
 echo "[menu after $((i*3))s]"
-sleep 25
+sleep 15
+$A shell "/data/local/tmp/frida-server -D >/dev/null 2>&1 &"
+sleep 10
 $A shell input tap 1538 89; sleep 2
 bash tools/probe.sh client/frida/payloads/login_scene_switch.py logs/switch_out.txt >/dev/null 2>&1
 echo "=== switch"; cat logs/switch_out.txt

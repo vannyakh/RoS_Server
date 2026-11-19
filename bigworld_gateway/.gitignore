@@ -14,3 +14,9 @@ server/saved_accounts.json
 client/apk/*.apk
 # local settings / secrets
 .env
+
+# local backups / captures
+server/certs_backup*/
+server/*capture*.bin
+server/latest_bf_key.bin
+scratch_*.png
