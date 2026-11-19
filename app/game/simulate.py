@@ -8,7 +8,7 @@ from uuid import uuid4
 from app.game.collision import slide
 from app.game.items import HEALS, LOOT_TABLE, MAX_STACK, MAX_WEAPONS, VEHICLES, WEAPONS, is_weapon, weapon_count
 from app.game.rules import MatchRules
-from app.game.state import LootNode, Match, MatchResult, PlayerState, VehicleNode, WorldState
+from app.game.state import Blocker, LootNode, Match, MatchResult, PlayerState, VehicleNode, WorldState
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +117,8 @@ def match_view(world: WorldState, match_id: str) -> dict | None:
 def snapshot(world: WorldState, player: PlayerState, rules: MatchRules) -> dict:
     payload = {
         "player_id": player.player_id,
+        "nickname": player.nickname,
+        "skin": player.skin,
         "tick": world.tick,
         "x": round(player.x, 3),
         "y": round(player.y, 3),
@@ -157,8 +159,9 @@ def _create_match(world: WorldState, humans: list[PlayerState], rules: MatchRule
     rng = random.Random(match_id)
     match = Match(match_id=match_id, player_ids=[player.player_id for player in players])
     _arm_zone(match, rules, rng, first=True)
-    match.loot = _spawn_loot(match_id, rng, rules)
-    match.vehicles = _spawn_vehicles(match_id, rules)
+    match.blockers = _spawn_objects(rules) if rules.loot_count > 0 else []
+    match.loot = _spawn_loot(match_id, rng, rules, match.blockers)
+    match.vehicles = _spawn_vehicles(match_id, rules, match.blockers)
     for index, player in enumerate(players):
         player.match_id = match_id
         player.status = "countdown"
@@ -179,8 +182,17 @@ def _create_match(world: WorldState, humans: list[PlayerState], rules: MatchRule
     logger.info("Match %s started with %s players", match_id, len(players))
 
 
+_BOT_SKINS = ("recruit", "field_jacket", "ghillie_recon", "desert_striker", "night_ops")
+
+
 def _make_bot(world: WorldState, match_id: str, index: int) -> PlayerState:
-    bot = PlayerState(player_id=f"bot-{match_id}-{index}", is_bot=True, connected=False)
+    bot = PlayerState(
+        player_id=f"bot-{match_id}-{index}",
+        nickname=f"Bot {index + 1}",
+        skin=_BOT_SKINS[index % len(_BOT_SKINS)],
+        is_bot=True,
+        connected=False,
+    )
     world.players[bot.player_id] = bot
     return bot
 
@@ -313,7 +325,45 @@ def _pick_next_zone(rng: random.Random, match: Match, rules: MatchRules) -> tupl
     return next_x, next_y
 
 
-def _spawn_loot(match_id: str, rng: random.Random, rules: MatchRules) -> list[LootNode]:
+def _spawn_objects(rules: MatchRules) -> list[Blocker]:
+    s = rules.map_size
+    specs = (
+        (0.22, 0.10, 0.28, 0.17, "warehouse", "North Warehouse"),
+        (0.68, 0.16, 0.74, 0.23, "watchtower", "Timber Watchtower"),
+        (0.18, 0.40, 0.24, 0.46, "container", "West Containers"),
+        (0.18, 0.54, 0.24, 0.60, "container", "South Containers"),
+        (0.74, 0.44, 0.81, 0.56, "bunker", "Echo Bunker"),
+        (0.26, 0.72, 0.33, 0.80, "outpost", "Harbor Outpost"),
+        (0.64, 0.74, 0.72, 0.82, "ruins", "Harbor Ruins"),
+        (0.46, 0.25, 0.53, 0.31, "rock", "Highground Ridge"),
+        (0.47, 0.68, 0.54, 0.73, "barricade", "Bridge Barricade"),
+        (0.84, 0.72, 0.89, 0.78, "watchtower", "Beacon Tower"),
+    )
+    return [Blocker(s * x0, s * y0, s * x1, s * y1, kind=kind, name=name) for x0, y0, x1, y1, kind, name in specs]
+
+
+def _point_blocked(x: float, y: float, blockers: list[Blocker], pad: float = 1.5) -> bool:
+    return any(
+        b.minimum_x - pad <= x <= b.maximum_x + pad and b.minimum_y - pad <= y <= b.maximum_y + pad
+        for b in blockers
+    )
+
+
+def _open_point(rng: random.Random, margin: float, span: float, blockers: list[Blocker]) -> tuple[float, float]:
+    for _ in range(20):
+        x = margin + rng.random() * span
+        y = margin + rng.random() * span
+        if not _point_blocked(x, y, blockers):
+            return x, y
+    return margin + rng.random() * span, margin + rng.random() * span
+
+
+def _spawn_loot(
+    match_id: str,
+    rng: random.Random,
+    rules: MatchRules,
+    blockers: list[Blocker] | None = None,
+) -> list[LootNode]:
     pool: list[tuple[str, int]] = []
     for item_id, quantity, weight in LOOT_TABLE:
         pool.extend([(item_id, quantity)] * weight)
@@ -321,12 +371,14 @@ def _spawn_loot(match_id: str, rng: random.Random, rules: MatchRules) -> list[Lo
     margin = 10.0
     span = max(1.0, rules.map_size - margin * 2)
     nodes = []
+    obstacles = blockers or []
     for index, (item_id, quantity) in enumerate(pool[: rules.loot_count]):
+        lx, ly = _open_point(rng, margin, span, obstacles)
         nodes.append(
             LootNode(
                 loot_id=f"{match_id}:{index}",
-                x=margin + rng.random() * span,
-                y=margin + rng.random() * span,
+                x=lx,
+                y=ly,
                 item_id=item_id,
                 quantity=quantity,
             )
@@ -658,18 +710,25 @@ def _move(player: PlayerState, dt: float, rules: MatchRules, match: Match | None
         occupied.y = player.y
 
 
-def _spawn_vehicles(match_id: str, rules: MatchRules) -> list[VehicleNode]:
+def _spawn_vehicles(
+    match_id: str,
+    rules: MatchRules,
+    blockers: list[Blocker] | None = None,
+) -> list[VehicleNode]:
     rng = random.Random(f"{match_id}:vehicles")
     margin = 20.0
     span = max(1.0, rules.map_size - margin * 2)
+    obstacles = blockers or []
+    kinds = ("buggy", "jeep", "buggy")
     nodes = []
-    for index in range(2):
+    for index, kind in enumerate(kinds):
+        vx, vy = _open_point(rng, margin, span, obstacles)
         nodes.append(
             VehicleNode(
                 vehicle_id=f"{match_id}:vehicle:{index}",
-                kind="buggy",
-                x=margin + rng.random() * span,
-                y=margin + rng.random() * span,
+                kind=kind,
+                x=vx,
+                y=vy,
             )
         )
     return nodes
@@ -816,6 +875,8 @@ def _match_payload(world: WorldState, match: Match, player: PlayerState) -> dict
         "players": [
             {
                 "player_id": other.player_id,
+                "nickname": other.nickname,
+                "skin": other.skin,
                 "x": round(other.x, 2),
                 "y": round(other.y, 2),
                 "health": round(other.health, 1),
@@ -825,6 +886,17 @@ def _match_payload(world: WorldState, match: Match, player: PlayerState) -> dict
                 "bot": other.is_bot,
             }
             for other in _combatants(world, match)
+        ],
+        "objects": [
+            {
+                "kind": blocker.kind,
+                "name": blocker.name,
+                "minimum_x": round(blocker.minimum_x, 2),
+                "minimum_y": round(blocker.minimum_y, 2),
+                "maximum_x": round(blocker.maximum_x, 2),
+                "maximum_y": round(blocker.maximum_y, 2),
+            }
+            for blocker in match.blockers
         ],
         "loot": [
             {
@@ -836,6 +908,16 @@ def _match_payload(world: WorldState, match: Match, player: PlayerState) -> dict
             }
             for node in match.loot
             if not node.taken
+        ],
+        "vehicles": [
+            {
+                "vehicle_id": node.vehicle_id,
+                "kind": node.kind,
+                "x": round(node.x, 2),
+                "y": round(node.y, 2),
+                "occupant": node.occupant,
+            }
+            for node in match.vehicles
         ],
         "self": {
             "weapon": player.weapon,

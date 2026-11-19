@@ -56,6 +56,15 @@ async def test_vehicle_changes_speed_and_blocks_shooting():
     assert boarded, detail
     assert player.vehicle == vehicle.vehicle_id
     assert vehicle.occupant == "alpha"
+    snap = (await engine.step(0))[0]
+    assert snap["vehicle"] == vehicle.vehicle_id
+    assert any(
+        item["vehicle_id"] == vehicle.vehicle_id and item["occupant"] == "alpha"
+        for item in snap["match"]["vehicles"]
+    )
+    assert any(item["kind"] == "jeep" for item in snap["match"]["vehicles"])
+    assert len(snap["match"]["objects"]) >= 8
+    assert snap["skin"] == "recruit"
 
     start = player.x
     await engine.set_input("alpha", 1, 0)

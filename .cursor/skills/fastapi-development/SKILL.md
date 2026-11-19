@@ -5,6 +5,8 @@ description: Adds FastAPI routes, Pydantic v2 schemas, services, and repositorie
 
 # FastAPI development
 
+Owner: `api-engineer`. Rule: `.cursor/rules/02-python-backend.mdc`. Take the task from `.cursor/management/tasks.json` and write only its `files_allowed`.
+
 ## When
 
 A task adds or changes an HTTP contract.

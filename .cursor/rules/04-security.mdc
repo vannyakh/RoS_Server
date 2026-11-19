@@ -6,6 +6,8 @@ alwaysApply: false
 
 # Security
 
+Owner: `security-engineer`. Skill: `security-audit`. Write the review named in the task. Do not edit application code in that same task.
+
 - Store passwords only as Argon2 hashes. Store access tokens only as SHA-256 hashes.
 - Login failure and unknown-user failure return the same generic 401.
 - The in-memory login limit stays 5 failures per 60 seconds per host.

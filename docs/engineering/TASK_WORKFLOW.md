@@ -27,4 +27,4 @@ Every status or assignee change appends `history`: `at`, `actor`, `from_status`,
 
 ## Current gate
 
-RO-009 is `ready`. RO-013, the original-game research index, is also `ready`. RO-011 is `blocked` until the security review is completed and the suite is run again. RO-012, the project-control tracker, stays in `review` until QA runs the project validator.
+The live list is `tasks.json`. RO-009, RO-012, RO-016, RO-029, RO-032, RO-033, and RO-055 are completed. RO-030 is in review. RO-011 is ready for the integration review. RO-035 stays in review. RO-045 is blocked on an isolated PostgreSQL run. Backlog tasks stay backlog until every dependency is completed.

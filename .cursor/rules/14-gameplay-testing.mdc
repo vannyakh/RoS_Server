@@ -1,0 +1,20 @@
+---
+description: Deterministic scenario rules for this server's match simulation.
+globs: tests/compatibility/gameplay/**/*.py,tools/game_simulator/**/*.py
+alwaysApply: false
+---
+
+# Gameplay testing
+
+Owner: `gameplay-test-engineer`. Skill: `gameplay-testing`. Edit only the task's `files_allowed` in `.cursor/management/tasks.json`.
+
+- Run scenarios with a fixed seed. The same seed must produce the same winner and totals.
+- Cite `app/game/rules.py` for movement and `app/game/items.py` for damage.
+- The 20 Hz tick does not open a database session.
+- A passing scenario is evidence for this server's rules. It is not an original RoS combat value.
+- Leave `compatibility_status` as `unknown` unless the task cites an authorized reference.
+
+```text
+Bad:  mark GP-002 compatible because the local speed test passed
+Good: cite app/game/rules.py and leave original movement unknown
+```

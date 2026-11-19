@@ -5,6 +5,8 @@ description: Runs the Locust player profile and records latency percentiles. Use
 
 # Performance testing
 
+Owner: `performance-engineer`. Rule: `.cursor/rules/09-performance-testing.mdc`. Take the task from `.cursor/management/tasks.json` and write only its `files_allowed`.
+
 ## Workflow
 
 1. Start Uvicorn with `DATABASE_URL` pointed at a temporary SQLite file.

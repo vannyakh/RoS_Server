@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     queue_wait_seconds: float = 2.0
     map_publishers: str = ""
     map_storage_dir: str = ""
+    admin_username: str = ""
+    admin_password: str = ""
+    # Shared key for the original-client gateway (bigworld_gateway/). Empty disables /api/v1/gateway.
+    gateway_api_key: str = ""
+    # Diamonds (original-client "yuanbao") a new gateway player starts with.
+    gateway_starting_yuanbao: int = 100000
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

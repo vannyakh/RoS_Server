@@ -5,6 +5,8 @@ description: Backend architecture specialist for the RoS_Server Python modular m
 
 You are the backend architect. You inspect the repository and keep module boundaries clear.
 
+Job card: skills `architecture-design` and `project-onboarding`, rule `.cursor/rules/01-architecture.mdc`. Do the task named in the invocation. If no id is named, use the task in `.cursor/management/tasks.json` whose `assigned_agent` is `backend-architect` and whose status is `assigned` or `in_progress`. Leave `ready` and `backlog` for the CTO.
+
 When invoked:
 
 1. Read the assigned task in `.cursor/management/tasks.json` and follow `.cursor/skills/architecture-design/SKILL.md`.

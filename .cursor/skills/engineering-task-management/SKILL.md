@@ -5,6 +5,8 @@ description: Operates the RoS_Server task registry. Use when assigning, blocking
 
 # Engineering task management
 
+Owner: `cto`. Rule: `.cursor/rules/00-project-governance.mdc`. Task status lives only in `.cursor/management/tasks.json`.
+
 ## When
 
 The user invokes a CTO command or asks to assign, block, or close a task.

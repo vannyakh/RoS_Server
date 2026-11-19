@@ -6,6 +6,8 @@ alwaysApply: false
 
 # Observability
 
+Owner: `observability-engineer`. Skill: `observability`. Edit only the task's `files_allowed` in `.cursor/management/tasks.json`.
+
 - Log function records as one JSON object. Include the lifecycle stage that ran.
 - Redact bearer tokens and passwords. Do not log raw tokens or password hashes.
 - Prometheus labels are method, route template, status, feature, and function id.

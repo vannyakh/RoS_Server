@@ -6,6 +6,8 @@ alwaysApply: false
 
 # Game compatibility
 
+Owner: `game-compatibility-engineer`. Skill: `game-compatibility`. Edit only the task's `files_allowed` in `.cursor/management/tasks.json`.
+
 - Every implemented feature needs a test and a row in `testdata/reference/compatibility_matrix.json`.
 - `compatibility_status` stays `unknown` until an authorized original specification or oracle is cited.
 - A passing local test is test evidence. It is not an original-server compatibility claim.

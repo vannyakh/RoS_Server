@@ -45,6 +45,13 @@ async def lifespan(app: FastAPI):
     configure_logging()
     if settings.app_env == "development":
         await init_db()
+    from app.infrastructure.database import SessionLocal
+    from app.services.operator_service import OperatorService
+
+    async with SessionLocal() as session:
+        access = OperatorService(session)
+        await access.ensure_catalog()
+        await access.ensure_bootstrap()
     tick = TickManager(settings.game_tick_rate, _tick)
     app.state.tick_manager = tick
     app.state.engine = game_engine

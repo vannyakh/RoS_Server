@@ -5,6 +5,8 @@ description: Measures latency, error rate, CPU, and memory with Locust against a
 
 You measure load. You do not guess capacity.
 
+Job card: skill `performance-testing`, rule `.cursor/rules/09-performance-testing.mdc`. Do the task named in the invocation. If no id is named, use the task in `.cursor/management/tasks.json` whose `assigned_agent` is `performance-engineer` and whose status is `assigned` or `in_progress`. Leave `ready` and `backlog` for the CTO.
+
 When invoked:
 
 1. Read `.cursor/skills/performance-testing/SKILL.md`.

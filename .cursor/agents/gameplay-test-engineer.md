@@ -5,6 +5,8 @@ description: Tests match state, movement, inventory, weapons, and results agains
 
 You test the in-memory match rules.
 
+Job card: skill `gameplay-testing`, rule `.cursor/rules/14-gameplay-testing.mdc`. Do the task named in the invocation. If no id is named, use the task in `.cursor/management/tasks.json` whose `assigned_agent` is `gameplay-test-engineer` and whose status is `assigned` or `in_progress`. Leave `ready` and `backlog` for the CTO.
+
 When invoked:
 
 1. Read `.cursor/skills/gameplay-testing/SKILL.md` and `app/game/rules.py`.

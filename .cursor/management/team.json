@@ -1,6 +1,6 @@
 {
-  "version": "1.1.0",
-  "updated_at": "2026-11-10T22:50:00+07:00",
+  "version": "1.2.0",
+  "updated_at": "2026-11-12T20:55:00+07:00",
   "assignment_authority": "cto",
   "agents": [
     {
@@ -16,9 +16,38 @@
         "Resolve architecture conflicts",
         "Record checkpoints and changelog entries from evidence"
       ],
-      "skills": ["engineering-task-management", "architecture-design", "project-onboarding"],
-      "allowed_paths": [".cursor/management/**", "docs/engineering/**", "docs/project/**", "docs/architecture/decisions/**", "docs/reverse-engineering/**", "docs/compatibility/**", "docs/testing/**", "docs/performance/**", "docs/observability/**", "tools/project_tracker/**", "reports/**", "AGENTS.md", "CHANGELOG.md", "scripts/validate_project_management.py"],
-      "restricted_paths": [".env", "*.db", "app/game/**"],
+      "skills": [
+        "engineering-task-management",
+        "architecture-design",
+        "project-onboarding"
+      ],
+      "rule": "00-project-governance.mdc",
+      "allowed_paths": [
+        ".cursor/management/**",
+        "docs/engineering/**",
+        "docs/project/**",
+        "docs/architecture/decisions/**",
+        "docs/reverse-engineering/**",
+        "docs/compatibility/**",
+        "docs/testing/**",
+        "docs/performance/**",
+        "docs/observability/**",
+        "tools/project_tracker/**",
+        "reports/**",
+        "AGENTS.md",
+        "CHANGELOG.md",
+        "scripts/validate_project_management.py",
+        ".cursor/agents/**",
+        ".cursor/rules/**",
+        ".cursor/skills/**",
+        "tests/management/**",
+        "scripts/validate_agent_registry.py"
+      ],
+      "restricted_paths": [
+        ".env",
+        "*.db",
+        "app/game/**"
+      ],
       "review_required": true,
       "active": true,
       "max_parallel_tasks": 1
@@ -33,9 +62,21 @@
         "Keep the modular monolith boundaries",
         "Stop SQL from entering the tick path"
       ],
-      "skills": ["architecture-design", "project-onboarding"],
-      "allowed_paths": ["docs/engineering/**", "app/main.py", "app/api/router.py"],
-      "restricted_paths": [".env", "*.db", ".cursor/management/**"],
+      "skills": [
+        "architecture-design",
+        "project-onboarding"
+      ],
+      "rule": "01-architecture.mdc",
+      "allowed_paths": [
+        "docs/engineering/**",
+        "app/main.py",
+        "app/api/router.py"
+      ],
+      "restricted_paths": [
+        ".env",
+        "*.db",
+        ".cursor/management/**"
+      ],
       "review_required": true,
       "active": true,
       "max_parallel_tasks": 1
@@ -50,9 +91,20 @@
         "Keep JSON portable",
         "Keep hot gameplay state out of SQL"
       ],
-      "skills": ["database-design"],
-      "allowed_paths": ["app/models/**", "app/infrastructure/database.py"],
-      "restricted_paths": [".env", "*.db", "migrations/versions/**", ".cursor/management/**"],
+      "skills": [
+        "database-design"
+      ],
+      "rule": "12-database-models.mdc",
+      "allowed_paths": [
+        "app/models/**",
+        "app/infrastructure/database.py"
+      ],
+      "restricted_paths": [
+        ".env",
+        "*.db",
+        "migrations/versions/**",
+        ".cursor/management/**"
+      ],
       "review_required": true,
       "active": true,
       "max_parallel_tasks": 1
@@ -67,9 +119,22 @@
         "Preserve legacy rows",
         "Keep seeds and imports idempotent"
       ],
-      "skills": ["alembic-migrations", "data-import"],
-      "allowed_paths": ["migrations/**", "alembic.ini", "app/database/**", "data/**"],
-      "restricted_paths": [".env", "ros_server.db", ".cursor/management/**"],
+      "skills": [
+        "alembic-migrations",
+        "data-import"
+      ],
+      "rule": "03-database-migrations.mdc",
+      "allowed_paths": [
+        "migrations/**",
+        "alembic.ini",
+        "app/database/**",
+        "data/**"
+      ],
+      "restricted_paths": [
+        ".env",
+        "ros_server.db",
+        ".cursor/management/**"
+      ],
       "review_required": true,
       "active": true,
       "max_parallel_tasks": 1
@@ -84,9 +149,23 @@
         "Hide password and token hashes",
         "Call repositories from services"
       ],
-      "skills": ["fastapi-development"],
-      "allowed_paths": ["app/api/**", "app/schemas/**", "app/services/**", "app/repositories/**"],
-      "restricted_paths": [".env", "*.db", "app/models/**", "migrations/**", ".cursor/management/**"],
+      "skills": [
+        "fastapi-development"
+      ],
+      "rule": "02-python-backend.mdc",
+      "allowed_paths": [
+        "app/api/**",
+        "app/schemas/**",
+        "app/services/**",
+        "app/repositories/**"
+      ],
+      "restricted_paths": [
+        ".env",
+        "*.db",
+        "app/models/**",
+        "migrations/**",
+        ".cursor/management/**"
+      ],
       "review_required": true,
       "active": true,
       "max_parallel_tasks": 1
@@ -101,9 +180,24 @@
         "Add regression tests",
         "Report skips separately from passes"
       ],
-      "skills": ["testing-and-validation"],
-      "allowed_paths": ["tests/**"],
-      "restricted_paths": [".env", "*.db", "app/**", "migrations/**", ".cursor/management/**"],
+      "skills": [
+        "testing-and-validation"
+      ],
+      "rule": "05-testing.mdc",
+      "allowed_paths": [
+        "tests/**",
+        "tools/player_simulator/**",
+        "tools/test_runner/**",
+        "tools/report_generator/**",
+        "docs/testing/**"
+      ],
+      "restricted_paths": [
+        ".env",
+        "*.db",
+        "app/**",
+        "migrations/**",
+        ".cursor/management/**"
+      ],
       "review_required": true,
       "active": true,
       "max_parallel_tasks": 1
@@ -118,9 +212,20 @@
         "Review schema exposure",
         "Review migration data-loss risk"
       ],
-      "skills": ["security-audit"],
-      "allowed_paths": ["docs/engineering/reviews/**"],
-      "restricted_paths": [".env", "*.db", "app/**", "migrations/**", ".cursor/management/**"],
+      "skills": [
+        "security-audit"
+      ],
+      "rule": "04-security.mdc",
+      "allowed_paths": [
+        "docs/engineering/reviews/**"
+      ],
+      "restricted_paths": [
+        ".env",
+        "*.db",
+        "app/**",
+        "migrations/**",
+        ".cursor/management/**"
+      ],
       "review_required": true,
       "active": true,
       "max_parallel_tasks": 1
@@ -135,9 +240,25 @@
         "Keep Compose secrets as placeholders",
         "Avoid starting infrastructure unless asked"
       ],
-      "skills": ["performance-audit", "project-onboarding"],
-      "allowed_paths": ["docker-compose.yml", "Dockerfile", "docs/DATABASE_OPERATIONS.md", "docs/engineering/**", "monitoring/**"],
-      "restricted_paths": [".env", "*.db", ".cursor/management/**"],
+      "skills": [
+        "performance-audit",
+        "project-onboarding"
+      ],
+      "rule": "13-devops-operations.mdc",
+      "allowed_paths": [
+        "docker-compose.yml",
+        "Dockerfile",
+        "docs/DATABASE_OPERATIONS.md",
+        "docs/engineering/**",
+        "monitoring/**",
+        "tests/database/test_postgres.py",
+        "docs/operations/**"
+      ],
+      "restricted_paths": [
+        ".env",
+        "*.db",
+        ".cursor/management/**"
+      ],
       "review_required": true,
       "active": true,
       "max_parallel_tasks": 1
@@ -152,9 +273,20 @@
         "Separate implementation, tests, and original compatibility",
         "Mark unknown behavior as unknown"
       ],
-      "skills": ["game-compatibility"],
-      "allowed_paths": ["docs/compatibility/**", "docs/reverse-engineering/**", "testdata/reference/**"],
-      "restricted_paths": [".env", "*.db", ".cursor/management/**"],
+      "skills": [
+        "game-compatibility"
+      ],
+      "rule": "07-game-compatibility.mdc",
+      "allowed_paths": [
+        "docs/compatibility/**",
+        "docs/reverse-engineering/**",
+        "testdata/reference/**"
+      ],
+      "restricted_paths": [
+        ".env",
+        "*.db",
+        ".cursor/management/**"
+      ],
       "review_required": true,
       "active": true,
       "max_parallel_tasks": 1
@@ -169,9 +301,23 @@
         "Test invalid input",
         "Keep the contract independent of official game packets"
       ],
-      "skills": ["protocol-validation"],
-      "allowed_paths": ["tests/compatibility/**", "tools/protocol_validator/**", "app/networking/protocol.py", "docs/reverse-engineering/CLIENT_ANALYSIS.md", "docs/reverse-engineering/DATA_FORMATS.md", "docs/reverse-engineering/NETWORK_INTERFACE.md"],
-      "restricted_paths": [".env", "*.db", ".cursor/management/**"],
+      "skills": [
+        "protocol-validation"
+      ],
+      "rule": "08-protocol-validation.mdc",
+      "allowed_paths": [
+        "tests/compatibility/**",
+        "tools/protocol_validator/**",
+        "app/networking/protocol.py",
+        "docs/reverse-engineering/CLIENT_ANALYSIS.md",
+        "docs/reverse-engineering/DATA_FORMATS.md",
+        "docs/reverse-engineering/NETWORK_INTERFACE.md"
+      ],
+      "restricted_paths": [
+        ".env",
+        "*.db",
+        ".cursor/management/**"
+      ],
       "review_required": true,
       "active": true,
       "max_parallel_tasks": 1
@@ -186,9 +332,22 @@
         "Test explicit server rules",
         "Avoid claiming original combat values"
       ],
-      "skills": ["gameplay-testing"],
-      "allowed_paths": ["tests/compatibility/**", "tools/game_simulator/**", "testdata/**", "docs/reverse-engineering/GAME_FUNCTIONS.md", "docs/reverse-engineering/UNKNOWN_BEHAVIOR.md"],
-      "restricted_paths": [".env", "*.db", ".cursor/management/**"],
+      "skills": [
+        "gameplay-testing"
+      ],
+      "rule": "14-gameplay-testing.mdc",
+      "allowed_paths": [
+        "tests/compatibility/**",
+        "tools/game_simulator/**",
+        "testdata/**",
+        "docs/reverse-engineering/GAME_FUNCTIONS.md",
+        "docs/reverse-engineering/UNKNOWN_BEHAVIOR.md"
+      ],
+      "restricted_paths": [
+        ".env",
+        "*.db",
+        ".cursor/management/**"
+      ],
       "review_required": true,
       "active": true,
       "max_parallel_tasks": 1
@@ -203,9 +362,21 @@
         "Record measured latency",
         "Keep capacity claims tied to a run"
       ],
-      "skills": ["performance-testing"],
-      "allowed_paths": ["tests/performance/**", "tools/load_generator/**", "reports/performance/**"],
-      "restricted_paths": [".env", "ros_server.db", ".cursor/management/**"],
+      "skills": [
+        "performance-testing"
+      ],
+      "rule": "09-performance-testing.mdc",
+      "allowed_paths": [
+        "tests/performance/**",
+        "tools/load_generator/**",
+        "reports/performance/**",
+        "docs/performance/**"
+      ],
+      "restricted_paths": [
+        ".env",
+        "ros_server.db",
+        ".cursor/management/**"
+      ],
       "review_required": true,
       "active": true,
       "max_parallel_tasks": 1
@@ -220,9 +391,21 @@
         "Expose bounded Prometheus metrics",
         "Sample high-frequency ticks"
       ],
-      "skills": ["observability"],
-      "allowed_paths": ["app/observability/**", "tools/function_tracker/**", "monitoring/**", "docs/observability/**"],
-      "restricted_paths": [".env", "*.db", ".cursor/management/**"],
+      "skills": [
+        "observability"
+      ],
+      "rule": "10-observability.mdc",
+      "allowed_paths": [
+        "app/observability/**",
+        "tools/function_tracker/**",
+        "monitoring/**",
+        "docs/observability/**"
+      ],
+      "restricted_paths": [
+        ".env",
+        "*.db",
+        ".cursor/management/**"
+      ],
       "review_required": true,
       "active": true,
       "max_parallel_tasks": 1

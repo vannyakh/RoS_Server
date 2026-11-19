@@ -34,6 +34,30 @@ def require_keys(node: dict, required: list[str], label: str, problems: list[str
             problems.append(f"{label}: missing {key}")
 
 
+def covers(allowed: list[str], path: str) -> bool:
+    def norm(value: str) -> str:
+        return value.replace("\\", "/")
+
+    path = norm(path)
+    for raw in allowed:
+        pattern = norm(raw)
+        if pattern == path:
+            return True
+        if pattern.endswith("/**"):
+            prefix = pattern[:-3]
+            if path == prefix or path.startswith(prefix + "/"):
+                return True
+            if path.endswith("/**") or path.endswith("/*"):
+                base = path[:-3] if path.endswith("/**") else path[:-2]
+                if base == prefix or base.startswith(prefix + "/"):
+                    return True
+        elif pattern.endswith("/*") and path.startswith(pattern[:-2] + "/"):
+            rest = path[len(pattern) - 1 :]
+            if "/" not in rest:
+                return True
+    return False
+
+
 def overlaps(left: str, right: str) -> bool:
     def prefix(pattern: str) -> str | None:
         if pattern.endswith("/**"):
@@ -107,10 +131,24 @@ def main() -> int:
                 problems.append(f"{label}: duplicate id {agent_id}")
             agents[agent_id] = agent
             agent_ids.append(agent_id)
+        rule = agent.get("rule")
+        rule_file = ROOT / ".cursor" / "rules" / rule if isinstance(rule, str) else None
+        if rule_file is None or not rule_file.is_file():
+            problems.append(f"{label}: rule {rule} has no file in .cursor/rules")
+        role_file = ROOT / ".cursor" / "agents" / f"{agent_id}.md" if isinstance(agent_id, str) else None
+        role_text = ""
+        if role_file is None or not role_file.is_file():
+            problems.append(f"{label}: role file .cursor/agents/{agent_id}.md is missing")
+        else:
+            role_text = role_file.read_text(encoding="utf-8")
+            if isinstance(rule, str) and rule not in role_text:
+                problems.append(f"{label}: role file does not name rule {rule}")
         for skill in agent.get("skills", []):
             skill_file = ROOT / ".cursor" / "skills" / skill / "SKILL.md"
             if not skill_file.is_file():
                 problems.append(f"{label}: skill {skill} has no SKILL.md")
+            elif skill not in role_text:
+                problems.append(f"{label}: role file does not name skill {skill}")
 
     task_items = task_schema["$defs"]["task"]
     history_items = task_schema["$defs"]["history"]
@@ -216,6 +254,14 @@ def main() -> int:
                 for right_path in right.get("files_allowed", []):
                     if overlaps(left_path, right_path):
                         problems.append(f"file overlap: {left['id']} {left_path} conflicts with {right['id']} {right_path}")
+
+    for task_id, task in by_id.items():
+        if task.get("status") in {"completed", "cancelled"}:
+            continue
+        agent = agents.get(task.get("assigned_agent"), {})
+        for path in task.get("files_allowed", []):
+            if not covers(agent.get("allowed_paths", []), path):
+                problems.append(f"{task_id}: {path} is outside {task.get('assigned_agent')} allowed_paths")
 
     if "cto" not in agents:
         problems.append("team.json: cto agent is required")

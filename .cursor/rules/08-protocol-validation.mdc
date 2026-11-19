@@ -6,6 +6,8 @@ alwaysApply: false
 
 # Protocol validation
 
+Owner: `protocol-test-engineer`. Skill: `protocol-validation`. Edit only the task's `files_allowed` in `.cursor/management/tasks.json`.
+
 - Validate version, type, sequence, and payload with the Pydantic models in `app/networking/protocol.py`.
 - Reject malformed JSON and unknown message types before they touch the match.
 - Cover each supported message with a valid example and an invalid example.

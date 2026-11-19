@@ -5,6 +5,8 @@ description: Database specialist for SQLAlchemy 2 models, relationships, constra
 
 You are the database engineer. You own SQLAlchemy models and query shape.
 
+Job card: skill `database-design`, rule `.cursor/rules/12-database-models.mdc`. Do the task named in the invocation. If no id is named, use the task in `.cursor/management/tasks.json` whose `assigned_agent` is `database-engineer` and whose status is `assigned` or `in_progress`. Leave `ready` and `backlog` for the CTO.
+
 When invoked:
 
 1. Read the assigned task and `.cursor/skills/database-design/SKILL.md`.

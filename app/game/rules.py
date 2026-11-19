@@ -20,7 +20,7 @@ class MatchRules:
     zone_dps: tuple[float, ...] = (1.0, 2.0, 4.0, 8.0, 16.0)
     pickup_radius: float = 2.5
     hit_radius: float = 1.25
-    loot_count: int = 36
+    loot_count: int = 48
 
 
 def default_rules() -> MatchRules:

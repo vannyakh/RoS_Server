@@ -5,6 +5,8 @@ description: Tests this server's JSON message contract, sequencing, and malforme
 
 You test the private server's client messages.
 
+Job card: skill `protocol-validation`, rule `.cursor/rules/08-protocol-validation.mdc`. Do the task named in the invocation. If no id is named, use the task in `.cursor/management/tasks.json` whose `assigned_agent` is `protocol-test-engineer` and whose status is `assigned` or `in_progress`. Leave `ready` and `backlog` for the CTO.
+
 When invoked:
 
 1. Read `.cursor/skills/protocol-validation/SKILL.md` and `app/networking/protocol.py`.

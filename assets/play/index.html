@@ -137,14 +137,16 @@
     };
     document.getElementById("heal").onclick = () => {
       const inventory = (state.self && state.self.match && state.self.match.self.inventory) || {};
-      if (inventory.bandage) action("use", { item_id: "bandage" });
-      else if (inventory.medkit) action("use", { item_id: "medkit" });
+      if (inventory.medkit) action("use", { item_id: "medkit" });
+      else if (inventory.energy_drink) action("use", { item_id: "energy_drink" });
+      else if (inventory.bandage) action("use", { item_id: "bandage" });
       else note("No healing item.");
     };
     document.getElementById("swap").onclick = () => {
       const self = state.self && state.self.match && state.self.match.self;
       if (!self) return;
-      const next = Object.keys(self.inventory).find((item) => (item === "pistol" || item === "rifle") && item !== self.weapon);
+      const guns = new Set(["pistol", "smg", "rifle", "shotgun", "sniper"]);
+      const next = Object.keys(self.inventory).find((item) => guns.has(item) && item !== self.weapon);
       if (next) action("equip", { item_id: next });
     };
 
@@ -201,6 +203,36 @@
       send("player.input", { move_x: moveX, move_y: moveY, aim_x: aimX, aim_y: aimY });
     }, 100);
 
+    const SKIN_COLORS = {
+      recruit: "#f4fff4",
+      field_jacket: "#6b8e4e",
+      ghillie_recon: "#3d6b47",
+      desert_striker: "#d2a86a",
+      urban_phantom: "#7c8ba1",
+      arctic_ghost: "#d8eef5",
+      night_ops: "#4c5c75",
+      crimson_hazard: "#d94f4f",
+      golden_vanguard: "#f2c14e"
+    };
+
+    const OBJECT_COLORS = {
+      warehouse: "#4f5963",
+      watchtower: "#7a5e42",
+      bunker: "#3c4347",
+      container: "#8a4b38",
+      outpost: "#5b6653",
+      ruins: "#6f685a",
+      rock: "#5c6066",
+      barricade: "#94784d"
+    };
+
+    function skinFill(skin, fallback) {
+      if (typeof skin === "string" && skin.startsWith("custom:#") && /^#[0-9a-fA-F]{6}$/.test(skin.slice(7))) {
+        return skin.slice(7);
+      }
+      return SKIN_COLORS[skin] || fallback;
+    }
+
     function draw() {
       const self = state.self;
       if (!self) return;
@@ -215,6 +247,22 @@
       ctx.fillRect(0, 0, width, height);
       const match = self.match;
       if (match) {
+        for (const obj of match.objects || []) {
+          const left = toX(obj.minimum_x);
+          const top = toY(obj.maximum_y);
+          const boxWidth = Math.max(4, (obj.maximum_x - obj.minimum_x) * scale);
+          const boxHeight = Math.max(4, (obj.maximum_y - obj.minimum_y) * scale);
+          ctx.fillStyle = OBJECT_COLORS[obj.kind] || "#5a626a";
+          ctx.fillRect(left, top, boxWidth, boxHeight);
+          ctx.strokeStyle = "#b8c4c2";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(left, top, boxWidth, boxHeight);
+          if (obj.name && boxWidth >= 24) {
+            ctx.fillStyle = "#e6ece8";
+            ctx.font = `${10 * devicePixelRatio}px system-ui`;
+            ctx.fillText(obj.name, left + 3, top + 12 * devicePixelRatio);
+          }
+        }
         ctx.beginPath();
         ctx.strokeStyle = "#d7e26a";
         ctx.lineWidth = 2;
@@ -224,21 +272,45 @@
         ctx.strokeStyle = "#8aa35a";
         ctx.arc(toX(match.zone.next_x), toY(match.zone.next_y), match.zone.next_radius * scale, 0, Math.PI * 2);
         ctx.stroke();
+        for (const vehicle of match.vehicles || []) {
+          const vx = toX(vehicle.x);
+          const vy = toY(vehicle.y);
+          ctx.fillStyle = vehicle.kind === "jeep" ? "#4b7f52" : "#d9822b";
+          ctx.fillRect(vx - 8, vy - 5, 16, 10);
+          ctx.strokeStyle = vehicle.occupant ? "#f4fff4" : "#222";
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(vx - 8, vy - 5, 16, 10);
+        }
         for (const loot of match.loot) {
-          ctx.fillStyle = loot.item_id === "rifle" || loot.item_id === "pistol" ? "#f0d090" : "#9ad0ff";
+          const weaponItems = new Set(["pistol", "smg", "rifle", "shotgun", "sniper"]);
+          const healItems = new Set(["bandage", "energy_drink", "medkit"]);
+          ctx.fillStyle = weaponItems.has(loot.item_id) ? "#f0d090" : healItems.has(loot.item_id) ? "#7ce8a6" : "#9ad0ff";
           ctx.fillRect(toX(loot.x) - 4, toY(loot.y) - 4, 8, 8);
         }
         for (const player of match.players) {
+          if (player.status && player.status !== "alive") continue;
+          const px = toX(player.x);
+          const py = toY(player.y);
           ctx.beginPath();
-          ctx.fillStyle = player.player_id === self.player_id ? "#f4fff4" : player.bot ? "#e07060" : "#7eb6ff";
-          ctx.arc(toX(player.x), toY(player.y), 7, 0, Math.PI * 2);
+          ctx.fillStyle = skinFill(player.skin, player.player_id === self.player_id ? "#f4fff4" : player.bot ? "#e07060" : "#7eb6ff");
+          ctx.arc(px, py, 7, 0, Math.PI * 2);
           ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = player.player_id === self.player_id ? "#ffffff" : player.bot ? "#e07060" : "#7eb6ff";
+          ctx.stroke();
+          if (player.nickname || player.player_id === self.player_id) {
+            ctx.fillStyle = "#e6ece8";
+            ctx.font = `${10 * devicePixelRatio}px system-ui`;
+            ctx.fillText(player.nickname || player.player_id, px + 9, py + 3);
+          }
         }
       }
       ctx.fillStyle = "#f4fff4";
       ctx.font = `${14 * devicePixelRatio}px system-ui`;
       const gear = match ? match.self : null;
       const line = [
+        self.nickname || self.player_id,
+        self.skin || "recruit",
         self.status,
         "HP " + self.health,
         gear && gear.weapon ? gear.weapon + " " + gear.mag : "unarmed",

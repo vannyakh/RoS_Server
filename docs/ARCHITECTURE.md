@@ -2,7 +2,7 @@
 
 This document is the system shape for the private server in this repository. It describes the code that exists today and the boundary of the next design. It is not an original Rules of Survival specification.
 
-The process stays a modular monolith until a new architecture decision splits it. Folder names below are the paths in this repository. A public tree can use different top-level names later. That rename is a separate change, after the behavior is documented and tested.
+The process stays a modular monolith until a new architecture decision splits it. ADR-0011 and `docs/ADMIN_ARCHITECTURE.md` record the centralized admin backend and the future runtime-process boundary; the match loop still starts in-process from `app/main.py`. Folder names below are the paths in this repository. A public tree can use different top-level names later. That rename is a separate change, after the behavior is documented and tested.
 
 ## 1. System overview
 
@@ -38,7 +38,7 @@ The control plane and the simulation share one process. A second Uvicorn worker 
 
 ## 2. Game runtime
 
-The current runtime is the in-process loop in `app/game`. A later dedicated runtime process would own the same responsibilities and would need a new decision record before the code moves.
+The current runtime is the in-process loop in `app/game`. A later dedicated runtime process would own the same responsibilities and would need a new decision record before the code moves. What that loop already owns, and the engine options that stay unevaluated, are in `docs/AUTHORITATIVE_RUNTIME.md` and `docs/ENGINE_EVALUATION.md`.
 
 Each tick reads `MatchRules` and does not query SQL. Rules in `app/game/rules.py` are local development values: map size, movement speed, queue wait, bot fill, zone radii, and zone damage. They are not original game statistics.
 

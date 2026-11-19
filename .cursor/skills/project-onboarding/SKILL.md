@@ -5,6 +5,8 @@ description: Inspects the RoS_Server repository and reports architecture, databa
 
 # Project onboarding
 
+Used by `cto`, `backend-architect`, and `devops-engineer`. Governance rule: `.cursor/rules/00-project-governance.mdc`. Read `.cursor/management/tasks.json` before planning. Do not copy task status into this skill.
+
 ## When
 
 A specialist is new to the checkout, or the CTO is about to plan work.

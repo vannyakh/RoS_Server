@@ -5,6 +5,8 @@ description: Reviews authentication, token storage, schema exposure, importer sa
 
 # Security audit
 
+Owner: `security-engineer`. Rule: `.cursor/rules/04-security.mdc`. Write only the review path in the task's `files_allowed`.
+
 ## When
 
 The task's `review_agents` includes `security-engineer`, or the change touches accounts, sessions, imports, or migrations.

@@ -5,6 +5,8 @@ description: Updates the RoS compatibility matrix from evidence. Use when a feat
 
 # Game compatibility
 
+Owner: `game-compatibility-engineer`. Rule: `.cursor/rules/07-game-compatibility.mdc`. Take the task from `.cursor/management/tasks.json` and write only its `files_allowed`.
+
 ## Workflow
 
 1. Open `testdata/reference/compatibility_matrix.json`.

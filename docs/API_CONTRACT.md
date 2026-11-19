@@ -126,6 +126,19 @@ Confirmed fact. Map routes were added with the map content system. The public ca
 | POST | `/api/v1/admin/maps/{map_id}/publish` | bearer, `MAP_PUBLISHERS` | Validates stored bytes, then publishes. |
 | POST | `/api/v1/admin/maps/{map_id}/pin` | bearer, `MAP_PUBLISHERS` | 204. Stores the exact version and manifest hash on a match. |
 
+## Original-client gateway accounts
+
+`bigworld_gateway/` calls these routes. They need the header `X-Gateway-Key` equal to `GATEWAY_API_KEY`. When `GATEWAY_API_KEY` is empty they answer 404. A wrong or missing key answers 401.
+
+| Method | Path | Body | Result |
+| --- | --- | --- | --- |
+| POST | `/api/v1/gateway/accounts/resolve` | `external_uid`, optional `ip_address` | Finds or creates the account for that uid and records a login. |
+| PUT | `/api/v1/gateway/accounts/{external_uid}/character` | `nickname`, `char_type` | Sets the player nickname and the original-client career type. 409 if the nickname is taken, 404 for an unknown uid. |
+
+Both return `account_id`, `username`, `status`, `can_play`, `is_new`, `nickname`, `char_type`. The first resolve creates account `gw_<uid>` with a player profile, statistics and starter items. That account has no usable password. `is_new` is true until a character is set. `can_play` is false when an operator suspended or banned the account; the gateway then sends no login reply. The uid comes from the Mercury login name (`<uid>@...`). The gateway derives that uid per device from the `ci=` device id the client sends on every SDK request (a 10-digit number from 9000000000 to 9999999999), so each device gets its own account. `CBP_GID` pins one uid for all devices and `DEVICE_UIDS=off` restores the shared uid `9000000001`.
+
+Operators manage these accounts through the admin routes. `GET /api/v1/admin/players` rows include `nickname` and `client` (`game` or `web`), and the search matches nicknames. `GET /api/v1/admin/players/{account_id}` includes `gateway` (`external_uid`, `char_type`, `last_login_at`, `last_ip`), or null for web accounts. `PATCH /api/v1/admin/players/{account_id}/profile` with `nickname`, `char_type` (game-client accounts only) and a required `reason` needs `players.manage`, is written to the audit log, and reaches the game on its next login.
+
 ## Not implemented
 
 Confirmed fact. These were requested by the game-services plan and are not routes:

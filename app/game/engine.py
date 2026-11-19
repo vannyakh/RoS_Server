@@ -26,13 +26,40 @@ class GameEngine:
     def reset_state(self) -> None:
         self.world = WorldState()
 
-    async def connect(self, player_id: str) -> None:
+    async def connect(
+        self,
+        player_id: str,
+        *,
+        nickname: str | None = None,
+        skin: str | None = None,
+    ) -> None:
         async with self._lock:
             player = self.world.players.get(player_id)
             if player is None:
-                self.world.players[player_id] = PlayerState(player_id=player_id)
+                player = PlayerState(player_id=player_id)
+                self.world.players[player_id] = player
             else:
                 player.connected = True
+            if nickname is not None:
+                player.nickname = nickname
+            if skin is not None:
+                player.skin = skin
+
+    async def update_identity(
+        self,
+        player_id: str,
+        *,
+        nickname: str | None = None,
+        skin: str | None = None,
+    ) -> None:
+        async with self._lock:
+            player = self.world.players.get(player_id)
+            if player is None:
+                return
+            if nickname is not None:
+                player.nickname = nickname
+            if skin is not None:
+                player.skin = skin
 
     async def disconnect(self, player_id: str) -> None:
         async with self._lock:

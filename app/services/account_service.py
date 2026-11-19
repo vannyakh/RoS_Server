@@ -97,6 +97,8 @@ class AccountService:
 
     async def account_for_token(self, token: str) -> Account:
         payload = decode_access_token(token)
+        if payload.get("kind") == "operator":
+            raise AppError(401, "Invalid or expired token")
         account_id = payload.get("sub")
         if not account_id:
             raise AppError(401, "Invalid or expired token")

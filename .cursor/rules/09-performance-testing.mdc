@@ -6,6 +6,8 @@ alwaysApply: false
 
 # Performance testing
 
+Owner: `performance-engineer`. Skill: `performance-testing`. Edit only the task's `files_allowed` in `.cursor/management/tasks.json`.
+
 - Record requests, failures, average latency, p50, p95, and p99 from the tool output.
 - Say how many simulated players ran and for how long.
 - Do not treat `MAX_PLAYERS_PER_MATCH` as measured server capacity.

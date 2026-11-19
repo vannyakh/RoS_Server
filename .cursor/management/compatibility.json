@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updated_at": "2026-11-10T23:47:02+07:00",
+  "updated_at": "2026-11-12T21:30:00+07:00",
   "source": "Inspection of this repository on 2026-11-10. Not an official Rules of Survival dataset.",
   "features": [
     {
@@ -39,14 +39,16 @@
       "original_behavior": "Unknown. No authorized original specification is in this repository.",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "reference_version": null,
-      "server_implementation": "A SHA-256 token hash is stored. No test asserts the session row.",
+      "server_implementation": "A SHA-256 token hash is stored and checked on each authenticated request. Logout sets revoked_at.",
       "implementation_status": "implemented",
-      "test_status": "not_run",
+      "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "A SHA-256 token hash is stored. No test asserts the session row.",
-      "evidence": "none",
-      "last_verified_at": null,
-      "related_tasks": []
+      "known_differences": "A SHA-256 token hash is stored and checked on each authenticated request. Logout sets revoked_at.",
+      "evidence": "tests/integration/test_auth_session.py",
+      "last_verified_at": "2026-11-12T21:30:00+07:00",
+      "related_tasks": [
+        "RO-016"
+      ]
     },
     {
       "feature_id": "AUTH-004",
@@ -54,14 +56,16 @@
       "original_behavior": "Unknown. No authorized original specification is in this repository.",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "reference_version": null,
-      "server_implementation": "Expiration is the JWT exp claim.",
+      "server_implementation": "A request is rejected when the JWT exp has passed or the stored session expires_at has passed.",
       "implementation_status": "implemented",
       "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "Expiration is the JWT exp claim.",
+      "known_differences": "A request is rejected when the JWT exp has passed or the stored session expires_at has passed.",
       "evidence": "tests/compatibility/authentication/test_login.py",
-      "last_verified_at": "2026-11-10T23:00:00+07:00",
-      "related_tasks": []
+      "last_verified_at": "2026-11-12T21:30:00+07:00",
+      "related_tasks": [
+        "RO-016"
+      ]
     },
     {
       "feature_id": "AUTH-005",
@@ -136,14 +140,16 @@
       "original_behavior": "Unknown. No authorized original specification is in this repository.",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "reference_version": null,
-      "server_implementation": "Nickname is unique and defaults from the username.",
+      "server_implementation": "Nickname is unique, stored in lowercase, and can be changed by the authenticated player. Level and account username cannot.",
       "implementation_status": "implemented",
       "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "Nickname is unique and defaults from the username.",
-      "evidence": "tests/compatibility/player/test_profile.py",
-      "last_verified_at": "2026-11-10T23:00:00+07:00",
-      "related_tasks": []
+      "known_differences": "Nickname is unique, stored in lowercase, and can be changed by the authenticated player. Level and account username cannot.",
+      "evidence": "tests/integration/test_game_services.py",
+      "last_verified_at": "2026-11-12T21:30:00+07:00",
+      "related_tasks": [
+        "RO-016"
+      ]
     },
     {
       "feature_id": "PLAY-004",
@@ -245,11 +251,12 @@
       "implementation_status": "implemented",
       "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "The in-memory queue uses account ids. Durable membership uses player ids. Original leave behavior is unknown.",
+      "known_differences": "The in-memory queue uses account ids. Durable membership uses player ids. The last member to leave closes the lobby. There is no leader column.",
       "evidence": "tests/integration/test_lobby_routes.py",
-      "last_verified_at": "2026-11-10T23:34:20+07:00",
+      "last_verified_at": "2026-11-12T21:30:00+07:00",
       "related_tasks": [
-        "RO-043"
+        "RO-043",
+        "RO-016"
       ]
     },
     {
@@ -258,14 +265,16 @@
       "original_behavior": "Unknown. No authorized original specification is in this repository.",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "reference_version": null,
-      "server_implementation": "Capacity is a service check, not a single database constraint.",
+      "server_implementation": "Capacity is reserved with a conditional update of current_players. A player can still be a member of more than one lobby.",
       "implementation_status": "implemented",
       "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "Capacity is a service check, not a single database constraint.",
+      "known_differences": "Capacity is reserved with a conditional update of current_players. A player can still be a member of more than one lobby.",
       "evidence": "tests/compatibility/lobby/test_lobby_rules.py",
-      "last_verified_at": "2026-11-10T23:00:00+07:00",
-      "related_tasks": []
+      "last_verified_at": "2026-11-12T21:30:00+07:00",
+      "related_tasks": [
+        "RO-016"
+      ]
     },
     {
       "feature_id": "LOB-005",
@@ -429,14 +438,16 @@
       "original_behavior": "Unknown. No authorized original specification is in this repository.",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "reference_version": null,
-      "server_implementation": "Speed is 5 map units per second from app/game/rules.py.",
+      "server_implementation": "Speed is 5 map units per second from app/game/rules.py. A match blocker rejects the destination point and slides along one axis. A step can pass a blocker thinner than the movement.",
       "implementation_status": "implemented",
       "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "Speed is 5 map units per second from app/game/rules.py.",
-      "evidence": "tests/compatibility/gameplay/test_scenario.py",
-      "last_verified_at": "2026-11-10T23:00:00+07:00",
-      "related_tasks": []
+      "known_differences": "Speed is 5 map units per second from app/game/rules.py. A match blocker rejects the destination point and slides along one axis. A step can pass a blocker thinner than the movement.",
+      "evidence": "tests/unit/test_runtime_session.py",
+      "last_verified_at": "2026-11-12T21:30:00+07:00",
+      "related_tasks": [
+        "RO-016"
+      ]
     },
     {
       "feature_id": "GP-003",
@@ -630,14 +641,16 @@
       "original_behavior": "Unknown. No authorized original specification is in this repository.",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "reference_version": null,
-      "server_implementation": "No experience is granted at match end.",
+      "server_implementation": "No experience is granted at match end. A rewards object on a stored result is saved and not applied. Repeating finalization is rejected.",
       "implementation_status": "not_implemented",
-      "test_status": "not_run",
+      "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "No experience is granted at match end.",
-      "evidence": "none",
-      "last_verified_at": null,
-      "related_tasks": []
+      "known_differences": "No experience is granted at match end. A rewards object on a stored result is saved and not applied. Repeating finalization is rejected.",
+      "evidence": "tests/integration/test_game_services.py",
+      "last_verified_at": "2026-11-12T21:30:00+07:00",
+      "related_tasks": [
+        "RO-016"
+      ]
     },
     {
       "feature_id": "RS-005",
@@ -645,14 +658,16 @@
       "original_behavior": "Unknown. No authorized original specification is in this repository.",
       "original_reference": "No authorized original Rules of Survival specification is in this repository.",
       "reference_version": null,
-      "server_implementation": "Currency tables exist. Match completion does not pay them.",
+      "server_implementation": "Currency tables exist. Match completion does not pay them, including when the result payload names a currency amount.",
       "implementation_status": "not_implemented",
-      "test_status": "not_run",
+      "test_status": "passing",
       "compatibility_status": "unknown",
-      "known_differences": "Currency tables exist. Match completion does not pay them.",
-      "evidence": "none",
-      "last_verified_at": null,
-      "related_tasks": []
+      "known_differences": "Currency tables exist. Match completion does not pay them, including when the result payload names a currency amount.",
+      "evidence": "tests/integration/test_game_services.py",
+      "last_verified_at": "2026-11-12T21:30:00+07:00",
+      "related_tasks": [
+        "RO-016"
+      ]
     },
     {
       "feature_id": "RS-006",

@@ -29,6 +29,10 @@ Original client research stays in `docs/reverse-engineering/`. Research notes ar
 - Do not print secrets, password hashes, raw tokens, or session hashes.
 - Do not rewrite an applied Alembic revision, downgrade the live database, or delete player-owned rows.
 
+## Original client gateway
+
+`bigworld_gateway/` was imported from RosGG-Server-v2 by owner decision. It holds the BigWorld Mercury gateway for the original client, its DNS/HTTPS targets, the client APK patch and host-rewrite tools, and Frida inspection scripts. The boundary above about original-client protection work does not apply inside `bigworld_gateway/`. Everything else in this file still does, including no secrets (keys and certificates stay git-ignored) and no proprietary binaries such as the APK. Code in `app/` must not import from `bigworld_gateway/`. The gateway reaches the database only through `/api/v1/gateway` (see `docs/API_CONTRACT.md`), never by opening the SQLite file.
+
 ## Task registry
 
 Engineering work is coordinated from `.cursor/management/tasks.json`. The CTO agent is the only role that changes task assignment or status.
@@ -41,7 +45,7 @@ Engineering work is coordinated from `.cursor/management/tasks.json`. The CTO ag
 - Research: `docs/reverse-engineering/RESEARCH_INDEX.md`
 - System shape: `docs/ARCHITECTURE.md`
 
-Specialists are `.cursor/agents/*.md`. The compatibility team is `game-compatibility-engineer`, `protocol-test-engineer`, `gameplay-test-engineer`, `performance-engineer`, and `observability-engineer`. Ask for one by name, for example `Use the security-engineer subagent for RO-009`. If that delegation does not start, run the same prompt in a separate Agent chat and say that it was manual.
+Specialists are `.cursor/agents/*.md`. Each row in `.cursor/management/team.json` names that specialist's skills and rule. Task status stays in `.cursor/management/tasks.json`. The compatibility team is `game-compatibility-engineer`, `protocol-test-engineer`, `gameplay-test-engineer`, `performance-engineer`, and `observability-engineer`. Ask for one by name, for example `Use the security-engineer subagent for RO-009`. If that delegation does not start, run the same prompt in a separate Agent chat and say that it was manual.
 
 Validate the registries with:
 

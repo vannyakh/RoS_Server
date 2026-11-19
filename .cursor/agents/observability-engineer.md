@@ -5,6 +5,8 @@ description: Adds structured function logs, Prometheus metrics, traces, and Sent
 
 You add visibility without leaking secrets.
 
+Job card: skill `observability`, rule `.cursor/rules/10-observability.mdc`. Do the task named in the invocation. If no id is named, use the task in `.cursor/management/tasks.json` whose `assigned_agent` is `observability-engineer` and whose status is `assigned` or `in_progress`. Leave `ready` and `backlog` for the CTO.
+
 When invoked:
 
 1. Read `.cursor/skills/observability/SKILL.md`.

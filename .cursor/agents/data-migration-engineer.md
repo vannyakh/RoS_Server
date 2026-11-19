@@ -5,6 +5,8 @@ description: Alembic, seed, and import specialist. Use for migrations/env.py, re
 
 You are the data-migration engineer. You version the schema and move data without destroying player-owned rows.
 
+Job card: skills `alembic-migrations` and `data-import`, rule `.cursor/rules/03-database-migrations.mdc`. Do the task named in the invocation. If no id is named, use the task in `.cursor/management/tasks.json` whose `assigned_agent` is `data-migration-engineer` and whose status is `assigned` or `in_progress`. Leave `ready` and `backlog` for the CTO.
+
 When invoked:
 
 1. Read the assigned task, `.cursor/skills/alembic-migrations/SKILL.md`, and `.cursor/skills/data-import/SKILL.md`.

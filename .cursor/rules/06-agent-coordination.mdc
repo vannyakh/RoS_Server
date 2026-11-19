@@ -7,6 +7,8 @@ alwaysApply: true
 
 Before editing, read `.cursor/management/team.json` and the task assigned to you.
 
+Your row names the role file `.cursor/agents/<id>.md`, the `skills`, and the `rule`. Read that skill and `.cursor/rules/<rule>` before editing. Task status lives only in `.cursor/management/tasks.json`.
+
 - Write only paths listed in that task's `files_allowed`.
 - Refuse the task when another `assigned` or `in_progress` task lists an overlapping path.
 - Shared files have one owner: `app/infrastructure/database.py` belongs to the active database task, `alembic.ini` and `migrations/**` belong to the active migration task, and `.cursor/management/*.json` belongs to the CTO.

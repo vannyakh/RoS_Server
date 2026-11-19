@@ -5,6 +5,8 @@ description: Runs idempotent seeds and the batch importer with dry-run, validati
 
 # Data import
 
+Owner: `data-migration-engineer`. Rule: `.cursor/rules/03-database-migrations.mdc`. Take the task from `.cursor/management/tasks.json` and write only its `files_allowed`.
+
 ## When
 
 Reference data or a user-owned JSON/CSV dataset must enter the database.

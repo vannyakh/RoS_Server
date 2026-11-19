@@ -53,4 +53,6 @@ Open the task's `history` array. It is the audit log. Do not rewrite old rows.
 
 ## Next assignment
 
-RO-009 is the next security task. RO-013 is the next research task. Both have completed dependencies. RO-011 cannot start until RO-009 is completed. RO-012 stays in review until QA runs `python scripts/validate_project_management.py`.
+Read `.cursor/management/tasks.json` before assigning. A `ready` task can be assigned when every dependency is `completed` and `files_allowed` does not overlap an `assigned` or `in_progress` task.
+
+RO-009, RO-012, RO-016, RO-029, RO-030, RO-032, RO-033, and RO-055 are completed. RO-031 is in review for QA. RO-011 is ready for the CTO. RO-035 stays in review until the full pytest command is run again. RO-045 stays blocked until an isolated PostgreSQL database exists.

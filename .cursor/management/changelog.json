@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updated_at": "2026-11-10T23:51:29+07:00",
+  "updated_at": "2026-11-12T21:32:00+07:00",
   "entries": [
     {
       "change_id": "CH-0001",
@@ -240,6 +240,103 @@
       "tests": [
         ".\\.venv\\Scripts\\python.exe -m pytest tests/performance/test_load.py -q --tb=line",
         ".\\.venv\\Scripts\\python.exe -m pytest -q --tb=line"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0010",
+      "date": "2026-11-12",
+      "version": "unreleased",
+      "category": "Documentation",
+      "title": "Sync specialist jobs with the task registry",
+      "description": "Each specialist row now names a rule file beside its skills. Role files point at that rule and at tasks.json. Open task paths were brought inside allowed_paths. Eligible backlog tasks moved to ready. RO-055 stays in review.",
+      "task_id": "RO-055",
+      "agent": "cto",
+      "files_changed": [
+        ".cursor/management/team.json",
+        ".cursor/management/tasks.json",
+        ".cursor/agents/",
+        ".cursor/rules/",
+        ".cursor/skills/",
+        "scripts/validate_agent_registry.py",
+        "docs/engineering/TEAM_STRUCTURE.md",
+        "docs/engineering/AGENT_ASSIGNMENT_GUIDE.md",
+        "docs/engineering/TASK_WORKFLOW.md",
+        "AGENTS.md"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0011",
+      "date": "2026-11-12",
+      "version": "unreleased",
+      "category": "Security",
+      "title": "Record the database security review",
+      "description": "RO-009 is completed from docs/engineering/reviews/RO-009-security.md. The review approves account storage, session hashes, response schemas, and the legacy upgrade. Three medium follow-ups remain. RO-029 and RO-032 stay in review.",
+      "task_id": "RO-009",
+      "agent": "cto",
+      "files_changed": [
+        "docs/engineering/reviews/RO-009-security.md",
+        ".cursor/management/tasks.json",
+        ".cursor/management/milestones.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "python scripts/validate_agent_registry.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0012",
+      "date": "2026-11-12",
+      "version": "unreleased",
+      "category": "Documentation",
+      "title": "Close reviewed movement, protocol, and registry tasks",
+      "description": "QA approved RO-029, RO-032, RO-012, and RO-055. The security engineer approved RO-032. The CTO re-ran the cited tests and recorded completion. RO-016 and RO-030 are ready. RO-035 stays in review.",
+      "task_id": "RO-032",
+      "agent": "cto",
+      "files_changed": [
+        ".cursor/management/tasks.json",
+        ".cursor/management/milestones.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gameplay tests/compatibility/authentication -q --tb=line",
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0013",
+      "date": "2026-11-12",
+      "version": "unreleased",
+      "category": "Compatibility",
+      "title": "Align the compatibility registry with the matrix",
+      "description": "Eight drifted rows in the management compatibility registry now match the reference matrix. Every compatibility status stays unknown. RO-016 is completed.",
+      "task_id": "RO-016",
+      "agent": "cto",
+      "files_changed": [
+        ".cursor/management/compatibility.json",
+        ".cursor/management/tasks.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "python scripts/validate_project_management.py"
       ],
       "breaking_change": false,
       "related_discovery": null,

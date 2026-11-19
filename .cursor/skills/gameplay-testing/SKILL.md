@@ -5,6 +5,8 @@ description: Runs the deterministic match scenario against app.game rules. Use w
 
 # Gameplay testing
 
+Owner: `gameplay-test-engineer`. Rule: `.cursor/rules/14-gameplay-testing.mdc`. Take the task from `.cursor/management/tasks.json` and write only its `files_allowed`.
+
 ## Workflow
 
 1. Call `ScenarioRunner().run(seed)` from `tools.game_simulator`.

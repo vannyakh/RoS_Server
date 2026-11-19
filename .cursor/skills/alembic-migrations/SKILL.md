@@ -5,6 +5,8 @@ description: Creates and verifies Alembic revisions for the async SQLite and Pos
 
 # Alembic migrations
 
+Owner: `data-migration-engineer`. Rule: `.cursor/rules/03-database-migrations.mdc`. Take the task from `.cursor/management/tasks.json` and write only its `files_allowed`.
+
 ## When
 
 `app/models` changed and the database must gain a reviewed revision.

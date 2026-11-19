@@ -6,6 +6,8 @@ alwaysApply: false
 
 # Database migrations
 
+Owner: `data-migration-engineer`. Skills: `alembic-migrations`, `data-import`. Edit only the task's `files_allowed` in `.cursor/management/tasks.json`.
+
 - Schema changes go through Alembic. `Base.metadata.create_all` is not the production path.
 - `migrations/env.py` reads `DATABASE_URL`, then application settings.
 - One revision must run on SQLite and PostgreSQL. Use `PortableJSON` for JSON / JSONB.

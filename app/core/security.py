@@ -21,10 +21,12 @@ def verify_password(password: str, hashed: str) -> bool:
     return password_hash.verify(password, hashed)
 
 
-def create_access_token(player_id: str) -> str:
+def create_access_token(subject: str, *, kind: str | None = None) -> str:
     now = datetime.now(timezone.utc)
     expires = now + timedelta(minutes=settings.jwt_expire_minutes)
-    payload = {"sub": player_id, "exp": expires, "iat": now, "jti": str(uuid4())}
+    payload = {"sub": subject, "exp": expires, "iat": now, "jti": str(uuid4())}
+    if kind:
+        payload["kind"] = kind
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 

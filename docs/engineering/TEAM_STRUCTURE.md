@@ -20,6 +20,8 @@ The CTO coordinates twelve specialists. Implementation belongs to the specialist
 
 Agent prompts are `.cursor/agents/*.md`. Cursor loads those as project subagents. Skills are `.cursor/skills/*/SKILL.md`. Rules are `.cursor/rules/*.mdc`.
 
+Each row in `team.json` names that specialist's `skills` and `rule`. The role file repeats those names. Task status stays in `tasks.json`, so a role file does not keep its own task list.
+
 `team.json` is the identity list. `tasks.json` is the work list. Discoveries, compatibility, checkpoints, milestones, decisions, and the changelog are the other project records. A conversation does not override any of them.
 
 Only the CTO edits the management JSON registries. Specialists recommend changes in their task report.

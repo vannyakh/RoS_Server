@@ -5,6 +5,8 @@ description: Designs SQLAlchemy 2 models, foreign keys, unique constraints, and 
 
 # Database design
 
+Owner: `database-engineer`. Rule: `.cursor/rules/12-database-models.mdc`. Take the task from `.cursor/management/tasks.json` and write only its `files_allowed`.
+
 ## When
 
 A task adds a table, a foreign key, a uniqueness rule, or an index.

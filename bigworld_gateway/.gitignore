@@ -1,0 +1,16 @@
+# secrets / generated keys - never publish (the test CA is trusted by patched clients)
+server/certs/*.key
+server/certs/*.csr
+server/certs/*.srl
+server/server_keys/*priv*
+*.pem
+# runtime
+logs/
+__pycache__/
+*.pyc
+*.bak
+server/saved_accounts.json
+# large binaries: attach to GitHub Releases instead
+client/apk/*.apk
+# local settings / secrets
+.env

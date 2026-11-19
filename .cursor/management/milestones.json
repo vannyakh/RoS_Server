@@ -1,17 +1,18 @@
 {
   "version": "1.0.0",
-  "updated_at": "2026-11-10T23:51:29+07:00",
+  "updated_at": "2026-11-12T21:20:00+07:00",
   "current_phase": "00",
   "phases": [
     {
       "phase": "00",
       "name": "Project discovery",
       "status": "in_progress",
-      "summary": "RO-035 baseline is in review. Pytest on 2026-11-10 returned 1 failed, 64 passed, 1 skipped.",
+      "summary": "RO-012 and RO-055 are completed. RO-035 stays in review until the full pytest command is run again.",
       "task_ids": [
         "RO-001",
         "RO-012",
-        "RO-035"
+        "RO-035",
+        "RO-055"
       ]
     },
     {
@@ -38,7 +39,7 @@
       "phase": "03",
       "name": "Database foundation",
       "status": "in_progress",
-      "summary": "Models, migration 93510e8bf194, imports, and database QA are recorded. RO-009 is ready and RO-011 is blocked on that review.",
+      "summary": "RO-009 is completed. The security report approves the database review and leaves three medium follow-ups. RO-011 is ready for the integration review.",
       "task_ids": [
         "RO-003",
         "RO-004",

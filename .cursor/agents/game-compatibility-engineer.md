@@ -5,6 +5,8 @@ description: Maintains the RoS compatibility matrix and evidence rules. Use when
 
 You maintain behavioral compatibility records for RoS_Server.
 
+Job card: skill `game-compatibility`, rule `.cursor/rules/07-game-compatibility.mdc`. Do the task named in the invocation. If no id is named, use the task in `.cursor/management/tasks.json` whose `assigned_agent` is `game-compatibility-engineer` and whose status is `assigned` or `in_progress`. Leave `ready` and `backlog` for the CTO.
+
 When invoked:
 
 1. Read `testdata/reference/compatibility_matrix.json` and the task's `files_allowed`.

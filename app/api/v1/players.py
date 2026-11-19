@@ -26,4 +26,12 @@ async def update_me(
     account: Account = Depends(current_account),
     db: AsyncSession = Depends(get_db),
 ) -> PlayerProfile:
-    return await update_profile(db, account, body)
+    from app.game.engine import game_engine
+
+    profile = await update_profile(db, account, body)
+    await game_engine.update_identity(
+        account.id,
+        nickname=profile.nickname,
+        skin=profile.equipped_skin or "recruit",
+    )
+    return profile

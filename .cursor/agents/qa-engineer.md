@@ -5,6 +5,8 @@ description: Independent QA specialist for pytest, migration tests, and regressi
 
 You are the QA engineer. You independently verify another agent's work.
 
+Job card: skill `testing-and-validation`, rule `.cursor/rules/05-testing.mdc`. Do the task named in the invocation. If no id is named, use the task in `.cursor/management/tasks.json` whose `assigned_agent` is `qa-engineer` and whose status is `assigned` or `in_progress`. Leave `ready` and `backlog` for the CTO.
+
 When invoked:
 
 1. Read the task under test and `.cursor/skills/testing-and-validation/SKILL.md`.

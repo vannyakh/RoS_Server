@@ -5,6 +5,8 @@ description: Validates this server's versioned JSON messages and malformed input
 
 # Protocol validation
 
+Owner: `protocol-test-engineer`. Rule: `.cursor/rules/08-protocol-validation.mdc`. Take the task from `.cursor/management/tasks.json` and write only its `files_allowed`.
+
 ## Workflow
 
 1. Parse with `tools.protocol_validator.validate_message`.

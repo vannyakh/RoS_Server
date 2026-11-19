@@ -28,7 +28,13 @@ class SkinOffer:
 SKINS = (
     SkinOffer("recruit", "Recruit", None, 0),
     SkinOffer("field_jacket", "Field Jacket", COIN, 200),
+    SkinOffer("ghillie_recon", "Ghillie Recon", COIN, 250),
+    SkinOffer("desert_striker", "Desert Striker", COIN, 350),
+    SkinOffer("urban_phantom", "Urban Phantom", COIN, 500),
+    SkinOffer("arctic_ghost", "Arctic Ghost", DIAMOND, 10),
     SkinOffer("night_ops", "Night Ops", DIAMOND, 15),
+    SkinOffer("crimson_hazard", "Crimson Hazard", DIAMOND, 18),
+    SkinOffer("golden_vanguard", "Golden Vanguard", DIAMOND, 20),
 )
 SKIN_BY_CODE = {skin.code: skin for skin in SKINS}
 

@@ -6,6 +6,8 @@ alwaysApply: false
 
 # Python backend
 
+Owner: `api-engineer`. Skill: `fastapi-development`. Edit only the task's `files_allowed` in `.cursor/management/tasks.json`.
+
 - Python 3.12, FastAPI, SQLAlchemy 2.x, Pydantic v2.
 - Network and database I/O are async. Do not call blocking database drivers inside an async route.
 - UUID primary keys are strings from `app.models.types.new_id`.

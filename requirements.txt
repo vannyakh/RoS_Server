@@ -18,3 +18,4 @@ opentelemetry-sdk>=1.27
 sentry-sdk>=2.19
 locust>=2.32
 websocket-client>=1.8
+pycryptodome>=3.20

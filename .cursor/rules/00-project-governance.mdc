@@ -5,6 +5,8 @@ alwaysApply: true
 
 # Project governance
 
+Owner: `cto`. Skills: `engineering-task-management`, `architecture-design`, `project-onboarding`. Assign from `.cursor/management/tasks.json`.
+
 The source of truth for task state is `.cursor/management/tasks.json`. Conversation progress is not completion.
 
 - The CTO agent is the only role that assigns or reassigns tasks in the registry.

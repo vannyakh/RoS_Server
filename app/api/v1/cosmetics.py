@@ -43,4 +43,8 @@ async def equip(
     player: Player = Depends(current_player),
     db: AsyncSession = Depends(get_db),
 ) -> WalletResponse:
-    return WalletResponse.model_validate(await equip_skin(db, player, code))
+    from app.game.engine import game_engine
+
+    snapshot = await equip_skin(db, player, code)
+    await game_engine.update_identity(player.account_id, skin=snapshot.get("equipped_skin"))
+    return WalletResponse.model_validate(snapshot)

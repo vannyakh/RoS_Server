@@ -6,6 +6,8 @@ alwaysApply: false
 
 # Architecture
 
+Owner: `backend-architect`. Skills: `architecture-design`, `project-onboarding`. Edit only the task's `files_allowed` in `.cursor/management/tasks.json`.
+
 Python 3.12 modular monolith. PostgreSQL is the production database. SQLite is the development database. Redis is for temporary shared state, not durable player records.
 
 Dependency direction:

@@ -5,6 +5,8 @@ description: Records function execution, Prometheus metrics, traces, and Sentry-
 
 # Observability
 
+Owner: `observability-engineer`. Rule: `.cursor/rules/10-observability.mdc`. Take the task from `.cursor/management/tasks.json` and write only its `files_allowed`.
+
 ## Workflow
 
 1. Wrap the operation in `function_tracker.track` and mark the lifecycle stage.

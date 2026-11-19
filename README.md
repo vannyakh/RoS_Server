@@ -16,6 +16,18 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 Allow TCP port 8000 through Windows Firewall for private networks if the phone cannot connect.
 
+## Original client gateway
+
+`bigworld_gateway/` is the server for the original Rules of Survival client (BigWorld Mercury on UDP/TCP 25000, plus DNS 53, HTTP 80 and HTTPS 443). It came from the RosGG-Server-v2 project and runs separately from the FastAPI app. With `GATEWAY_API_KEY` set in `.env` and this FastAPI server running, original-client logins become accounts named `gw_<uid>` that the admin console lists, renames and bans. Without it, the gateway keeps accounts in `bigworld_gateway/server/saved_accounts.json`.
+
+```powershell
+cd bigworld_gateway
+.\start.cmd   # edit config.cmd first: ROS_PC_IP = this PC's LAN IP
+.\stop.cmd
+```
+
+Setup, phone install and status are in `bigworld_gateway/README.md`.
+
 ## Match
 
 Register, log in, then connect to `ws://<host>:8000/api/v1/ws`. The first message carries the token. Do not put the token in the URL.

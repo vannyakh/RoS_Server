@@ -12,6 +12,7 @@ from app.models.game_data import (
     VehicleDefinition,
     WeaponDefinition,
 )
+from app.models.gateway import GatewayIdentity, GatewayItem
 from app.models.inventory import CurrencyTransaction, InventoryItem, PlayerCurrency, PlayerInventory
 from app.models.lobby import Lobby, LobbyMember, Team, TeamMember
 from app.models.map_content import (
@@ -24,17 +25,22 @@ from app.models.map_content import (
     MapVersion,
 )
 from app.models.match import Match, MatchParticipant, MatchResult, MatchStatistics
+from app.models.operator import AuditLog, Operator, OperatorRole, OperatorSession, Permission, Role, RolePermission
 from app.models.player import Player, PlayerProgression, PlayerStatistics
+from app.models.support import ModerationAction, PlayerReport, SupportCase, SupportNote
 
 __all__ = [
     "Account",
     "AccountDevice",
+    "AuditLog",
     "AccountSession",
     "AchievementDefinition",
     "CurrencyTransaction",
     "EquipmentDefinition",
     "FeatureConfiguration",
     "GameConfiguration",
+    "GatewayIdentity",
+    "GatewayItem",
     "GameMode",
     "InventoryItem",
     "ItemDefinition",
@@ -53,13 +59,23 @@ __all__ = [
     "MatchParticipant",
     "MatchResult",
     "MatchStatistics",
+    "ModerationAction",
+    "Operator",
+    "OperatorRole",
+    "OperatorSession",
+    "Permission",
     "Player",
     "PlayerCurrency",
     "PlayerInventory",
     "PlayerProgression",
+    "PlayerReport",
     "PlayerStatistics",
     "RankDefinition",
+    "Role",
+    "RolePermission",
     "ServerConfiguration",
+    "SupportCase",
+    "SupportNote",
     "Team",
     "TeamMember",
     "VehicleDefinition",

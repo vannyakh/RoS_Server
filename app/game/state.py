@@ -30,6 +30,8 @@ class PlayerState:
     inventory: dict[str, int] = field(default_factory=dict)
     mags: dict[str, int] = field(default_factory=dict)
     vehicle: str | None = None
+    nickname: str | None = None
+    skin: str = "recruit"
 
 
 @dataclass(frozen=True)
@@ -38,6 +40,8 @@ class Blocker:
     minimum_y: float
     maximum_x: float
     maximum_y: float
+    kind: str = "cover"
+    name: str = ""
 
 
 @dataclass

@@ -26,6 +26,6 @@ RO-009, the independent security review, is still open. RO-011 stays blocked unt
 
 ## Project records
 
-Accepted decisions ADR-0001 through ADR-0009 are copied in `docs/architecture/decisions/`. A boarded buggy uses speed 12 from `app/game/items.py`. On-foot speed stays 5. ADR-0009 records that split. ADR-0005 and ADR-0006 add the registry and compatibility-evidence rules. ADR-0007 enforces the stored session on HTTP and WebSocket and adds `GET /ready` without changing `GET /health`. They do not change the server shape, portable schema, or legacy-player decisions above.
+Accepted decisions ADR-0001 through ADR-0009 are copied in `docs/architecture/decisions/`. ADR-0011, the centralized admin backend and runtime boundary, is `docs/architecture/decisions/ADR-0011-centralized-admin-backend.md`, with the readable page `docs/ADMIN_ARCHITECTURE.md`. A boarded buggy uses speed 12 from `app/game/items.py`. On-foot speed stays 5. ADR-0009 records that split. ADR-0005 and ADR-0006 add the registry and compatibility-evidence rules. ADR-0007 enforces the stored session on HTTP and WebSocket and adds `GET /ready` without changing `GET /health`. They do not change the server shape, portable schema, or legacy-player decisions above.
 
 Task, discovery, compatibility, checkpoint, milestone, and changelog state lives in `.cursor/management`. The dashboard is `python -m tools.project_tracker.project_status`.

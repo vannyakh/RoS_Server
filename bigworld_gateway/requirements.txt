@@ -1,0 +1,3 @@
+pycryptodome
+frida
+frida-tools

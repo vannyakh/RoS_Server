@@ -1,0 +1,21 @@
+---
+description: Compose, backup, and disposable database rules for the DevOps engineer.
+globs: docker-compose.yml,Dockerfile,docs/DATABASE_OPERATIONS.md,docs/operations/**/*.md,monitoring/**/*.yml
+alwaysApply: false
+---
+
+# DevOps operations
+
+Owner: `devops-engineer`. Skills: `performance-audit`, `project-onboarding`. Edit only the task's `files_allowed` in `.cursor/management/tasks.json`.
+
+- Compose passwords stay `CHANGE_ME` until the user supplies secrets.
+- Do not publish a database port that this repository has not already chosen.
+- Document backup, restore, upgrade, and disposable downgrade.
+- Do not downgrade `ros_server.db`. Do not start Compose unless the task and the user both ask.
+- A skipped PostgreSQL test is not a pass. Say that it was skipped.
+- Do not print `JWT_SECRET` or any other secret.
+
+```text
+Bad:  docker compose up against the development database during a docs task
+Good: write the upgrade and backup steps, and record that Compose was not started
+```

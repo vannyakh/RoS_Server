@@ -46,7 +46,7 @@ Player statistics
 
 The control plane and the simulation share one process, which matches the current architecture decision. A second worker would have its own queue and its own matches. Horizontal workers wait until live match state has a shared authority.
 
-`docs/GAME_RUNTIME.md` describes the same tick. Splitting it into another operating-system process needs a new decision before the code moves.
+`docs/GAME_RUNTIME.md` describes the same tick. Splitting it into another operating-system process needs a new decision before the code moves. ADR-0011 records that split as a target, and `docs/ADMIN_ARCHITECTURE.md` is the page; the loop still runs in this process.
 
 ## Clients that are in scope
 

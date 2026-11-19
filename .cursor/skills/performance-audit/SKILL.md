@@ -5,6 +5,8 @@ description: Reviews indexes, query loading, pooling, and tick isolation for RoS
 
 # Performance audit
 
+Owner: `devops-engineer`. Rule: `.cursor/rules/13-devops-operations.mdc`. Take the task from `.cursor/management/tasks.json` and write only its `files_allowed`.
+
 ## When
 
 A change adds a list endpoint, a relationship traversal, or a write on a frequently called path.

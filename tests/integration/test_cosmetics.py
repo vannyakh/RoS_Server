@@ -42,7 +42,10 @@ async def test_login_lobby_wallet_and_skins(client):
     assert offers["recruit"]["owned"] is True
     assert offers["field_jacket"]["price"] == 200
     assert offers["field_jacket"]["currency"] == "coin"
+    assert offers["ghillie_recon"]["currency"] == "coin"
     assert offers["night_ops"]["currency"] == "diamond"
+    assert offers["golden_vanguard"]["currency"] == "diamond"
+    assert len(offers) >= 9
 
     minted = await client.post(
         "/api/v1/inventory/currency",

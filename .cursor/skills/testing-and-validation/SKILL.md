@@ -5,6 +5,8 @@ description: Runs and extends pytest coverage for models, migrations, imports, a
 
 # Testing and validation
 
+Owner: `qa-engineer`. Rule: `.cursor/rules/05-testing.mdc`. Run the task's `verification_commands` from `.cursor/management/tasks.json`. Do not set the task to `completed`.
+
 ## When
 
 A task reaches testing, or a change needs a regression test.

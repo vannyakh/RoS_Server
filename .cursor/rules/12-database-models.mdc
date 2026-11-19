@@ -1,0 +1,21 @@
+---
+description: SQLAlchemy model rules for the database engineer. Revisions belong to the migration task.
+globs: app/models/**/*.py
+alwaysApply: false
+---
+
+# Database models
+
+Owner: `database-engineer`. Skill: `database-design`. Edit only the task's `files_allowed` in `.cursor/management/tasks.json`.
+
+- UUID string keys, UTC timestamps, explicit foreign keys, and `lazy="raise"`.
+- JSON documents use `PortableJSON` and the attribute `details`.
+- Lookup and uniqueness belong in indexes and constraints.
+- Live positions and aim stay out of tables.
+- Do not write Alembic revisions. The data-migration engineer owns `migrations/**`.
+- Do not drop `legacy_players` or delete player-owned rows.
+
+```text
+Bad:  database-engineer edits migrations/versions during a model task
+Good: the model exports from app.models and names the constraints a new revision must create
+```

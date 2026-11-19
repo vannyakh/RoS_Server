@@ -1,7 +1,7 @@
 {
   "project": "RoS_Server",
   "version": "1.1.0",
-  "updated_at": "2026-11-10T23:51:29+07:00",
+  "updated_at": "2026-11-12T21:50:00+07:00",
   "task_statuses": [
     "backlog",
     "research",
@@ -567,7 +567,7 @@
       "description": "Independently review account storage, session hashes, response schemas, importer behavior, and migration safety.",
       "category": "security",
       "assigned_agent": "security-engineer",
-      "status": "ready",
+      "status": "completed",
       "priority": "high",
       "dependencies": [
         "RO-003",
@@ -592,9 +592,25 @@
       "test_evidence": [],
       "compatibility_status": "not_applicable",
       "created_at": "2026-11-10T22:45:00+07:00",
-      "updated_at": "2026-11-10T22:45:00+07:00",
-      "completed_at": null,
-      "completion_report": null,
+      "updated_at": "2026-11-12T21:10:00+07:00",
+      "completed_at": "2026-11-12T21:10:00+07:00",
+      "completion_report": {
+        "summary": "The security engineer reviewed account storage, session hashes, response schemas, the account importer, and upgrade 93510e8bf194. The CTO read docs/engineering/reviews/RO-009-security.md. Response schemas omit password_hash and token_hash. The upgrade does not drop legacy_players. Recommendation is approve. Three medium follow-ups remain.",
+        "files_changed": [
+          "docs/engineering/reviews/RO-009-security.md"
+        ],
+        "tests_executed": [
+          "python scripts/validate_agent_registry.py"
+        ],
+        "test_results": "Exit code 0. Output: OK: 13 agents, 55 tasks. This registry check is not a security pass. The CTO inspected the review file before recording completion.",
+        "migration_results": "No migration was added. The review cites upgrade 93510e8bf194 and states that upgrade does not drop legacy_players.",
+        "review_findings": "No critical or high findings. Medium: missing-user login skips password verification; operator login has no failure limit; an inactive account gets a different token error.",
+        "remaining_issues": [
+          "Missing-user login skips password verification.",
+          "Operator login is not covered by the in-memory failure limit.",
+          "A decoded token for a missing or inactive account returns a different 401 detail."
+        ]
+      },
       "block_reason": null,
       "resolution_plan": null,
       "history": [
@@ -606,6 +622,51 @@
           "from_agent": null,
           "to_agent": "security-engineer",
           "note": "Ready because the models and migration exist. No security report has been written."
+        },
+        {
+          "at": "2026-11-12T21:10:00+07:00",
+          "actor": "cto",
+          "from_status": "ready",
+          "to_status": "assigned",
+          "from_agent": "security-engineer",
+          "to_agent": "security-engineer",
+          "note": "Security review file exists. The CTO assigned the recorded review."
+        },
+        {
+          "at": "2026-11-12T21:10:00+07:00",
+          "actor": "cto",
+          "from_status": "assigned",
+          "to_status": "in_progress",
+          "from_agent": "security-engineer",
+          "to_agent": "security-engineer",
+          "note": "The security engineer wrote docs/engineering/reviews/RO-009-security.md."
+        },
+        {
+          "at": "2026-11-12T21:10:00+07:00",
+          "actor": "cto",
+          "from_status": "in_progress",
+          "to_status": "review",
+          "from_agent": "security-engineer",
+          "to_agent": "security-engineer",
+          "note": "The report cites the files it read and recommends approve."
+        },
+        {
+          "at": "2026-11-12T21:10:00+07:00",
+          "actor": "cto",
+          "from_status": "review",
+          "to_status": "testing",
+          "from_agent": "security-engineer",
+          "to_agent": "security-engineer",
+          "note": "The CTO is running the registry validator named on the task."
+        },
+        {
+          "at": "2026-11-12T21:10:00+07:00",
+          "actor": "cto",
+          "from_status": "testing",
+          "to_status": "completed",
+          "from_agent": "security-engineer",
+          "to_agent": "security-engineer",
+          "note": "The CTO read the report and recorded the validator output. Three medium follow-ups stay open."
         }
       ]
     },
@@ -682,7 +743,7 @@
       "description": "Review the database foundation only after seeds, services, QA, and the security review are complete.",
       "category": "governance",
       "assigned_agent": "cto",
-      "status": "blocked",
+      "status": "ready",
       "priority": "critical",
       "dependencies": [
         "RO-005",
@@ -711,11 +772,11 @@
       "test_evidence": [],
       "compatibility_status": "not_applicable",
       "created_at": "2026-11-10T22:45:00+07:00",
-      "updated_at": "2026-11-10T22:45:00+07:00",
+      "updated_at": "2026-11-12T21:10:00+07:00",
       "completed_at": null,
       "completion_report": null,
-      "block_reason": "RO-009 is still ready and has no security review report.",
-      "resolution_plan": "Run the security-engineer on RO-009 and write docs/engineering/reviews/RO-009-security.md. Complete RO-009 only after the CTO checks the cited files. Re-run the test suite and the registry validator, then move RO-011 from blocked to ready.",
+      "block_reason": null,
+      "resolution_plan": null,
       "history": [
         {
           "at": "2026-11-10T22:45:00+07:00",
@@ -725,6 +786,15 @@
           "from_agent": null,
           "to_agent": "cto",
           "note": "Blocked on the missing security review. Implementation and SQLite tests are already recorded on RO-001 through RO-008 and RO-010."
+        },
+        {
+          "at": "2026-11-12T21:10:00+07:00",
+          "actor": "cto",
+          "from_status": "blocked",
+          "to_status": "ready",
+          "from_agent": "cto",
+          "to_agent": "cto",
+          "note": "RO-009 is completed. The integration review can start after the suite is run again."
         }
       ]
     },
@@ -1335,7 +1405,7 @@
       "description": "Add checkpoint, discovery, compatibility, changelog, and roadmap registries beside the existing task registry. Do not delete RO-001 through RO-028.",
       "category": "governance",
       "assigned_agent": "cto",
-      "status": "review",
+      "status": "completed",
       "priority": "critical",
       "dependencies": [
         "RO-001"
@@ -1372,9 +1442,26 @@
       "test_evidence": [],
       "compatibility_status": "not_applicable",
       "created_at": "2026-11-10T22:55:00+07:00",
-      "updated_at": "2026-11-10T22:55:00+07:00",
-      "completed_at": null,
-      "completion_report": null,
+      "updated_at": "2026-11-12T21:20:00+07:00",
+      "completed_at": "2026-11-12T21:20:00+07:00",
+      "completion_report": {
+        "summary": "QA approved the project-control registries. The CTO ran python scripts/validate_project_management.py. Output: OK: 55 tasks, 12 discoveries, 43 compatibility features. No feature is marked compatible.",
+        "files_changed": [
+          ".cursor/management/tasks.json",
+          ".cursor/management/workflow.json",
+          "tools/project_tracker/",
+          "scripts/validate_project_management.py"
+        ],
+        "tests_executed": [
+          "python scripts/validate_project_management.py"
+        ],
+        "test_results": "Exit code 0. Output: OK: 55 tasks, 12 discoveries, 43 compatibility features.",
+        "migration_results": "No migration was added.",
+        "review_findings": "QA recommendation is approve. Historical task ids remain. No compatibility claim was added.",
+        "remaining_issues": [
+          "RO-035 stays in review until the full pytest command is run again."
+        ]
+      },
       "block_reason": null,
       "resolution_plan": null,
       "history": [
@@ -1422,6 +1509,24 @@
           "from_agent": "cto",
           "to_agent": "cto",
           "note": "Left in review until QA runs the validator. The CTO does not complete its own task."
+        },
+        {
+          "at": "2026-11-12T21:20:00+07:00",
+          "actor": "cto",
+          "from_status": "review",
+          "to_status": "testing",
+          "from_agent": "cto",
+          "to_agent": "cto",
+          "note": "The CTO ran the project validator after the QA report."
+        },
+        {
+          "at": "2026-11-12T21:20:00+07:00",
+          "actor": "cto",
+          "from_status": "testing",
+          "to_status": "completed",
+          "from_agent": "cto",
+          "to_agent": "cto",
+          "note": "QA approved the registry validation."
         }
       ]
     },
@@ -1806,7 +1911,7 @@
       "description": "When the matrix changes, update the management compatibility registry through the CTO. A local pass still leaves original compatibility unknown.",
       "category": "compatibility",
       "assigned_agent": "game-compatibility-engineer",
-      "status": "backlog",
+      "status": "completed",
       "priority": "high",
       "dependencies": [
         "RO-012",
@@ -1830,9 +1935,23 @@
       "test_evidence": [],
       "compatibility_status": "unknown",
       "created_at": "2026-11-10T22:55:00+07:00",
-      "updated_at": "2026-11-10T22:55:00+07:00",
-      "completed_at": null,
-      "completion_report": null,
+      "updated_at": "2026-11-12T21:32:00+07:00",
+      "completed_at": "2026-11-12T21:32:00+07:00",
+      "completion_report": {
+        "summary": "The game compatibility engineer found docs and testdata already aligned. The CTO copied test_status, evidence, and known_differences from the reference matrix into the management registry for AUTH-003, AUTH-004, PLAY-003, LOB-003, LOB-004, GP-002, RS-004, and RS-005. No row was marked compatible.",
+        "files_changed": [
+          ".cursor/management/compatibility.json"
+        ],
+        "tests_executed": [
+          "python scripts/validate_project_management.py"
+        ],
+        "test_results": "Exit code 0. Output: OK: 55 tasks, 12 discoveries, 43 compatibility features.",
+        "migration_results": "No migration was added.",
+        "review_findings": "The specialist recommendation was to copy those eight rows and leave compatibility_status unknown. The CTO applied that copy. LOB-003 kept its longer server_implementation because it was not a copy of the stale sentence.",
+        "remaining_issues": [
+          "Original Rules of Survival compatibility stays unknown for all 43 features."
+        ]
+      },
       "block_reason": null,
       "resolution_plan": null,
       "history": [
@@ -1844,6 +1963,60 @@
           "from_agent": null,
           "to_agent": "game-compatibility-engineer",
           "note": "Waiting until the project-control task leaves review."
+        },
+        {
+          "at": "2026-11-12T21:20:00+07:00",
+          "actor": "cto",
+          "from_status": "backlog",
+          "to_status": "ready",
+          "from_agent": "game-compatibility-engineer",
+          "to_agent": "game-compatibility-engineer",
+          "note": "RO-012 and RO-020 are completed. The compatibility registry alignment can be assigned."
+        },
+        {
+          "at": "2026-11-12T21:22:00+07:00",
+          "actor": "cto",
+          "from_status": "ready",
+          "to_status": "assigned",
+          "from_agent": "game-compatibility-engineer",
+          "to_agent": "game-compatibility-engineer",
+          "note": "The CTO assigned the game compatibility engineer. Management JSON stays with the CTO."
+        },
+        {
+          "at": "2026-11-12T21:22:00+07:00",
+          "actor": "cto",
+          "from_status": "assigned",
+          "to_status": "in_progress",
+          "from_agent": "game-compatibility-engineer",
+          "to_agent": "game-compatibility-engineer",
+          "note": "The specialist session is running. The specialist does not edit tasks.json."
+        },
+        {
+          "at": "2026-11-12T21:28:00+07:00",
+          "actor": "cto",
+          "from_status": "in_progress",
+          "to_status": "review",
+          "from_agent": "game-compatibility-engineer",
+          "to_agent": "game-compatibility-engineer",
+          "note": "The matrix and the markdown already match. The management compatibility registry still drifts on eight rows. Left in review for the CTO to copy those fields. No feature was marked compatible."
+        },
+        {
+          "at": "2026-11-12T21:32:00+07:00",
+          "actor": "cto",
+          "from_status": "review",
+          "to_status": "testing",
+          "from_agent": "game-compatibility-engineer",
+          "to_agent": "game-compatibility-engineer",
+          "note": "The CTO copied the eight drifted rows and ran the project validator."
+        },
+        {
+          "at": "2026-11-12T21:32:00+07:00",
+          "actor": "cto",
+          "from_status": "testing",
+          "to_status": "completed",
+          "from_agent": "game-compatibility-engineer",
+          "to_agent": "game-compatibility-engineer",
+          "note": "Feature ids remain. Every compatibility_status stays unknown. QA is not the reviewer on this task; the CTO approved the registry copy."
         }
       ]
     },
@@ -2016,7 +2189,7 @@
       "description": "Record the local movement contract from app/game/rules.py and the scenario tests. Do not treat that contract as original RoS movement.",
       "category": "gameplay",
       "assigned_agent": "gameplay-test-engineer",
-      "status": "backlog",
+      "status": "completed",
       "priority": "high",
       "dependencies": [
         "RO-015",
@@ -2039,9 +2212,23 @@
       "test_evidence": [],
       "compatibility_status": "unknown",
       "created_at": "2026-11-10T22:55:00+07:00",
-      "updated_at": "2026-11-10T22:55:00+07:00",
-      "completed_at": null,
-      "completion_report": null,
+      "updated_at": "2026-11-12T21:20:00+07:00",
+      "completed_at": "2026-11-12T21:20:00+07:00",
+      "completion_report": {
+        "summary": "QA approved the movement evidence. The CTO re-ran the gameplay and authentication tests together: 21 passed. The movement test cites app/game/rules.py and keeps GP-002 unknown.",
+        "files_changed": [
+          "tests/compatibility/gameplay/test_movement.py"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gameplay tests/compatibility/authentication -q --tb=line"
+        ],
+        "test_results": "Exit code 0. 21 passed in 3.07s. Gameplay subset previously reported 2 passed. No failures and no skips in this run.",
+        "migration_results": "No migration was added.",
+        "review_findings": "QA recommendation is approve. The test cites MatchRules in app/game/rules.py and asserts GP-002 compatibility_status is unknown.",
+        "remaining_issues": [
+          "Original Rules of Survival movement stays unknown."
+        ]
+      },
       "block_reason": null,
       "resolution_plan": null,
       "history": [
@@ -2053,6 +2240,60 @@
           "from_agent": null,
           "to_agent": "gameplay-test-engineer",
           "note": "Waiting for game-function research. The simulator from RO-022 already exists."
+        },
+        {
+          "at": "2026-11-12T20:55:00+07:00",
+          "actor": "cto",
+          "from_status": "backlog",
+          "to_status": "ready",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "Dependencies are completed, so the task is ready to assign."
+        },
+        {
+          "at": "2026-11-12T21:10:00+07:00",
+          "actor": "cto",
+          "from_status": "ready",
+          "to_status": "assigned",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "The CTO assigned the specialist report already in the working tree."
+        },
+        {
+          "at": "2026-11-12T21:10:00+07:00",
+          "actor": "cto",
+          "from_status": "assigned",
+          "to_status": "in_progress",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "The specialist wrote the allowed files. The registry was not edited by that agent."
+        },
+        {
+          "at": "2026-11-12T21:10:00+07:00",
+          "actor": "cto",
+          "from_status": "in_progress",
+          "to_status": "review",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "Gameplay evidence is in tests/compatibility/gameplay/test_movement.py. QA has not reviewed it."
+        },
+        {
+          "at": "2026-11-12T21:20:00+07:00",
+          "actor": "cto",
+          "from_status": "review",
+          "to_status": "testing",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "The CTO re-ran the gameplay tests after the QA report."
+        },
+        {
+          "at": "2026-11-12T21:20:00+07:00",
+          "actor": "cto",
+          "from_status": "testing",
+          "to_status": "completed",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "QA approved and the CTO recorded the pytest output."
         }
       ]
     },
@@ -2063,7 +2304,7 @@
       "description": "Record local pistol and rifle values as server rules. Equipment and vehicles stay unimplemented until a separate contract exists.",
       "category": "gameplay",
       "assigned_agent": "gameplay-test-engineer",
-      "status": "backlog",
+      "status": "completed",
       "priority": "high",
       "dependencies": [
         "RO-029"
@@ -2074,7 +2315,8 @@
       ],
       "acceptance_criteria": [
         "Damage numbers cite app/game/items.py",
-        "GP-007 and GP-008 remain not implemented",
+        "GP-007 stays not implemented",
+        "GP-008 stays at its current matrix status, implemented, with compatibility_status unknown",
         "Original compatibility stays unknown"
       ],
       "verification_commands": [
@@ -2086,9 +2328,23 @@
       "test_evidence": [],
       "compatibility_status": "unknown",
       "created_at": "2026-11-10T22:55:00+07:00",
-      "updated_at": "2026-11-10T22:55:00+07:00",
-      "completed_at": null,
-      "completion_report": null,
+      "updated_at": "2026-11-12T21:46:00+07:00",
+      "completed_at": "2026-11-12T21:46:00+07:00",
+      "completion_report": {
+        "summary": "QA approved the corrected acceptance text. Pistol damage 22 and rifle damage 16 cite app/game/items.py. GP-007 stays not implemented. GP-008 stays implemented with compatibility_status unknown.",
+        "files_changed": [
+          "tests/compatibility/weapons/test_shot.py"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/weapons -q --tb=line"
+        ],
+        "test_results": "CTO run: exit code 0, 5 passed in 0.26s. QA re-run: exit code 0, 5 passed in 0.30s. No failures and no skips.",
+        "migration_results": "No migration was added.",
+        "review_findings": "The first QA pass returned the stale sentence that GP-008 stays not implemented. The CTO corrected that sentence to the matrix. The second QA pass approved.",
+        "remaining_issues": [
+          "Original weapon values stay unknown."
+        ]
+      },
       "block_reason": null,
       "resolution_plan": null,
       "history": [
@@ -2100,6 +2356,78 @@
           "from_agent": null,
           "to_agent": "gameplay-test-engineer",
           "note": "Waiting for the movement contract evidence."
+        },
+        {
+          "at": "2026-11-12T21:20:00+07:00",
+          "actor": "cto",
+          "from_status": "backlog",
+          "to_status": "ready",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "RO-029 is completed. Combat and weapons evidence can be assigned."
+        },
+        {
+          "at": "2026-11-12T21:22:00+07:00",
+          "actor": "cto",
+          "from_status": "ready",
+          "to_status": "assigned",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "The CTO assigned the gameplay test engineer. Write only tests/compatibility/weapons/**."
+        },
+        {
+          "at": "2026-11-12T21:22:00+07:00",
+          "actor": "cto",
+          "from_status": "assigned",
+          "to_status": "in_progress",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "The specialist session is running. The specialist does not edit tasks.json."
+        },
+        {
+          "at": "2026-11-12T21:28:00+07:00",
+          "actor": "cto",
+          "from_status": "in_progress",
+          "to_status": "review",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "Weapons tests passed: 5 passed. Pistol damage 22 and rifle damage 16 cite app/game/items.py. GP-008 is implemented in the matrix, so the acceptance sentence that it stays not implemented is unresolved. Left in review for QA."
+        },
+        {
+          "at": "2026-11-12T21:40:00+07:00",
+          "actor": "cto",
+          "from_status": "review",
+          "to_status": "in_progress",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "QA returned the old GP-008 sentence. The CTO corrected it to the matrix row from RO-050."
+        },
+        {
+          "at": "2026-11-12T21:40:00+07:00",
+          "actor": "cto",
+          "from_status": "in_progress",
+          "to_status": "review",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "Weapons tests passed, 5 passed. The corrected criterion matches the test. QA's return is recorded. The task stays in review until that corrected criterion is accepted."
+        },
+        {
+          "at": "2026-11-12T21:46:00+07:00",
+          "actor": "cto",
+          "from_status": "review",
+          "to_status": "testing",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "QA approved the corrected GP-008 criterion. The CTO had already run the weapons tests: 5 passed."
+        },
+        {
+          "at": "2026-11-12T21:46:00+07:00",
+          "actor": "cto",
+          "from_status": "testing",
+          "to_status": "completed",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "Pistol 22 and rifle 16 cite app/game/items.py. GP-007 stays not implemented. GP-008 stays implemented and unknown."
         }
       ]
     },
@@ -2110,7 +2438,7 @@
       "description": "Placement and kills are local results. Experience and currency rewards are not granted. Keep that distinction in the evidence.",
       "category": "gameplay",
       "assigned_agent": "gameplay-test-engineer",
-      "status": "backlog",
+      "status": "review",
       "priority": "medium",
       "dependencies": [
         "RO-030"
@@ -2132,7 +2460,7 @@
       "test_evidence": [],
       "compatibility_status": "unknown",
       "created_at": "2026-11-10T22:55:00+07:00",
-      "updated_at": "2026-11-10T22:55:00+07:00",
+      "updated_at": "2026-11-12T21:50:00+07:00",
       "completed_at": null,
       "completion_report": null,
       "block_reason": null,
@@ -2146,6 +2474,42 @@
           "from_agent": null,
           "to_agent": "gameplay-test-engineer",
           "note": "Waiting for the combat contract evidence."
+        },
+        {
+          "at": "2026-11-12T21:46:00+07:00",
+          "actor": "cto",
+          "from_status": "backlog",
+          "to_status": "ready",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "RO-030 is completed. Match-result evidence can be assigned."
+        },
+        {
+          "at": "2026-11-12T21:46:00+07:00",
+          "actor": "cto",
+          "from_status": "ready",
+          "to_status": "assigned",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "The CTO assigned the gameplay test engineer."
+        },
+        {
+          "at": "2026-11-12T21:46:00+07:00",
+          "actor": "cto",
+          "from_status": "assigned",
+          "to_status": "in_progress",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "The specialist session is running. The specialist does not edit tasks.json."
+        },
+        {
+          "at": "2026-11-12T21:50:00+07:00",
+          "actor": "cto",
+          "from_status": "in_progress",
+          "to_status": "review",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "Match-result tests passed: 6 passed. RS-004 through RS-006 stay not implemented and unknown. Left in review for QA."
         }
       ]
     },
@@ -2156,7 +2520,7 @@
       "description": "Extend evidence for this server's JSON messages. Do not implement an official game protocol or bypass protected services.",
       "category": "networking",
       "assigned_agent": "protocol-test-engineer",
-      "status": "backlog",
+      "status": "completed",
       "priority": "high",
       "dependencies": [
         "RO-014",
@@ -2181,9 +2545,26 @@
       "test_evidence": [],
       "compatibility_status": "unknown",
       "created_at": "2026-11-10T22:55:00+07:00",
-      "updated_at": "2026-11-10T22:55:00+07:00",
-      "completed_at": null,
-      "completion_report": null,
+      "updated_at": "2026-11-12T21:20:00+07:00",
+      "completed_at": "2026-11-12T21:20:00+07:00",
+      "completion_report": {
+        "summary": "QA and the security engineer approved this server's JSON message evidence. The CTO re-ran the authentication and gameplay tests together: 21 passed. The messages stay this server's contract. Original compatibility stays unknown.",
+        "files_changed": [
+          "tests/compatibility/authentication/test_message_contract.py",
+          "tools/protocol_validator/validator.py",
+          "tools/protocol_validator/__init__.py"
+        ],
+        "tests_executed": [
+          ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gameplay tests/compatibility/authentication -q --tb=line"
+        ],
+        "test_results": "Exit code 0. 21 passed in 3.07s. Authentication subset previously reported 19 passed. No failures and no skips in this run.",
+        "migration_results": "No migration was added.",
+        "review_findings": "QA recommendation is approve. Security recommendation is approve. No pinning bypass, no token in the WebSocket URL, and no new official-client packet type.",
+        "remaining_issues": [
+          "Original Rules of Survival compatibility stays unknown.",
+          "The validator checks message shape. Live session expiry stays in the WebSocket account check."
+        ]
+      },
       "block_reason": null,
       "resolution_plan": null,
       "history": [
@@ -2195,6 +2576,60 @@
           "from_agent": null,
           "to_agent": "protocol-test-engineer",
           "note": "Waiting for client and network research. RO-024 already built the validator."
+        },
+        {
+          "at": "2026-11-12T20:55:00+07:00",
+          "actor": "cto",
+          "from_status": "backlog",
+          "to_status": "ready",
+          "from_agent": "protocol-test-engineer",
+          "to_agent": "protocol-test-engineer",
+          "note": "Dependencies are completed, so the task is ready to assign."
+        },
+        {
+          "at": "2026-11-12T21:10:00+07:00",
+          "actor": "cto",
+          "from_status": "ready",
+          "to_status": "assigned",
+          "from_agent": "protocol-test-engineer",
+          "to_agent": "protocol-test-engineer",
+          "note": "The CTO assigned the specialist report already in the working tree."
+        },
+        {
+          "at": "2026-11-12T21:10:00+07:00",
+          "actor": "cto",
+          "from_status": "assigned",
+          "to_status": "in_progress",
+          "from_agent": "protocol-test-engineer",
+          "to_agent": "protocol-test-engineer",
+          "note": "The specialist wrote the allowed files. The registry was not edited by that agent."
+        },
+        {
+          "at": "2026-11-12T21:10:00+07:00",
+          "actor": "cto",
+          "from_status": "in_progress",
+          "to_status": "review",
+          "from_agent": "protocol-test-engineer",
+          "to_agent": "protocol-test-engineer",
+          "note": "Protocol evidence is in the validator and tests/compatibility/authentication/test_message_contract.py. QA and security have not reviewed it."
+        },
+        {
+          "at": "2026-11-12T21:20:00+07:00",
+          "actor": "cto",
+          "from_status": "review",
+          "to_status": "testing",
+          "from_agent": "protocol-test-engineer",
+          "to_agent": "protocol-test-engineer",
+          "note": "The CTO re-ran the authentication tests after QA and security approved."
+        },
+        {
+          "at": "2026-11-12T21:20:00+07:00",
+          "actor": "cto",
+          "from_status": "testing",
+          "to_status": "completed",
+          "from_agent": "protocol-test-engineer",
+          "to_agent": "protocol-test-engineer",
+          "note": "Both review agents approved and the CTO recorded the pytest output."
         }
       ]
     },
@@ -2205,7 +2640,7 @@
       "description": "Decide whether any feature can move off unknown. The default remains unknown until an authorized reference and a passing comparison exist.",
       "category": "compatibility",
       "assigned_agent": "game-compatibility-engineer",
-      "status": "backlog",
+      "status": "completed",
       "priority": "critical",
       "dependencies": [
         "RO-016",
@@ -2229,9 +2664,23 @@
       "test_evidence": [],
       "compatibility_status": "unknown",
       "created_at": "2026-11-10T22:55:00+07:00",
-      "updated_at": "2026-11-10T22:55:00+07:00",
-      "completed_at": null,
-      "completion_report": null,
+      "updated_at": "2026-11-12T21:42:00+07:00",
+      "completed_at": "2026-11-12T21:42:00+07:00",
+      "completion_report": {
+        "summary": "The compatibility verdict is unknown. docs/compatibility/CLIENT_COMPATIBILITY_VERDICT.md cites the reference matrix. Security approved the note. The CTO ran the project validator. No row was marked compatible.",
+        "files_changed": [
+          "docs/compatibility/CLIENT_COMPATIBILITY_VERDICT.md"
+        ],
+        "tests_executed": [
+          "python scripts/validate_project_management.py"
+        ],
+        "test_results": "Exit code 0. Output: OK: 55 tasks, 12 discoveries, 43 compatibility features.",
+        "migration_results": "No migration was added.",
+        "review_findings": "Security recommendation is approve. No packet format and no control bypass were added. The CTO agrees the verdict stays unknown.",
+        "remaining_issues": [
+          "Original Rules of Survival behavior stays unknown for all 43 features."
+        ]
+      },
       "block_reason": null,
       "resolution_plan": null,
       "history": [
@@ -2243,6 +2692,60 @@
           "from_agent": null,
           "to_agent": "game-compatibility-engineer",
           "note": "Waiting for registry alignment and network evidence."
+        },
+        {
+          "at": "2026-11-12T21:32:00+07:00",
+          "actor": "cto",
+          "from_status": "backlog",
+          "to_status": "ready",
+          "from_agent": "game-compatibility-engineer",
+          "to_agent": "game-compatibility-engineer",
+          "note": "RO-016 and RO-032 are completed. The compatibility verdict can be assigned."
+        },
+        {
+          "at": "2026-11-12T21:34:00+07:00",
+          "actor": "cto",
+          "from_status": "ready",
+          "to_status": "assigned",
+          "from_agent": "game-compatibility-engineer",
+          "to_agent": "game-compatibility-engineer",
+          "note": "The CTO assigned the game compatibility engineer. Do not mark a feature compatible."
+        },
+        {
+          "at": "2026-11-12T21:34:00+07:00",
+          "actor": "cto",
+          "from_status": "assigned",
+          "to_status": "in_progress",
+          "from_agent": "game-compatibility-engineer",
+          "to_agent": "game-compatibility-engineer",
+          "note": "The specialist session is running. The specialist does not edit tasks.json."
+        },
+        {
+          "at": "2026-11-12T21:40:00+07:00",
+          "actor": "cto",
+          "from_status": "in_progress",
+          "to_status": "review",
+          "from_agent": "game-compatibility-engineer",
+          "to_agent": "game-compatibility-engineer",
+          "note": "The verdict note says all 43 rows stay unknown. Security review is still required before completion."
+        },
+        {
+          "at": "2026-11-12T21:42:00+07:00",
+          "actor": "cto",
+          "from_status": "review",
+          "to_status": "testing",
+          "from_agent": "game-compatibility-engineer",
+          "to_agent": "game-compatibility-engineer",
+          "note": "Security approved the verdict. The CTO ran the project validator."
+        },
+        {
+          "at": "2026-11-12T21:42:00+07:00",
+          "actor": "cto",
+          "from_status": "testing",
+          "to_status": "completed",
+          "from_agent": "game-compatibility-engineer",
+          "to_agent": "game-compatibility-engineer",
+          "note": "All 43 rows stay unknown. No feature was marked compatible."
         }
       ]
     },
@@ -4585,6 +5088,139 @@
           "from_agent": "devops-engineer",
           "to_agent": "devops-engineer",
           "note": "The status note is the evidence. Release remains blocked."
+        }
+      ]
+    },
+    {
+      "id": "RO-055",
+      "title": "Sync agent jobs with the task registry",
+      "phase": "00",
+      "description": "Give every specialist a role file, skill, and rule that match team.json, and keep open task paths inside that agent's allowed_paths. Task status stays in tasks.json.",
+      "category": "governance",
+      "assigned_agent": "cto",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": [
+        "RO-001"
+      ],
+      "research_references": [],
+      "files_allowed": [
+        ".cursor/agents/**",
+        ".cursor/rules/**",
+        ".cursor/skills/**",
+        ".cursor/management/team.json",
+        ".cursor/management/tasks.json",
+        ".cursor/management/milestones.json",
+        ".cursor/management/changelog.json",
+        ".cursor/management/schemas/team.schema.json",
+        "scripts/validate_agent_registry.py",
+        "docs/engineering/TEAM_STRUCTURE.md",
+        "docs/engineering/AGENT_ASSIGNMENT_GUIDE.md",
+        "docs/engineering/TASK_WORKFLOW.md",
+        "AGENTS.md"
+      ],
+      "acceptance_criteria": [
+        "Every active team agent has a role file, a skill file, and a rule file named on its team.json row",
+        "The role file names that skill and that rule",
+        "Open task paths sit inside the assignee allowed_paths",
+        "Backlog tasks whose dependencies are completed are ready",
+        "QA has not approved completion"
+      ],
+      "verification_commands": [
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-12T20:55:00+07:00",
+      "updated_at": "2026-11-12T21:20:00+07:00",
+      "completed_at": "2026-11-12T21:20:00+07:00",
+      "completion_report": {
+        "summary": "QA approved the agent-job alignment. The CTO ran both registry validators. Each specialist row has a role file, a skill, and a rule. Open task paths sit inside allowed_paths.",
+        "files_changed": [
+          ".cursor/management/team.json",
+          ".cursor/agents/",
+          ".cursor/rules/",
+          ".cursor/skills/",
+          "scripts/validate_agent_registry.py"
+        ],
+        "tests_executed": [
+          "python scripts/validate_agent_registry.py",
+          "python scripts/validate_project_management.py"
+        ],
+        "test_results": "Both commands exited 0. Agent registry: OK: 13 agents, 55 tasks. Project registry: OK: 55 tasks, 12 discoveries, 43 compatibility features.",
+        "migration_results": "No migration was added.",
+        "review_findings": "QA recommendation is approve. The project validator includes the agent-registry check.",
+        "remaining_issues": []
+      },
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-12T20:55:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "cto",
+          "note": "Opened so agent roles, skills, and rules stay tied to the task registry."
+        },
+        {
+          "at": "2026-11-12T20:55:00+07:00",
+          "actor": "cto",
+          "from_status": "backlog",
+          "to_status": "ready",
+          "from_agent": "cto",
+          "to_agent": "cto",
+          "note": "RO-001 is completed."
+        },
+        {
+          "at": "2026-11-12T20:55:00+07:00",
+          "actor": "cto",
+          "from_status": "ready",
+          "to_status": "assigned",
+          "from_agent": "cto",
+          "to_agent": "cto",
+          "note": "The CTO owns the agent workspace and the registries."
+        },
+        {
+          "at": "2026-11-12T20:55:00+07:00",
+          "actor": "cto",
+          "from_status": "assigned",
+          "to_status": "in_progress",
+          "from_agent": "cto",
+          "to_agent": "cto",
+          "note": "Role files, skills, rules, and allowed paths were aligned with team.json."
+        },
+        {
+          "at": "2026-11-12T20:55:00+07:00",
+          "actor": "cto",
+          "from_status": "in_progress",
+          "to_status": "review",
+          "from_agent": "cto",
+          "to_agent": "cto",
+          "note": "Left in review until QA runs the registry validators. The CTO does not complete its own task."
+        },
+        {
+          "at": "2026-11-12T21:20:00+07:00",
+          "actor": "cto",
+          "from_status": "review",
+          "to_status": "testing",
+          "from_agent": "cto",
+          "to_agent": "cto",
+          "note": "The CTO re-ran both registry validators after the QA report."
+        },
+        {
+          "at": "2026-11-12T21:20:00+07:00",
+          "actor": "cto",
+          "from_status": "testing",
+          "to_status": "completed",
+          "from_agent": "cto",
+          "to_agent": "cto",
+          "note": "QA approved the agent role, skill, and rule alignment."
         }
       ]
     }

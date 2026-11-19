@@ -5,6 +5,8 @@ description: Reviews RoS_Server module boundaries across API, services, reposito
 
 # Architecture design
 
+Owner: `backend-architect` (also used by `cto`). Rule: `.cursor/rules/01-architecture.mdc`. Take the task from `.cursor/management/tasks.json` and write only its `files_allowed`.
+
 ## When
 
 A change touches more than one of `app/api`, `app/services`, `app/repositories`, or `app/game`.
