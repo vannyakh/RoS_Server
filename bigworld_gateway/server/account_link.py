@@ -12,6 +12,8 @@ import hashlib
 import json
 import os
 import re
+import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -23,6 +25,23 @@ _DEVICE_ID = re.compile(r"[0-9a-f]{8,64}")
 
 _current = None  # last resolved account (dict), used by the single-player lobby code
 _login_uid = None  # uid from the last Mercury login
+
+# Presence: RoS_Server holds a 75 s lease per report. Renew every 20 s while packets keep
+# arriving; report offline once a uid has been silent for 45 s. Reports run on one daemon
+# thread, so the packet path only stamps a time and never waits on HTTP.
+PRESENCE_EVERY = 20.0
+PRESENCE_IDLE = 45.0
+_presence_lock = threading.Lock()
+_activity = {}  # uid -> monotonic time of the last packet
+_reported = {}  # uid -> monotonic time of the last online report
+_presence_thread = None
+
+# Device details from the SDK requests that come before the Mercury login, keyed by uid.
+# User-Agent "NeteaseMobileGame/a2.20.2 (V2266A;28)" -> model V2266A, Android API 28.
+_SDK_UA = re.compile(r"NeteaseMobileGame/([a-z])[\w.]+ \(([^;()]{1,64});(\d{1,3})\)")
+_ANDROID = {21: "5.0", 22: "5.1", 23: "6", 24: "7.0", 25: "7.1", 26: "8.0", 27: "8.1", 28: "9", 29: "10",
+            30: "11", 31: "12", 32: "12L", 33: "13", 34: "14", 35: "15", 36: "16"}
+_devices = {}  # uid -> {"model", "os_name", "client_version", "time_zone", "language"}
 
 
 def device_uid(path):
@@ -118,7 +137,10 @@ def resolve(uid, ip_address=None):
     global _current
     if not uid:
         return None
-    data = _call("POST", "/api/v1/gateway/accounts/resolve", {"external_uid": uid, "ip_address": ip_address})
+    body = {"external_uid": uid, "ip_address": ip_address}
+    if _devices.get(uid):
+        body["device"] = _devices[uid]
+    data = _call("POST", "/api/v1/gateway/accounts/resolve", body)
     if not data or "_error" in data:
         _current = None
         return None
@@ -208,3 +230,86 @@ def claim_credit_reward():
 
 def current():
     return _current
+
+
+def parse_device(path, user_agent):
+    """Device fields from one SDK request; only the ones present are returned."""
+    device = {}
+    match = _SDK_UA.search(user_agent or "")
+    if match:
+        platform, model, level = match.group(1), match.group(2).strip(), int(match.group(3))
+        device["model"] = model[:64]
+        if platform == "a":  # only the Android form has been seen; others keep the model only
+            device["os_name"] = f"Android {_ANDROID[level]}" if level in _ANDROID else f"Android API {level}"
+    query = urllib.parse.parse_qs(urllib.parse.urlsplit(path or "").query)
+    for key, field, limit in (("gv", "client_version", 32), ("time_zone", "time_zone", 64), ("lang", "language", 16)):
+        value = (query.get(key) or [""])[0].strip()
+        if value:
+            device[field] = value[:limit]
+    return device
+
+
+def note_device(path, user_agent):
+    """Remember what this device's SDK request said, for the login that follows."""
+    if "ci=" not in (path or ""):
+        return
+    device = parse_device(path, user_agent)
+    if device:
+        uid = device_uid(path)
+        _devices[uid] = {**_devices.get(uid, {}), **device}
+
+
+def touch(uid=None):
+    """Note a packet from the linked player. Cheap: no I/O on this thread."""
+    uid = uid or (_current or {}).get("external_uid")
+    if not uid or not enabled():
+        return
+    with _presence_lock:
+        _activity[uid] = time.monotonic()
+    _start_presence()
+
+
+def report_presence(uid, online):
+    """POST /presence. Returns the server's answer (bool) or None if not linked/down."""
+    data = _call("POST", f"/api/v1/gateway/accounts/{urllib.parse.quote(uid, safe='')}/presence", {"online": bool(online)})
+    return None if not data or "_error" in data else bool(data.get("online"))
+
+
+def presence_tick(now=None):
+    """One reporter pass: renew active uids, end silent ones. Returns [(uid, online), ...] sent."""
+    now = time.monotonic() if now is None else now
+    with _presence_lock:
+        seen = list(_activity.items())
+    sent = []
+    for uid, last in seen:
+        if now - last < PRESENCE_IDLE:
+            if now - _reported.get(uid, float("-inf")) >= PRESENCE_EVERY:
+                report_presence(uid, True)
+                _reported[uid] = now
+                sent.append((uid, True))
+            continue
+        if uid in _reported:
+            report_presence(uid, False)
+            del _reported[uid]
+            sent.append((uid, False))
+        with _presence_lock:
+            if _activity.get(uid) == last:
+                del _activity[uid]
+    return sent
+
+
+def _presence_loop():
+    while True:
+        try:
+            presence_tick()
+        except Exception as e:  # never let a report kill the thread
+            print(f"[ACC-LINK] presence report failed: {e!r}")
+        time.sleep(5)
+
+
+def _start_presence():
+    global _presence_thread
+    if _presence_thread is not None and _presence_thread.is_alive():
+        return
+    _presence_thread = threading.Thread(target=_presence_loop, name="ros-presence", daemon=True)
+    _presence_thread.start()

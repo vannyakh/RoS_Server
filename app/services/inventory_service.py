@@ -68,6 +68,7 @@ class InventoryService:
         reason: str,
         *,
         commit: bool = True,
+        details: dict | None = None,
     ) -> PlayerCurrency:
         if not isinstance(amount, int) or isinstance(amount, bool) or amount == 0:
             raise AppError(422, "Currency amount must be a non-zero integer")
@@ -87,6 +88,7 @@ class InventoryService:
                 amount=amount,
                 balance_after=balance,
                 reason=reason,
+                details=details,
             )
         )
         if commit:

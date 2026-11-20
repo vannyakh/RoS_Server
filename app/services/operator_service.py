@@ -9,11 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.exceptions import AppError
 from app.core.logging import tail_server_log
-from app.core.security import create_access_token, decode_access_token, hash_password, hash_token, token_expires_in, verify_password
+from app.core.security import create_access_token, decode_access_token, hash_password, hash_token, verify_password
 from app.models.account import Account
 from app.models.operator import AuditLog, Operator, OperatorRole, OperatorSession, Permission, Role, RolePermission
 from app.models.gateway import GatewayIdentity
 from app.models.player import Player
+from app.networking.admin_hub import admin_hub
+from app.services.session_view import latest_sessions
 from app.schemas.auth import TokenResponse
 from app.services.account_service import normalize_username
 
@@ -23,6 +25,10 @@ CATALOG: tuple[tuple[str, str], ...] = (
     ("players.manage", "Suspend or restore a player account"),
     ("players.ban", "Ban or unban a player account"),
     ("players.notes", "Add an internal player note"),
+    ("players.progress", "Change a player's level, experience, character and outfit"),
+    ("players.economy", "Adjust a player's currency, items, rank and credit"),
+    ("assets.manage", "Upload and remove display images in the asset library"),
+    ("store.read", "Read store spend, the currency ledger and the skin catalog"),
     ("support.read", "Read support cases"),
     ("support.write", "Create and update support cases"),
     ("support.assign", "Assign a support case"),
@@ -105,6 +111,12 @@ ROLE_TEMPLATES: dict[str, tuple[str, str, tuple[str, ...]]] = {
     ),
 }
 SUPPORT_ROLE = "support"
+# How long a refreshed token stays usable, so requests sent just before the swap still succeed.
+REFRESH_GRACE_SECONDS = 30
+
+
+def _aware(value: datetime) -> datetime:
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
 @dataclass
@@ -183,18 +195,46 @@ class OperatorService:
         operator = await self.session.scalar(select(Operator).where(Operator.username == normalized))
         if operator is None or not verify_password(password, operator.password_hash) or operator.status != "active":
             raise AppError(401, "Invalid username or password")
-        token = create_access_token(operator.id, kind="operator")
         now = datetime.now(timezone.utc)
         operator.last_login_at = now
-        self.session.add(
-            OperatorSession(
-                operator_id=operator.id,
-                token_hash=hash_token(token),
-                expires_at=now + timedelta(minutes=settings.jwt_expire_minutes),
-            )
-        )
+        response = self._issue(operator.id, started_at=now, now=now)
         await self.session.commit()
-        return TokenResponse(access_token=token, expires_in=token_expires_in())
+        return response
+
+    async def refresh(self, token: str) -> TokenResponse:
+        """Swap a valid operator token for a new one in the same sign-in chain.
+
+        The old token keeps working for REFRESH_GRACE_SECONDS so requests already in flight
+        finish; after that only the new one is accepted. A chain ends
+        OPERATOR_SESSION_MAX_HOURS after the password sign-in, however often it is refreshed.
+        """
+        actor = await self.actor_for_token(token)
+        stored = await self.session.scalar(select(OperatorSession).where(OperatorSession.token_hash == hash_token(token)))
+        if stored is None:
+            raise AppError(401, "Invalid or expired token")
+        now = datetime.now(timezone.utc)
+        started = _aware(stored.started_at or stored.created_at)
+        if now >= started + timedelta(hours=settings.operator_session_max_hours):
+            raise AppError(401, "The session reached its maximum length. Sign in again")
+        grace = now + timedelta(seconds=REFRESH_GRACE_SECONDS)
+        if _aware(stored.expires_at) > grace:
+            stored.expires_at = grace
+        response = self._issue(actor.operator.id, started_at=started, now=now)
+        await self.session.commit()
+        return response
+
+    def _issue(self, operator_id: str, *, started_at: datetime, now: datetime) -> TokenResponse:
+        token = create_access_token(operator_id, kind="operator")
+        chain_end = started_at + timedelta(hours=settings.operator_session_max_hours)
+        expires_at = min(now + timedelta(minutes=settings.jwt_expire_minutes), chain_end)
+        self.session.add(
+            OperatorSession(operator_id=operator_id, token_hash=hash_token(token), expires_at=expires_at, started_at=started_at)
+        )
+        return TokenResponse(
+            access_token=token,
+            expires_in=max(1, int((expires_at - now).total_seconds())),
+            session_expires_at=chain_end,
+        )
 
     async def revoke(self, operator_id: str, token: str) -> None:
         stored = await self.session.scalar(
@@ -238,7 +278,7 @@ class OperatorService:
         created_to: date | None = None,
     ) -> tuple[list[dict], int]:
         listed = (
-            select(Account, Player, GatewayIdentity.external_uid, GatewayIdentity.char_type)
+            select(Account, Player, GatewayIdentity)
             .join(Player, Player.account_id == Account.id)
             .outerjoin(GatewayIdentity, GatewayIdentity.account_id == Account.id)
         )
@@ -277,13 +317,19 @@ class OperatorService:
             counted = counted.where(matched)
         rows = (await self.session.execute(listed.order_by(Account.created_at.desc()).limit(limit).offset(offset))).all()
         total = int(await self.session.scalar(counted) or 0)
+        last = await latest_sessions(self.session, [account.id for account, _player, _gateway in rows])
         items = [
             {
                 "id": account.id,
                 "username": account.username,
                 "nickname": player.nickname,
-                "client": "game" if external_uid else "web",
-                "char_type": char_type,
+                "client": "game" if gateway else "web",
+                "char_type": gateway.char_type if gateway else None,
+                "game_id": gateway.external_uid if gateway else None,
+                "rank_score": gateway.rank_score if gateway else None,
+                "game_last_login_at": gateway.last_login_at if gateway else None,
+                "online": admin_hub.is_online(account.id),
+                "last_session": last.get(account.id),
                 "email": account.email,
                 "status": account.status,
                 "player_id": player.id,
@@ -291,7 +337,7 @@ class OperatorService:
                 "created_at": account.created_at,
                 "last_login_at": account.last_login_at,
             }
-            for account, player, external_uid, char_type in rows
+            for account, player, gateway in rows
         ]
         return items, total
 
@@ -303,23 +349,79 @@ class OperatorService:
         account.status = status
         await self._audit(actor, "player.status", "player", account.id, status)
         await self.session.commit()
+        admin_hub.player_changed(account.id, "status", actor.operator.username)
         return {"id": account.id, "username": account.username, "status": account.status}
 
     async def operators(self) -> list[dict]:
         rows = list(await self.session.scalars(select(Operator).order_by(Operator.username)))
+        now = datetime.now(timezone.utc)
+        live = dict(
+            (
+                await self.session.execute(
+                    select(OperatorSession.operator_id, func.count())
+                    .where(OperatorSession.revoked_at.is_(None), OperatorSession.expires_at > now)
+                    .group_by(OperatorSession.operator_id)
+                )
+            ).all()
+        )
         items = []
         for operator in rows:
-            _permissions, role_codes = await self._access(operator.id)
+            permissions, role_codes = await self._access(operator.id)
             items.append(
                 {
                     "id": operator.id,
                     "username": operator.username,
                     "status": operator.status,
                     "roles": role_codes,
+                    "permissions": sorted(permissions),
                     "last_login_at": operator.last_login_at,
+                    "created_at": operator.created_at,
+                    "active_sessions": int(live.get(operator.id, 0)),
                 }
             )
         return items
+
+    async def reset_password(self, actor: OperatorActor, operator_id: str, password: str, reason: str) -> dict:
+        """Set a new password for another operator and sign them out everywhere."""
+        self._need(actor, "operators.manage")
+        if operator_id == actor.operator.id:
+            raise AppError(403, "Reset another operator's password, not your own")
+        operator = await self.session.get(Operator, operator_id)
+        if operator is None:
+            raise AppError(404, "Operator was not found")
+        if len(password) < 12:
+            raise AppError(422, "Use at least 12 characters")
+        operator.password_hash = hash_password(password)
+        revoked = await self._revoke_all(operator.id)
+        await self._audit(actor, "operator.password", "operator", operator.id, f"{revoked} sessions ended", reason.strip()[:240])
+        await self.session.commit()
+        return {"id": operator.id, "sessions_ended": revoked}
+
+    async def end_sessions(self, actor: OperatorActor, operator_id: str, reason: str) -> dict:
+        """Sign an operator out of every browser. Their next request needs a new sign-in."""
+        self._need(actor, "operators.manage")
+        operator = await self.session.get(Operator, operator_id)
+        if operator is None:
+            raise AppError(404, "Operator was not found")
+        revoked = await self._revoke_all(operator.id)
+        await self._audit(actor, "operator.sign_out", "operator", operator.id, f"{revoked} sessions ended", reason.strip()[:240])
+        await self.session.commit()
+        return {"id": operator.id, "sessions_ended": revoked}
+
+    async def _revoke_all(self, operator_id: str) -> int:
+        now = datetime.now(timezone.utc)
+        open_sessions = list(
+            await self.session.scalars(
+                select(OperatorSession).where(
+                    OperatorSession.operator_id == operator_id,
+                    OperatorSession.revoked_at.is_(None),
+                    OperatorSession.expires_at > now,
+                )
+            )
+        )
+        for row in open_sessions:
+            row.revoked_at = now
+        return len(open_sessions)
 
     async def create_operator(self, username: str, password: str, role_codes: list[str], *, audit: bool = True, actor: OperatorActor | None = None) -> Operator:
         if actor is not None:
@@ -363,6 +465,8 @@ class OperatorService:
         if status == "suspended" and await self._last_support_operator(operator.id):
             raise AppError(403, "The last support operator stays active")
         operator.status = status
+        if status == "suspended":
+            await self._revoke_all(operator.id)
         await self._audit(actor, "operator.status", "operator", operator.id, status)
         await self.session.commit()
         return {"id": operator.id, "username": operator.username, "status": operator.status}
@@ -387,6 +491,9 @@ class OperatorService:
 
     async def roles(self) -> list[dict]:
         rows = list(await self.session.scalars(select(Role).order_by(Role.code)))
+        holders = dict(
+            (await self.session.execute(select(OperatorRole.role_id, func.count()).group_by(OperatorRole.role_id))).all()
+        )
         items = []
         for role in rows:
             codes = await self._permission_codes(role.id)
@@ -398,9 +505,44 @@ class OperatorService:
                     "description": role.description,
                     "is_system": role.is_system,
                     "permissions": codes,
+                    "operator_count": int(holders.get(role.id, 0)),
+                    "created_at": role.created_at,
                 }
             )
         return items
+
+    async def update_role(self, actor: OperatorActor, role_id: str, name: str | None, description: str | None) -> dict:
+        self._need(actor, "roles.create")
+        role = await self.session.get(Role, role_id)
+        if role is None:
+            raise AppError(404, "Role was not found")
+        if role.is_system:
+            raise AppError(403, "The support role cannot be renamed")
+        if name is not None:
+            if not name.strip():
+                raise AppError(422, "Name is required")
+            role.name = name.strip()[:64]
+        if description is not None:
+            role.description = description.strip()[:160]
+        await self._audit(actor, "role.update", "role", role.id, role.name)
+        await self.session.commit()
+        return {"id": role.id, "code": role.code, "name": role.name, "description": role.description}
+
+    async def delete_role(self, actor: OperatorActor, role_id: str) -> None:
+        """Remove an unused, non-system role. Roles still held by operators are refused."""
+        self._need(actor, "roles.create")
+        role = await self.session.get(Role, role_id)
+        if role is None:
+            raise AppError(404, "Role was not found")
+        if role.is_system:
+            raise AppError(403, "The support role cannot be deleted")
+        holders = int(await self.session.scalar(select(func.count()).select_from(OperatorRole).where(OperatorRole.role_id == role.id)) or 0)
+        if holders:
+            raise AppError(409, f"{holders} operator(s) still hold this role. Remove it from them first")
+        await self.session.execute(delete(RolePermission).where(RolePermission.role_id == role.id))
+        await self._audit(actor, "role.delete", "role", role.id, role.code)
+        await self.session.delete(role)
+        await self.session.commit()
 
     async def permissions(self) -> list[dict]:
         rows = list(await self.session.scalars(select(Permission).order_by(Permission.code)))

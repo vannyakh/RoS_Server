@@ -3,7 +3,7 @@
 # Usage: bash probe.sh client/frida/payloads/<payload>.py [outfile]
 cd "$(dirname "$0")/.."
 export MSYS_NO_PATHCONV=1
-A="/c/LDPlayer/LDPlayer9/adb.exe -s ${ADB_SERIAL:-emulator-5554}"
+A="${ADB:-/c/LDPlayer/LDPlayer9/adb.exe} -s ${ADB_SERIAL:-emulator-5554}"
 F=/storage/emulated/0/Android/data/com.netease.chiji/files
 OUTF=${2:-py_out_probe.log}
 $A shell "rm -f $F/py_out.log"

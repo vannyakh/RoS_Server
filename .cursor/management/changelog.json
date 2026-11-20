@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updated_at": "2026-11-12T21:32:00+07:00",
+  "updated_at": "2026-11-19T23:00:00+07:00",
   "entries": [
     {
       "change_id": "CH-0001",
@@ -336,6 +336,55 @@
       ],
       "migration_revision": null,
       "tests": [
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0014",
+      "date": "2026-11-19",
+      "version": "unreleased",
+      "category": "Documentation",
+      "title": "Plan the original-client match integration",
+      "description": "Gap review of the in-match gateway (doors, loot, bots, countdown, plane, jump, zone) and 18 tasks RO-056 to RO-073 in phase 09. No source file changed. team.json gained bigworld_gateway allowed paths for five specialists.",
+      "task_id": "RO-056",
+      "agent": "cto",
+      "files_changed": [
+        ".cursor/management/tasks.json",
+        ".cursor/management/team.json",
+        ".cursor/management/milestones.json",
+        ".cursor/management/changelog.json",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0015",
+      "date": "2026-11-19",
+      "version": "unreleased",
+      "category": "Documentation",
+      "title": "Plan door, loot quantity, discard, glass, action and equip work for the original client",
+      "description": "Thirteen tasks RO-074 to RO-086 in phase 09: door and element research (RO-074) and coverage (RO-075), item quantity and equip research (RO-076) with loot stacks (RO-077) and equip (RO-084), bag discard research (RO-078) and module (RO-079), breakable glass research (RO-080) and module (RO-081), character action research (RO-082) and module (RO-083), QA (RO-085) and security review (RO-086). RO-067 now also depends on RO-074. No source file changed.",
+      "task_id": "RO-074",
+      "agent": "cto",
+      "files_changed": [
+        ".cursor/management/tasks.json",
+        ".cursor/management/milestones.json",
+        ".cursor/management/changelog.json",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "python scripts/validate_agent_registry.py",
         "python scripts/validate_project_management.py"
       ],
       "breaking_change": false,

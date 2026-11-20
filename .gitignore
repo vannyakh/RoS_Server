@@ -9,3 +9,4 @@ reports/player/
 logs/*.log
 storage/game_assets/maps/**
 !storage/game_assets/maps/.gitkeep
+storage/game_assets/icons/**

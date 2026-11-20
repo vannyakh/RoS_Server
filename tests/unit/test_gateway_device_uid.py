@@ -46,3 +46,31 @@ def test_gid_follows_the_mercury_login_name(link):
     assert link.current_gid() == int(link.DEFAULT_UID)
     assert link.note_login(b"9123456789@ad.netease_global.win.163.com") == "9123456789"
     assert link.current_gid() == 9123456789
+
+
+SDK_GET = (
+    "/api/games/config?game_id=123&gv=1227927&time_zone=Asia%2FPhnom_Penh&lang=en-US&ci=ae5633f89bc1f549"
+)
+SDK_UA = "com.netease.chiji/1227927 NeteaseMobileGame/a2.20.2 (V2266A;28)"
+
+
+def test_sdk_request_reports_model_os_version_and_time_zone(link):
+    assert link.parse_device(SDK_GET, SDK_UA) == {
+        "model": "V2266A",
+        "os_name": "Android 9",
+        "client_version": "1227927",
+        "time_zone": "Asia/Phnom_Penh",
+        "language": "en-US",
+    }
+    assert link.parse_device("/x?gv=1", "curl/8") == {"client_version": "1"}
+
+
+def test_device_is_kept_for_the_uid_that_logs_in(link, monkeypatch):
+    link._devices.clear()
+    link.note_device(SDK_GET, SDK_UA)
+    uid = link.device_uid(SDK_GET)
+    assert link._devices[uid]["model"] == "V2266A"
+    sent = {}
+    monkeypatch.setattr(link, "_call", lambda method, path, body: sent.update(body) or None)
+    link.resolve(uid, "192.168.1.50")
+    assert sent["device"]["os_name"] == "Android 9"

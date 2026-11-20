@@ -1,6 +1,6 @@
 """Operator sign-in, roles, and the records those permissions can read."""
 
-from datetime import date
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.security import HTTPAuthorizationCredentials
@@ -8,7 +8,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import bearer
+from app.core import log_search
 from app.core.exceptions import AppError
+from app.core.logging import server_log_path
 from app.infrastructure.database import get_db
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.schemas.common import Page
@@ -60,6 +62,15 @@ def require(permission: str):
 @router.post("/auth/login", response_model=TokenResponse)
 async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     return await OperatorService(db).login(data.username, data.password)
+
+
+@router.post("/auth/refresh", response_model=TokenResponse)
+async def refresh(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer),
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """New operator token for a valid one; the old token stops working 30 seconds later."""
+    return await OperatorService(db).refresh(credentials.credentials)
 
 
 @router.post("/auth/logout", status_code=204)
@@ -140,6 +151,35 @@ async def set_operator_status(
     return await OperatorService(db).set_operator_status(actor, operator_id, body.status)
 
 
+class PasswordReset(BaseModel):
+    password: str = Field(min_length=12, max_length=128)
+    reason: str = Field(min_length=3, max_length=240)
+
+
+class SignOutRequest(BaseModel):
+    reason: str = Field(default="", max_length=240)
+
+
+@router.post("/operators/{operator_id}/password")
+async def reset_operator_password(
+    operator_id: str,
+    body: PasswordReset,
+    actor: OperatorActor = Depends(require("operators.manage")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    return await OperatorService(db).reset_password(actor, operator_id, body.password, body.reason)
+
+
+@router.post("/operators/{operator_id}/sign-out")
+async def end_operator_sessions(
+    operator_id: str,
+    body: SignOutRequest,
+    actor: OperatorActor = Depends(require("operators.manage")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    return await OperatorService(db).end_sessions(actor, operator_id, body.reason)
+
+
 @router.put("/operators/{operator_id}/roles")
 async def set_operator_roles(
     operator_id: str,
@@ -177,6 +217,30 @@ async def create_role(
     return {"id": created.id, "code": created.code, "name": created.name}
 
 
+class RoleEdit(BaseModel):
+    name: str | None = Field(default=None, max_length=64)
+    description: str | None = Field(default=None, max_length=160)
+
+
+@router.patch("/roles/{role_id}")
+async def update_role(
+    role_id: str,
+    body: RoleEdit,
+    actor: OperatorActor = Depends(require("roles.create")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    return await OperatorService(db).update_role(actor, role_id, body.name, body.description)
+
+
+@router.delete("/roles/{role_id}", status_code=204)
+async def delete_role(
+    role_id: str,
+    actor: OperatorActor = Depends(require("roles.create")),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await OperatorService(db).delete_role(actor, role_id)
+
+
 @router.put("/roles/{role_id}/permissions")
 async def set_role_permissions(
     role_id: str,
@@ -195,6 +259,22 @@ async def audit(
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     return await OperatorService(db).audit(limit)
+
+
+@router.get("/logs/search")
+async def search_logs(
+    start: datetime | None = Query(default=None, description="Server local time, inclusive"),
+    end: datetime | None = Query(default=None, description="Server local time, inclusive"),
+    level: list[str] | None = Query(default=None),
+    q: str | None = Query(default=None, max_length=120),
+    kind: str | None = Query(default=None, pattern="^(request|app)$"),
+    limit: int = Query(default=500, ge=1, le=2000),
+    _actor: OperatorActor = Depends(require("logs.read")),
+) -> dict:
+    """Entries from logs/server.log, oldest first, newest `limit` that match."""
+    levels = {item.upper() for item in level} if level else None
+    plain = lambda value: value.replace(tzinfo=None) if value and value.tzinfo else value  # noqa: E731
+    return log_search.search(server_log_path(), start=plain(start), end=plain(end), levels=levels, text=q, kind=kind, limit=limit)
 
 
 @router.get("/logs")

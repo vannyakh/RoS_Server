@@ -156,6 +156,8 @@ async def test_admin_sees_game_client_data_and_edits_the_profile(client, gateway
     listed = await client.get("/api/v1/admin/players?q=raven", headers=operator)
     row = listed.json()["items"][0]
     assert (row["id"], row["nickname"], row["client"], row["char_type"]) == (account_id, "Raven", "game", 30001)
+    assert (row["game_id"], row["rank_score"], row["online"]) == ("9020785644", 0, False)
+    assert row["game_last_login_at"] is not None
 
     detail = await client.get(f"/api/v1/admin/players/{account_id}", headers=operator)
     assert detail.json()["gateway"] == {
@@ -165,7 +167,13 @@ async def test_admin_sees_game_client_data_and_edits_the_profile(client, gateway
         "last_ip": "192.168.1.60",
         "portrait": "",
         "items": 0,
+        "props": [],
         "outfit": {"body": [], "wear": []},
+        "rank_score": 0,
+        "credit_score": 100,
+        "credit_status_last_week": 0,
+        "credit_weeks": 0,
+        "space_likes": 0,
     }
 
     no_reason = await client.patch(

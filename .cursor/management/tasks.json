@@ -1,7 +1,7 @@
 {
   "project": "RoS_Server",
   "version": "1.1.0",
-  "updated_at": "2026-11-12T21:50:00+07:00",
+  "updated_at": "2026-11-19T23:00:00+07:00",
   "task_statuses": [
     "backlog",
     "research",
@@ -5221,6 +5221,1752 @@
           "from_agent": "cto",
           "to_agent": "cto",
           "note": "QA approved the agent role, skill, and rule alignment."
+        }
+      ]
+    },
+    {
+      "id": "RO-056",
+      "title": "Solve createEntity and property-update framing for the original client",
+      "phase": "09",
+      "description": "Shared blocker for every in-match feature. enterAoI + createEntity (ClientInterface id 9) creates a non-player entity on the client, but the property-data stream is not framed correctly: tagged data makes the client read 4 bytes, untagged data fails with 'CompressionIStream: Invalid compression type' (LOBBY_FINDINGS Update (8)). Find the createEntity handler and the CompressionIStream wrapper in libclient.so (stripped; search other error strings, or hook the Python-side entity constructor with Frida) and document the exact byte layout: leading flag byte, compression type, ordered stream vs pickled dict, and whether OWN/OTHER/ALL_CLIENTS properties share one index space. Also verify the property-update messages (updateEntity id 10, 0xC0|idx, marked unverified in battle_flow.py) and the entity-method call layout (0x80|idx) for a non-player entity. Evidence only: no gateway code change.",
+      "category": "research",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "ready",
+      "priority": "critical",
+      "dependencies": [],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "bigworld_gateway/server/battle_flow.py"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/docs/CREATE_ENTITY_FRAMING.md",
+        "bigworld_gateway/client/frida/payloads/framing/**",
+        "bigworld_gateway/server/extract/createentity_notes.json"
+      ],
+      "acceptance_criteria": [
+        "bigworld_gateway/docs/CREATE_ENTITY_FRAMING.md states the byte layout of createEntity property data, with at least one hex capture or Frida trace per claim and the client function or error string it came from",
+        "Document says whether property update (id 10 and 0xC0|idx) and entity method calls (0x80|idx) on a non-player entity are verified or still unknown",
+        "In-game check on the emulator (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): with the candidate layout, the trigger_battle.txt 'space' command creates a BattleGroundSpace whose enterWorld finishes without the maps_utils None error, BigWorld.entities[20001].circleStage reads back through client/frida/payloads/entities_state.py, and the gateway log shows no BASEAPP RESEND loop for 60 seconds",
+        "Unknown parts are listed under remaining_issues, not guessed"
+      ],
+      "verification_commands": [
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "protocol-test-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        },
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": "backlog",
+          "to_status": "ready",
+          "from_agent": "game-compatibility-engineer",
+          "to_agent": "game-compatibility-engineer",
+          "note": "No open dependency. Not assigned yet; no session was started."
+        }
+      ]
+    },
+    {
+      "id": "RO-057",
+      "title": "Map the in-match client-to-server request ids",
+      "phase": "09",
+      "description": "The gateway decodes Athlete requests by name from extract/athlete_base_exposed.json (dump_base_methods.js). Nothing equivalent exists for the match: while _in_battle is set, ros_server.py runs no decoder, so the OPEN door press, pickup, jump and parachute requests are at most logged as raw bytes (position updates 0xBC/0xBD are only observed). Dump the exposed cell-method tables of BattleGroundAvatar, BattleGroundSpace (openElement, closeElement, uploadBlastState), DtsProp (tryPickUp, tryPickUpForTeammate) and the avatar methods requestGetOffPlane, chooseParachute, chooseGlider, in the same style, and document message id, sub-byte, length width and argument types. Capture one real OPEN press and say which entity and method the client calls.",
+      "category": "research",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "ready",
+      "priority": "high",
+      "dependencies": [],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "bigworld_gateway/server/battle_flow.py"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/docs/BATTLE_CLIENT_REQUESTS.md",
+        "bigworld_gateway/client/frida/dump_cell_methods.js",
+        "bigworld_gateway/client/frida/payloads/requests/**",
+        "bigworld_gateway/server/extract/battle_cell_exposed.json"
+      ],
+      "acceptance_criteria": [
+        "extract/battle_cell_exposed.json lists exposed cell methods with msg id, sub byte, length width and argument types for BattleGroundAvatar, BattleGroundSpace and DtsProp",
+        "BATTLE_CLIENT_REQUESTS.md names the exact request the client sends when the OPEN button is pressed and for pickup, with a captured hex sample for each",
+        "BATTLE_CLIENT_REQUESTS.md documents the position-update messages 0xBC and 0xBD field layout or marks it unknown",
+        "Every id in the JSON is checked against at least one captured packet or marked unverified"
+      ],
+      "verification_commands": [
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "protocol-test-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        },
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": "backlog",
+          "to_status": "ready",
+          "from_agent": "game-compatibility-engineer",
+          "to_agent": "game-compatibility-engineer",
+          "note": "No open dependency. Not assigned yet; no session was started."
+        }
+      ]
+    },
+    {
+      "id": "RO-058",
+      "title": "Battle session seam for the gateway",
+      "phase": "09",
+      "description": "Today the whole battle path is inline in ros_server.py (matchBattleGround ~line 1578, _enter_battle ~line 1837, trigger_battle.txt ~line 1159) and the Athlete decoder is switched off while _in_battle is set (~line 1187). Add one seam so each later task adds a file instead of editing ros_server.py: a MatchSession per client address (entity id allocator, ordered send queue over _send_bundle, timer/timeline scheduler on the asyncio loop, inbound in-battle message dispatch) and auto-loading of modules from bigworld_gateway/server/battle/modules/ that expose register(session). ros_server.py keeps only the hook calls. The gateway stays a separate process: it must not import app/, and the match state is gateway-local; only results go through /api/v1/gateway (see RO-070). Write the design note.",
+      "category": "architecture",
+      "assigned_agent": "backend-architect",
+      "status": "ready",
+      "priority": "high",
+      "dependencies": [],
+      "research_references": [
+        "docs/ARCHITECTURE.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/ros_server.py",
+        "bigworld_gateway/server/battle/__init__.py",
+        "bigworld_gateway/server/battle/session.py",
+        "docs/engineering/GATEWAY_BATTLE_SESSION.md",
+        "tests/compatibility/gateway/session/**"
+      ],
+      "acceptance_criteria": [
+        "docs/engineering/GATEWAY_BATTLE_SESSION.md describes MatchSession, the module registration contract, the entity id ranges (space 20001, plane 20002, props, bots) and the rule that app/ and bigworld_gateway/ do not import each other",
+        "ros_server.py behaviour is unchanged when no module is registered: the existing trigger_battle.txt commands and the enter-battle handoff still work",
+        "Unit tests cover id allocation, ordered sends, timeline callbacks with a fake clock, module auto-load and a module that raises (session survives)",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/session -q --tb=line passes",
+        "A search for 'from app' and 'import app' in bigworld_gateway/server finds nothing"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/session -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "backend-architect",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        },
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": "backlog",
+          "to_status": "ready",
+          "from_agent": "backend-architect",
+          "to_agent": "backend-architect",
+          "note": "No open dependency. Not assigned yet; no session was started."
+        }
+      ]
+    },
+    {
+      "id": "RO-059",
+      "title": "Entity creation, property update and entity method encoders",
+      "phase": "09",
+      "description": "Implement the framing found in RO-056 in battle_flow.py: create_entity / leave_aoi with correct property data for BattleGroundSpace, Plane, DtsProp and Robot, update_property(entity, name, value) for property updates, and entity_method(eid, entity, name, args) for client methods on a non-player entity (onElementOpen, showCircleNotify, ...). Replace the CE_PROPS/CE_PREFIX experiment switches with the verified layout. Byte-level tests use captured fixtures.",
+      "category": "networking",
+      "assigned_agent": "protocol-test-engineer",
+      "status": "backlog",
+      "priority": "critical",
+      "dependencies": [
+        "RO-056"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "bigworld_gateway/server/battle_flow.py"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle_flow.py",
+        "tests/compatibility/gateway/wire/**"
+      ],
+      "acceptance_criteria": [
+        "battle_flow has one verified create_entity layout; the CE_PROPS, CE_PREFIX, CE_INDEX and CE_DIR experiment switches are removed or documented as legacy",
+        "Encoders exist for create_entity, leave_aoi, update_property and entity_method with tests that compare bytes with captured samples",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/wire -q --tb=line passes",
+        "In-game check on the emulator (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): BattleGroundSpace and Plane entities are created, the client stays connected for 2 minutes, and no BASEAPP RESEND appears in the gateway log"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/wire -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "protocol-test-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        }
+      ]
+    },
+    {
+      "id": "RO-060",
+      "title": "In-battle request decoder and position tracking",
+      "phase": "09",
+      "description": "Use extract/battle_cell_exposed.json (RO-057) to decode in-match client messages by name, like athlete_requests.decode does for the lobby, and parse position updates 0xBC/0xBD into the session so later modules see where the player is. Unknown ids are logged once with hex and ignored. Input is untrusted: bound every length, entity id and number.",
+      "category": "networking",
+      "assigned_agent": "protocol-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-057",
+        "RO-058"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/requests.py",
+        "tests/compatibility/gateway/requests/**"
+      ],
+      "acceptance_criteria": [
+        "battle/requests.py decodes openElement, closeElement, tryPickUp, requestGetOffPlane, chooseParachute and chooseGlider by name into (entity id, method, args) with tests built from the RO-057 captures",
+        "Truncated, oversized and unknown messages raise no exception and produce one log line",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/requests -q --tb=line passes",
+        "In-game check on the emulator (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): pressing OPEN in the match logs '<- BattleGroundSpace.openElement(<elemID>, <state>)' in the gateway log"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/requests -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "protocol-test-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        }
+      ]
+    },
+    {
+      "id": "RO-061",
+      "title": "BattleGroundSpace entity and pre-start countdown",
+      "phase": "09",
+      "description": "Create the BattleGroundSpace entity (Globals.spaceEntity) when the avatar enters the match: mapID 700, gameStartTime, gameStatus, clientStatus, aliveNum, weather, and drive the pre-start phase (the countdown / training wait before boarding) from a gateway timeline. The client defs only name the properties; their values and the HUD countdown trigger must be read from the client scripts (read-only Frida) and recorded. Timeline lengths are gateway parameters, not original values. app/game/rules.py (countdown 3s, drop 8s) is only a reference for the JSON simulator.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-058",
+        "RO-059"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "bigworld_gateway/server/battle_flow.py"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/space.py",
+        "bigworld_gateway/server/battle/timeline.py",
+        "bigworld_gateway/server/battle/data/**",
+        "tests/compatibility/gateway/space/**"
+      ],
+      "acceptance_criteria": [
+        "modules/space.py creates the space entity on session start and removes it on session end",
+        "timeline.py defines named phases (warmup, boarding, flight, play) with durations from environment or data/, and tests step it with a fake clock",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/space -q --tb=line passes",
+        "In-game check on the emulator (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): after START the HUD shows the pre-start countdown, aliveNum is not the client default '120 LEFT', and the match does not reset the connection"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/space -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        }
+      ]
+    },
+    {
+      "id": "RO-062",
+      "title": "Plane entity, boarding and flight path",
+      "phase": "09",
+      "description": "Create the Plane entity (client type 147: movePath, moveSpeed, mode, inJumpArea) and point the player's planeID, flightStage and leftPlayerNumOnPlane at it. The avatar spawn at 0,0,0 on the ground (avatar_create_messages, AVATAR_POS) must become 'on the plane'. Move the plane along movePath on the timeline and set inJumpArea while over the jump window; also set BattleGroundSpace.getOnPlaneTime and planeEntityIDs.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-061"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "bigworld_gateway/server/battle_flow.py"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/plane.py",
+        "tests/compatibility/gateway/plane/**"
+      ],
+      "acceptance_criteria": [
+        "modules/plane.py builds a movePath over map 700, creates the Plane entity and flips inJumpArea on the timeline",
+        "Player props planeID, flightStage and leftPlayerNumOnPlane are sent and tested",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/plane -q --tb=line passes",
+        "In-game check on the emulator (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): the player starts in the plane, the plane moves across the map, and the jump prompt appears inside the jump area"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/plane -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        }
+      ]
+    },
+    {
+      "id": "RO-063",
+      "title": "Jump, parachute, glider and landing",
+      "phase": "09",
+      "description": "Handle the exposed avatar/space requests requestGetOffPlane, chooseParachute and chooseGlider; force the jump at the end of the flight path; set flightStage/battleState while falling and after landing; place the player with forcedPosition (0x59) and track position from 0xBC/0xBD; call playerGetOffPlane/onForceLeavePlane client methods where the client needs them. Reject requests outside the legal phase.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-060",
+        "RO-062"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "bigworld_gateway/server/battle_flow.py"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/jump.py",
+        "tests/compatibility/gateway/jump/**"
+      ],
+      "acceptance_criteria": [
+        "modules/jump.py answers requestGetOffPlane, chooseParachute and chooseGlider only while the plane is in the jump window and ignores them otherwise (test with the RO-060 decoder fixtures)",
+        "A player who never jumps is dropped at the end of the path",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/jump -q --tb=line passes",
+        "In-game check on the emulator (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): tap Jump, the parachute opens, the player lands on the ground of map 700 and can move; the joystick still works after landing"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/jump -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        }
+      ]
+    },
+    {
+      "id": "RO-064",
+      "title": "Shrinking safe zone",
+      "phase": "09",
+      "description": "Drive circleStage, whiteCircleCenter/Radius, blueCircleCenter/Radius and blueCircleStart* on the BattleGroundSpace through staged shrinks (property updates from RO-059), send onRequestCircleRestTime / updateCircleRestTime / showCircleNotify / showCircleMessage, set isInPoisonArea on the player, and apply the poison damage to the player's hp with death handled by RO-071. Stage radii and damage are gateway parameters in data/zone.json, not original values.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-063"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "bigworld_gateway/server/battle_flow.py"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/zone.py",
+        "bigworld_gateway/server/battle/data/zone.json",
+        "tests/compatibility/gateway/zone/**"
+      ],
+      "acceptance_criteria": [
+        "modules/zone.py advances stages from the timeline and emits property updates for the space; data/zone.json holds radii, delays and damage per stage",
+        "isInPoisonArea toggles when the tracked position crosses the blue circle (unit test with positions)",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/zone -q --tb=line passes",
+        "In-game check on the emulator (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): the white and blue circles appear on the minimap, shrink over time, the rest-time countdown updates and the player takes damage outside the blue circle"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/zone -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        }
+      ]
+    },
+    {
+      "id": "RO-065",
+      "title": "Research loot and prop entities, layout source and pickup protocol",
+      "phase": "09",
+      "description": "DtsProp (client type 140) carries mapID, socketHint, groupID, propID, campType, amount, info, randomRotate, trainID, trainPosition. Find where the original loot positions and propID tables come from for map 700 (client map element/spawn data, tables in the client scripts) or state that they have to be authored, and document the pickup exchange: DtsProp.tryPickUp arguments, the avatar's onPickUpProp reply, package updates (iDtsPackage), and entity removal. Check which interface (iDtsProp, iAutoRoyaleProp) the weapons on the ground use. The JSON simulator LOOT_TABLE (app/game/items.py, ids like 'rifle') is not original data.",
+      "category": "research",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-057"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "bigworld_gateway/server/battle_flow.py"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/docs/LOOT_AND_PICKUP.md",
+        "bigworld_gateway/client/frida/payloads/loot/**",
+        "bigworld_gateway/server/extract/map700_loot.json"
+      ],
+      "acceptance_criteria": [
+        "LOOT_AND_PICKUP.md lists the source of propID values for weapons, ammo, armor and healing with 10 verified examples from client tables",
+        "Document says whether map 700 loot positions can be read from client files; if not, the authored-layout rule is written down",
+        "Pickup request and replies are documented with one captured exchange, or the unknown part is listed",
+        "extract/map700_loot.json is data only (no publisher binaries or art)"
+      ],
+      "verification_commands": [
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "protocol-test-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        }
+      ]
+    },
+    {
+      "id": "RO-066",
+      "title": "Loot and prop entities with pickup",
+      "phase": "09",
+      "description": "Spawn DtsProp entities around the player (enterAoI / leaveAoI by distance, or all at start if the client allows), answer tryPickUp by validating distance and existence, add the item to the player's package and send onPickUpProp, then remove the entity. Loot table and positions come from RO-065 data. One server-side owner per prop so a prop cannot be taken twice.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-059",
+        "RO-060",
+        "RO-061",
+        "RO-065"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "bigworld_gateway/server/battle_flow.py"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/props.py",
+        "bigworld_gateway/server/battle/data/loot.json",
+        "tests/compatibility/gateway/props/**"
+      ],
+      "acceptance_criteria": [
+        "modules/props.py creates DtsProp entities from data/loot.json and validates every tryPickUp (range, still on the ground)",
+        "Picking up the same prop twice is rejected (test)",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/props -q --tb=line passes",
+        "In-game check on the emulator (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): props are visible on the ground, tapping the pickup button puts the item in the backpack and the prop disappears"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/props -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        }
+      ]
+    },
+    {
+      "id": "RO-067",
+      "title": "Doors: answer openElement and closeElement and keep opened elements",
+      "phase": "09",
+      "description": "The client shows an OPEN button but the gateway never answers. Doors are map elements handled by BattleGroundSpace: exposed cell methods openElement(INT32 elemID, INT8 state) and closeElement(INT32 elemID); client methods onElementOpen(INT32, INT8) and onElementClose(INT32); property openedElements (ARRAY of DTS_ELEMENT {elemID INT32, state INT8}, ALL_CLIENTS). Keep the opened set per match, answer with the client method and update openedElements so a re-entering client sees the same state. RO-057 confirms the entity and method the client really calls. Vehicle doors (iVehicle.openDoor) and ElevatorCage are out of scope. Per the 2026-11-19 owner report that some buildings still fail, RO-074 researches which element ids, double doors and state values the client uses and RO-075 adds the door table; this task loads that table.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-059",
+        "RO-060",
+        "RO-061",
+        "RO-074"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "bigworld_gateway/server/battle_flow.py"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/doors.py",
+        "tests/compatibility/gateway/doors/**"
+      ],
+      "acceptance_criteria": [
+        "modules/doors.py handles openElement and closeElement, rejects elemID outside the range found in RO-057, and keeps state in the session",
+        "openedElements is written through the RO-059 property-update encoder and rebuilt in createEntity data when the space is recreated",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/doors -q --tb=line passes",
+        "In-game check on the emulator (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): press OPEN at a door: the door opens, the OPEN button becomes CLOSE, pressing it again closes the door, and no script error appears in the client log"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/doors -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T23:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        }
+      ]
+    },
+    {
+      "id": "RO-068",
+      "title": "Research bot (Robot) entities for the original client",
+      "phase": "09",
+      "description": "Robot (client type 58 and variants RobotRos2 64, RobotImba 59 ...) has 125 client-visible properties (characterType, hp, campType, handingWeapon, battleState, planeID, ...). Find the minimum property set that renders a moving humanoid with a name in a BattleGround match, how movement is synchronised (position/yaw messages for non-player entities, updateEntity), how a bot appears in the kill feed and aliveNum, and whether a bot can be hit by the player's weapon without a server reply. Decide whether bots use Robot or Avatar-like entities and say what the client does when a bot dies.",
+      "category": "research",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "backlog",
+      "priority": "medium",
+      "dependencies": [
+        "RO-056",
+        "RO-057"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "bigworld_gateway/server/battle_flow.py"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/docs/BOT_ENTITIES.md",
+        "bigworld_gateway/client/frida/payloads/bots/**"
+      ],
+      "acceptance_criteria": [
+        "BOT_ENTITIES.md names the entity type, the required properties and a movement message layout with captured evidence",
+        "Document lists what damage and death need from the server and which of those the first bot task will skip",
+        "Open questions are listed under remaining_issues"
+      ],
+      "verification_commands": [
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "protocol-test-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        }
+      ]
+    },
+    {
+      "id": "RO-069",
+      "title": "Bots in the match",
+      "phase": "09",
+      "description": "Create bot entities per RO-068, give them names and outfits, drop them from the plane, land them and move them with simple waypoints; keep aliveNum, the kill feed and the result placement in step with the bot count. First version: bots do not shoot. A gateway parameter sets the bot count (default from data/, for example 7 as app/game/rules.py bot_fill does for the JSON simulator).",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "medium",
+      "dependencies": [
+        "RO-059",
+        "RO-063",
+        "RO-068"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "bigworld_gateway/server/battle_flow.py"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/bots.py",
+        "bigworld_gateway/server/battle/data/bots.json",
+        "tests/compatibility/gateway/bots/**"
+      ],
+      "acceptance_criteria": [
+        "modules/bots.py spawns N bots from data/bots.json with unique entity ids and removes them at session end",
+        "Bot movement is deterministic with a seeded generator (test)",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/bots -q --tb=line passes",
+        "In-game check on the emulator (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): bots are visible dropping from the plane and walking on the ground, and aliveNum counts them"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/bots -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        }
+      ]
+    },
+    {
+      "id": "RO-070",
+      "title": "Report finished original-client matches to RoS_Server",
+      "phase": "09",
+      "description": "POST /api/v1/gateway/accounts/{uid}/matches already exists (app/api/v1/gateway.py record_match, GatewayProfileService.record_match, schema GatewayMatchReport) but the gateway never calls it: account_link.py has no record_match, so placement, kills and rank score from a real match are lost. Add the gateway-side call (same X-Gateway-Key link, at-most-once per match, no retry that could double count because the route has no match id) and document in docs/API_CONTRACT.md that the report is sent when a match ends. If idempotency is wanted, open a separate task with the database and migration owners; do not change tables here.",
+      "category": "api",
+      "assigned_agent": "api-engineer",
+      "status": "backlog",
+      "priority": "medium",
+      "dependencies": [
+        "RO-058"
+      ],
+      "research_references": [
+        "docs/API_CONTRACT.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/account_link.py",
+        "docs/API_CONTRACT.md",
+        "tests/integration/test_gateway_match_report.py"
+      ],
+      "acceptance_criteria": [
+        "account_link.record_match(report) returns the profile or None when not linked, and never raises into the match loop",
+        "A test posts a report through the FastAPI test client and checks placement, kills, rank_score and PlayerStatistics totals change exactly once",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/integration/test_gateway_match_report.py -q --tb=line passes",
+        "API_CONTRACT.md states that the match id is not part of the route and what the gateway does on failure"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/integration/test_gateway_match_report.py tests/integration/test_gateway_accounts.py -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "api-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        }
+      ]
+    },
+    {
+      "id": "RO-071",
+      "title": "Death, results screen and return to the lobby",
+      "phase": "09",
+      "description": "Today nothing ends a match: no death, no result screen, no return to the lobby (the only way back is _transition_to_athlete on the tutorial SKIP request). Handle zone and (later) bot death, win when one combatant is left, call BattleGroundSpace.gameEnd and the client result methods found in the client scripts, send the RO-070 report, then reuse the resetEntities + createBasePlayer(Athlete) + enterHall path to put the player back in the lobby with the START button usable again.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-064",
+        "RO-070"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "bigworld_gateway/server/battle_flow.py"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/results.py",
+        "tests/compatibility/gateway/results/**"
+      ],
+      "acceptance_criteria": [
+        "modules/results.py ends the match on death or victory, builds the GatewayMatchReport from session counters and calls account_link.record_match once",
+        "Return to lobby clears the session (entities, timers, opened elements) so a second START works (test with the session fake)",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/results -q --tb=line passes",
+        "In-game check on the emulator (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): die in the zone, see the result screen, return to the lobby, press START again and enter a second match without restarting the game"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/results -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        }
+      ]
+    },
+    {
+      "id": "RO-072",
+      "title": "In-game acceptance run and regression suite for the match",
+      "phase": "09",
+      "description": "Independent check of items 1-6 on the emulator: countdown, plane, jump/parachute, shrinking zone, loot pickup, doors, bots, end of match. Write the checklist, run it, store the gateway log excerpts, and make one regression test file that replays recorded client messages through the MatchSession.",
+      "category": "quality",
+      "assigned_agent": "qa-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-066",
+        "RO-067",
+        "RO-069",
+        "RO-071"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md"
+      ],
+      "files_allowed": [
+        "docs/testing/GATEWAY_MATCH_ACCEPTANCE.md",
+        "tests/regression/test_gateway_match_flow.py"
+      ],
+      "acceptance_criteria": [
+        "GATEWAY_MATCH_ACCEPTANCE.md has one row per feature (countdown, plane, jump, zone, loot, doors, bots, results) with pass or fail and a log excerpt",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/regression/test_gateway_match_flow.py -q --tb=line passes",
+        "Failures stay open as remaining_issues; skipped checks are listed separately"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/regression/test_gateway_match_flow.py -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "qa-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        }
+      ]
+    },
+    {
+      "id": "RO-073",
+      "title": "Security review of the in-match gateway code",
+      "phase": "09",
+      "description": "The client controls pickup ids, element ids, jump requests and position messages. Review battle/requests.py, props.py and doors.py for unbounded lengths, entity id spoofing, pickup range and duplicate-pickup checks, flooding, and that nothing prints secrets or session keys. Write the report only.",
+      "category": "security",
+      "assigned_agent": "security-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-066",
+        "RO-067"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md"
+      ],
+      "files_allowed": [
+        "docs/engineering/reviews/RO-073-gateway-battle-security.md"
+      ],
+      "acceptance_criteria": [
+        "Report lists findings by severity with file:line and a recommendation for each",
+        "Report states that app/ does not import bigworld_gateway/ and the gateway reaches the database only through /api/v1/gateway",
+        "No source file is edited by the reviewer"
+      ],
+      "verification_commands": [
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-19T22:00:00+07:00",
+      "updated_at": "2026-11-19T22:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T22:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "security-engineer",
+          "note": "Opened from the 2026-11-19 gateway match gap review (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md)."
+        }
+      ]
+    },
+    {
+      "id": "RO-074",
+      "title": "Research doors and scene elements: which element ids and buildings fail",
+      "phase": "09",
+      "description": "Some or all buildings: the OPEN button does nothing, although onElementOpen/onElementClose replies exist (bigworld_gateway/server/battle_flow.py:294-300). Find out why per door. Questions: (a) which elemID values the client sends per building and whether each id exists in the scene (the client onElementOpen looks up a scene object, LOBBY_FINDINGS.md update 11); (b) doors whose elemID is not in the space's openedElements, and whether openedElements must contain an entry for the door to react; (c) double doors: one or two elemIDs, and whether the second leaf needs its own reply; (d) the meaning of the INT8 state (0, 1, 2, other values seen), and whether the OPEN button label changes with the state; (e) which door types never send openElement (sliding, garage, vehicle, ElevatorCage) so they are out of scope. Output is a table per building with elemID, state values, reply tried, visible result.",
+      "category": "research",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "ready",
+      "priority": "critical",
+      "dependencies": [],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/docs/DOORS_AND_ELEMENTS.md",
+        "bigworld_gateway/client/frida/payloads/doors/**",
+        "bigworld_gateway/server/extract/map700_elements.json"
+      ],
+      "acceptance_criteria": [
+        "DOORS_AND_ELEMENTS.md lists, per building tried on map 700, the elemIDs the client sent, the state values, the reply sent and whether the door visibly moved; failures are listed with a cause or marked unknown",
+        "DOORS_AND_ELEMENTS.md says whether an openedElements entry is required, how double doors map to elemIDs, and what state 0, 1 and any other value mean, each with a captured log line or marked unverified",
+        "extract/map700_elements.json lists the observed elemIDs with building, state and result and loads as valid JSON",
+        "In-game check (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): open and close at least three different buildings, one double door and one door that fails; attach the gateway log lines '[BATTLE] <- BattleGroundSpace.openElement' and the client log excerpt for each"
+      ],
+      "verification_commands": [
+        "python -c \"import json;json.load(open('bigworld_gateway/server/extract/map700_elements.json',encoding='utf-8'))\"",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "protocol-test-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T23:00:00+07:00",
+      "updated_at": "2026-11-19T23:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T23:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "ready",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Opened from the 2026-11-19 owner request on doors, loot quantities, discard, breakable glass and character actions (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md, section 'Interaction gaps')."
+        }
+      ]
+    },
+    {
+      "id": "RO-075",
+      "title": "Door coverage: element ids, double doors and state values",
+      "phase": "09",
+      "description": "Extends RO-067 with the findings of RO-074. data/doors.json holds the known door table (elemID, building, pair elemIDs for double doors, state meanings, whether an openedElements entry is needed). The doors module (RO-067) reads it. Unknown elemIDs are answered with the generic reply and logged once, not dropped, unless RO-074 shows that this breaks the client. No change to modules/doors.py is made here: RO-067 loads the table.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-067",
+        "RO-074"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/data/doors.json",
+        "tests/compatibility/gateway/doors_coverage/**"
+      ],
+      "acceptance_criteria": [
+        "data/doors.json covers every elemID found in extract/map700_elements.json, including double-door pairs and state meanings",
+        "Tests assert: every table entry produces the reply and the openedElements change RO-074 documents; an unknown elemID neither raises nor corrupts the opened set; a double door opens both leaves",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/doors_coverage -q --tb=line passes",
+        "In-game check (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): every building listed in DOORS_AND_ELEMENTS.md opens and closes with the OPEN/CLOSE button, a double door opens fully, and no script error appears in the client log"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/doors_coverage -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T23:00:00+07:00",
+      "updated_at": "2026-11-19T23:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T23:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-19 owner request on doors, loot quantities, discard, breakable glass and character actions (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md, section 'Interaction gaps')."
+        }
+      ]
+    },
+    {
+      "id": "RO-076",
+      "title": "Research item quantities, weapon item data and equip messages",
+      "phase": "09",
+      "description": "Picked-up amount is always 1 and picked weapons are not equipped (LOBBY_FINDINGS.md update 11, 'Still open'; bigworld_gateway/server/battle_flow.py:306 writes the DtsProp amount into ITEM_DATA_CONVERT.number, but the loot test command always spawns amount 1 at :186). Document: (a) per prop id the stack size and default amount (ammo, heal, throwables, armor durability) from the client prop data (shared.lib.gametoolslib.properties.getBattleGroundPropData, client/frida/payloads/prop_ids.py); (b) how DtsProp.amount maps to ITEM_DATA_CONVERT.number and to onAddDtsItem versus a folded add (stackable items fold: client onDelDtsFoldedItem(ITEM_ID, ITEM_CNT) in defs/interfaces/idtspackage.def, bigworld_gateway/server/extract/entities_out/374_88d14d31.bin:80-83); (c) partial pickup: DtsProp.syncAmount(INT32) (entities_out/592_db694dc4.bin:60-62) and what the prop shows afterwards; (d) the meaning of the first tryPickUp argument INT32 (592_db694dc4.bin:70-73; the client sent 1 in every capture): slot, count or other; (e) the weapon item payload (uuid, info dict with attachments and ammo), the property updates dtsWeapon1/dtsWeapon2/dtsCurWeapon (client indices 423, 425, 431 in ENTITY_PROPERTY_UPDATE_FORMAT.md section 1) and avatar methods such as onWearDtsWeapon that equip a picked weapon. RO-056 must have confirmed the property-update message first.",
+      "category": "research",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-056",
+        "RO-065"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/docs/ITEM_QUANTITIES_AND_EQUIP.md",
+        "bigworld_gateway/client/frida/payloads/quantities/**",
+        "bigworld_gateway/server/extract/prop_amounts.json"
+      ],
+      "acceptance_criteria": [
+        "ITEM_QUANTITIES_AND_EQUIP.md gives stack and default amounts for guns, ammo, heal items, throwables and armor, with the source (client prop data call or capture) for each",
+        "The document states what the first tryPickUp argument is and how partial pickup (syncAmount) behaves, each with a captured log line or marked unverified",
+        "The document gives the exact byte layout of the messages that equip a weapon (property update or method) with the client log proving the weapon appears in hand, or marks it unverified",
+        "extract/prop_amounts.json loads as valid JSON and lists prop id, stack size, default amount and category",
+        "In-game check (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): pick up ammo, a heal item and a gun, and attach the client log that shows the package counts and the equipped weapon"
+      ],
+      "verification_commands": [
+        "python -c \"import json;json.load(open('bigworld_gateway/server/extract/prop_amounts.json',encoding='utf-8'))\"",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "protocol-test-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T23:00:00+07:00",
+      "updated_at": "2026-11-19T23:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T23:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Opened from the 2026-11-19 owner request on doors, loot quantities, discard, breakable glass and character actions (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md, section 'Interaction gaps')."
+        }
+      ]
+    },
+    {
+      "id": "RO-077",
+      "title": "Loot quantities, stacks and partial pickup",
+      "phase": "09",
+      "description": "Uses RO-076 data. items.py owns the server copy of the player's package (item id -> stack or uuid list), so pickup, discard (RO-079) and equip (RO-084) share one source. Picked-up number equals DtsProp.amount, capped by the stack size; a partial pickup sends DtsProp.syncAmount and keeps the prop with the remainder; the first tryPickUp argument is interpreted as RO-076 documents. Package totals and onAddDtsItem or the folded variant are sent with the RO-059 encoders. Depends on RO-066 for the prop entity and the pickup hook; this task does not edit modules/props.py, props.py calls items.py.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-066",
+        "RO-076"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/items.py",
+        "bigworld_gateway/server/battle/data/item_amounts.json",
+        "tests/compatibility/gateway/items/**"
+      ],
+      "acceptance_criteria": [
+        "items.py gives a picked-up item the prop amount, folds stackable items, and respects the stack cap and the package grid limit RO-076 documents",
+        "A partial pickup sends syncAmount with the remainder and leaves the prop; a full pickup removes it; picking up more than the remaining amount is rejected (tests)",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/items -q --tb=line passes",
+        "In-game check (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): pick up 30 rounds of ammo, then a stack of 5 bandages, then take part of a stack: the backpack shows 30, 5 and the partial count, and the ground prop shows the remainder"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/items -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T23:00:00+07:00",
+      "updated_at": "2026-11-19T23:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T23:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-19 owner request on doors, loot quantities, discard, breakable glass and character actions (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md, section 'Interaction gaps')."
+        }
+      ]
+    },
+    {
+      "id": "RO-078",
+      "title": "Research dropping items out of the bag (discard) and the replies",
+      "phase": "09",
+      "description": "Dropping an item from the bag does nothing: no handler. The defs show the exposed cell method discardProp(INT32, INT32, STRING) on iDtsProp (bigworld_gateway/server/extract/entities_out/182_48835979.bin:96-100; defs/interfaces/idtsprop.def), the client reply onDiscardProp(INT32, INT32) (:222-225), the package sync methods onDelDtsItem(ITEM_ID, ITEM_UUID) and onDelDtsFoldedItem(ITEM_ID, ITEM_CNT) (374_88d14d31.bin:75-83, defs/interfaces/idtspackage.def), and the server-internal BattleGroundSpace.discardProp(INT32, INT32, PY_DICT, VECTOR3) that spawns the DtsProp (150_3a9801e3.bin:742-747). Capture the real request: msg id, which argument is item id, count or uuid, the meaning of the STRING, whether dropping a stack or an equipped weapon uses another method (requestDiscardDtsGunComp for attachments, 182_48835979.bin:127), the client method index (+2/+3 offset, LOBBY_FINDINGS.md update 11) of onDiscardProp, onDelDtsItem and onDelDtsFoldedItem, and the position and rotation the spawned DtsProp needs.",
+      "category": "research",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-057"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/docs/BAG_DISCARD.md",
+        "bigworld_gateway/client/frida/payloads/discard/**",
+        "bigworld_gateway/server/extract/discard_methods.json"
+      ],
+      "acceptance_criteria": [
+        "BAG_DISCARD.md gives the msg id and argument layout of the bag discard request with a captured hex sample for a single item, a stack part and a weapon",
+        "BAG_DISCARD.md gives the client method ids for onDelDtsItem, onDelDtsFoldedItem and onDiscardProp (offset checked against the client log) and the exact reply order",
+        "extract/discard_methods.json loads as valid JSON and lists each method with entity, direction, msg id, argument types and a verified/unverified flag",
+        "In-game check (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): drop a single item, part of a stack and a weapon from the bag; attach the gateway log lines for each request"
+      ],
+      "verification_commands": [
+        "python -c \"import json;json.load(open('bigworld_gateway/server/extract/discard_methods.json',encoding='utf-8'))\"",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "protocol-test-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T23:00:00+07:00",
+      "updated_at": "2026-11-19T23:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T23:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Opened from the 2026-11-19 owner request on doors, loot quantities, discard, breakable glass and character actions (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md, section 'Interaction gaps')."
+        }
+      ]
+    },
+    {
+      "id": "RO-079",
+      "title": "Discard items from the bag: remove from package, spawn DtsProp, answer onDiscardProp",
+      "phase": "09",
+      "description": "Handles the bag discard request decoded by RO-060 (names from RO-078). Validates that the item and count exist in the server package (items.py, RO-077), removes it with onDelDtsItem or onDelDtsFoldedItem, spawns a DtsProp at the player position through props.py (RO-066) with the dropped amount, and answers onDiscardProp. A request for an item the player does not own, a count above the stack, or a negative count is dropped with one log line. Dropping an equipped weapon also clears its slot (RO-084 hook).",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-060",
+        "RO-066",
+        "RO-077",
+        "RO-078"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/discard.py",
+        "tests/compatibility/gateway/discard/**"
+      ],
+      "acceptance_criteria": [
+        "discard.py removes the item or the stack part, spawns a DtsProp with the dropped amount at the player position and sends onDiscardProp in the order RO-078 documents",
+        "Tests: discarding an item the player does not hold, a count larger than the stack, or zero/negative count changes nothing and raises nothing; the dropped prop can be picked up again with the same amount",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/discard -q --tb=line passes",
+        "In-game check (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): drop a rifle, drop 10 of 30 rounds, pick them up again: the backpack grid updates each time, the prop appears at the player and the client log shows no script error"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/discard -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T23:00:00+07:00",
+      "updated_at": "2026-11-19T23:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T23:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-19 owner request on doors, loot quantities, discard, breakable glass and character actions (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md, section 'Interaction gaps')."
+        }
+      ]
+    },
+    {
+      "id": "RO-080",
+      "title": "Research breakable windows and glass, and window jump/vault",
+      "phase": "09",
+      "description": "Windows and glass do not break. BattleGroundSpace has exposed blastGunShoot(VECTOR3, VECTOR3, VECTOR3, FLOAT, FLOAT) and uploadBlastState(INT32, BLOB) (bigworld_gateway/server/extract/entities_out/150_3a9801e3.bin:797-807) and the property blastObjectStates (:290-293, client index 68 in CREATE_ENTITY_FORMAT.md). Capture what the client sends when it shoots a window, a glass wall and a wooden wall, and when it jumps or vaults through a window; the BLOB layout of uploadBlastState; whether the client expects a reply, a blastObjectStates update, or a broadcast client method; and whether window vault is client-only (no server message). Output is a message table and the minimal reply set.",
+      "category": "research",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-057"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/docs/BREAKABLE_SCENE.md",
+        "bigworld_gateway/client/frida/payloads/blast/**",
+        "bigworld_gateway/server/extract/map700_blast.json"
+      ],
+      "acceptance_criteria": [
+        "BREAKABLE_SCENE.md lists every client message sent when a window or glass is shot or vaulted, with msg id, argument layout and a captured hex sample, or says that no message is sent",
+        "BREAKABLE_SCENE.md states what reply or property update makes the glass stay broken for the shooter and what is needed for a later joiner (blastObjectStates), each verified or marked unverified",
+        "extract/map700_blast.json loads as valid JSON and lists the object ids seen with type and state",
+        "In-game check (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): shoot a window and a glass wall and vault a window; attach the gateway log and the client log for each"
+      ],
+      "verification_commands": [
+        "python -c \"import json;json.load(open('bigworld_gateway/server/extract/map700_blast.json',encoding='utf-8'))\"",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "protocol-test-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T23:00:00+07:00",
+      "updated_at": "2026-11-19T23:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T23:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Opened from the 2026-11-19 owner request on doors, loot quantities, discard, breakable glass and character actions (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md, section 'Interaction gaps')."
+        }
+      ]
+    },
+    {
+      "id": "RO-081",
+      "title": "Breakable windows and glass: answer blast requests and keep blast states",
+      "phase": "09",
+      "description": "Handles blastGunShoot and uploadBlastState on BattleGroundSpace as RO-080 documents: bounds every vector and the BLOB length, stores the blast states in the session, answers with the required client method, and updates blastObjectStates through the RO-059 property-update encoder so the state survives a space recreate. Window vault is handled here only if RO-080 shows a server message exists.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-059",
+        "RO-060",
+        "RO-061",
+        "RO-080"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/blast.py",
+        "tests/compatibility/gateway/blast/**"
+      ],
+      "acceptance_criteria": [
+        "blast.py decodes blastGunShoot and uploadBlastState with bounded lengths and keeps the broken-object set in the session",
+        "Tests: oversized BLOB, NaN or infinite vectors and unknown object ids neither raise nor change state; the blastObjectStates update bytes equal the RO-059 encoder output",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/blast -q --tb=line passes",
+        "In-game check (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): shoot a window: the glass breaks and stays broken, the player can vault the frame, and no script error appears in the client log"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/blast -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T23:00:00+07:00",
+      "updated_at": "2026-11-19T23:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T23:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-19 owner request on doors, loot quantities, discard, breakable glass and character actions (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md, section 'Interaction gaps')."
+        }
+      ]
+    },
+    {
+      "id": "RO-082",
+      "title": "Research character actions and own-player state (jump, crouch, prone, sit, lean, position sync)",
+      "phase": "09",
+      "description": "Joystick movement works on the client but nothing else is answered. Exposed methods: doCommonGameAction(STRING, BOOL, STRING, STRING) and doInGameAction(INT32) on iBattleGround (bigworld_gateway/server/extract/entities_out/099_25abc9c1.bin:388-396), syncLeanState(FLOAT) on iCombatUnit (331_7c78ef0b.bin:441-443), client replies onOtherDoInGameAction and onOwnDoInGameAction (099_25abc9c1.bin:502-509), and position messages 0xBC and 0xBD (LOBBY_FINDINGS.md update 8; docs/ENTITY_PROPERTY_UPDATE_FORMAT.md section 2 says 0xBD is a no-argument method). For each action the client can do (walk, run, jump, crouch, prone, sit down, lean, vault, climb, swim, emote, open parachute, reload, heal, throw) capture the request, whether it expects a reply, and which own-player properties change (for example posture or state fields) and need a property update. Decode the layout of 0xBC and 0xBD. Mark each action that is purely client-side.",
+      "category": "research",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-056",
+        "RO-057"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/docs/CHARACTER_ACTIONS.md",
+        "bigworld_gateway/client/frida/payloads/actions/**",
+        "bigworld_gateway/server/extract/avatar_action_methods.json"
+      ],
+      "acceptance_criteria": [
+        "CHARACTER_ACTIONS.md has one table row per action with request msg id, argument bytes from a capture, whether the client needs a server reply, and the own-state property that changes, or says client-only",
+        "CHARACTER_ACTIONS.md gives the field layout of 0xBC and 0xBD with units, or marks it unknown with hex samples",
+        "extract/avatar_action_methods.json loads as valid JSON and lists every action method with entity, msg id, argument types and verified flag",
+        "In-game check (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): perform jump, crouch, prone, sit, lean, vault and an emote; attach gateway log lines for each request and say which ones the client handles alone"
+      ],
+      "verification_commands": [
+        "python -c \"import json;json.load(open('bigworld_gateway/server/extract/avatar_action_methods.json',encoding='utf-8'))\"",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "protocol-test-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T23:00:00+07:00",
+      "updated_at": "2026-11-19T23:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T23:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Opened from the 2026-11-19 owner request on doors, loot quantities, discard, breakable glass and character actions (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md, section 'Interaction gaps')."
+        }
+      ]
+    },
+    {
+      "id": "RO-083",
+      "title": "Character actions and own-state sync: jump, crouch, prone, sit, lean, position",
+      "phase": "09",
+      "description": "Implements the replies and state RO-082 shows the client needs: doCommonGameAction and doInGameAction handling, onOwnDoInGameAction replies, syncLeanState storage, and the player's own state properties through the RO-059 property-update encoder. Position tracking itself (decoding 0xBC and 0xBD) stays in RO-060; this module only reads the session position. Actions the client handles alone are logged once and left alone, with no reply. Input is untrusted: bound every string length and enum value.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-059",
+        "RO-060",
+        "RO-082"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/actions.py",
+        "tests/compatibility/gateway/actions/**"
+      ],
+      "acceptance_criteria": [
+        "actions.py answers each action RO-082 marks as server-reply-required and ignores client-only ones with one log line",
+        "Tests: unknown action names, over-long strings and out-of-range INT32 values raise nothing and send no reply; own-state property updates equal the RO-059 encoder output",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/actions -q --tb=line passes",
+        "In-game check (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): jump, crouch, prone, sit down, lean and vault: each plays its animation, the HUD stance icon matches, the character stays in the match and the client log shows no script error"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/actions -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T23:00:00+07:00",
+      "updated_at": "2026-11-19T23:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T23:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-19 owner request on doors, loot quantities, discard, breakable glass and character actions (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md, section 'Interaction gaps')."
+        }
+      ]
+    },
+    {
+      "id": "RO-084",
+      "title": "Equip picked-up weapons: weapon slots and current weapon",
+      "phase": "09",
+      "description": "A picked-up weapon only enters the package; the player keeps the fist. Per RO-076, send the property update that fills dtsWeapon1 or dtsWeapon2 and dtsCurWeapon (BattleGroundAvatar client indices 423, 425 and 431 per docs/ENTITY_PROPERTY_UPDATE_FORMAT.md section 1) or the equip method (onWearDtsWeapon), whichever RO-076 verifies. Handles equip, swap slot, unequip and the drop of an equipped weapon (RO-079 hook). Ammo count follows items.py. Uses the RO-059 property-update encoder; no raw property message is built here.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-059",
+        "RO-066",
+        "RO-076",
+        "RO-077"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/equip.py",
+        "tests/compatibility/gateway/equip/**"
+      ],
+      "acceptance_criteria": [
+        "equip.py puts a picked-up weapon in a free slot, makes it current, and clears the slot on drop; two weapons occupy slot 1 and slot 2",
+        "Tests: equipping an item that is not a weapon or not in the package changes nothing; slot messages equal the RO-059 encoder output",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/equip -q --tb=line passes",
+        "In-game check (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): pick up two guns: both appear in the weapon slots, switching slots shows the other gun in hand, and the client log shows no script error"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/equip -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-19T23:00:00+07:00",
+      "updated_at": "2026-11-19T23:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T23:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-19 owner request on doors, loot quantities, discard, breakable glass and character actions (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md, section 'Interaction gaps')."
+        }
+      ]
+    },
+    {
+      "id": "RO-085",
+      "title": "QA acceptance run for doors, loot, discard, glass, actions and equip",
+      "phase": "09",
+      "description": "Independent QA pass over the interaction work. Reruns every pytest command of RO-075, RO-077, RO-079, RO-081, RO-083 and RO-084, adds one regression test that replays captured request bytes for each feature through the battle session, and records a manual checklist for the emulator run. QA does not approve.",
+      "category": "quality",
+      "assigned_agent": "qa-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-075",
+        "RO-077",
+        "RO-079",
+        "RO-081",
+        "RO-083",
+        "RO-084"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "docs/testing/GATEWAY_INTERACTION_ACCEPTANCE.md",
+        "tests/regression/test_gateway_interactions.py"
+      ],
+      "acceptance_criteria": [
+        "GATEWAY_INTERACTION_ACCEPTANCE.md lists each feature, the pytest output, the emulator steps and the observed result, with skipped checks stated separately",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/regression/test_gateway_interactions.py -q --tb=line passes",
+        "In-game check (the specialist runs it with bigworld_gateway/tools/to_match.sh; the CTO does not): run the checklist once end to end on a fresh match and record every deviation"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/regression/test_gateway_interactions.py -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-19T23:00:00+07:00",
+      "updated_at": "2026-11-19T23:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T23:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "qa-engineer",
+          "note": "Opened from the 2026-11-19 owner request on doors, loot quantities, discard, breakable glass and character actions (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md, section 'Interaction gaps')."
+        }
+      ]
+    },
+    {
+      "id": "RO-086",
+      "title": "Security review of the interaction modules (discard, blast, actions, equip, items)",
+      "phase": "09",
+      "description": "The client controls item ids, counts, uuids, discard positions, blast vectors and BLOBs, action strings and equip slots. Review items.py, discard.py, blast.py, actions.py and equip.py for unbounded lengths, item duplication through repeated or racing requests, negative or overflowing counts, spoofed entity ids, flooding and logging of session keys. Write the report only.",
+      "category": "security",
+      "assigned_agent": "security-engineer",
+      "status": "backlog",
+      "priority": "high",
+      "dependencies": [
+        "RO-077",
+        "RO-079",
+        "RO-081",
+        "RO-083",
+        "RO-084"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "docs/engineering/reviews/RO-086-gateway-interaction-security.md"
+      ],
+      "acceptance_criteria": [
+        "Report lists findings by severity with file:line and a recommendation for each, including an explicit check that an item cannot be duplicated by pickup, discard and pickup races",
+        "Report states that app/ does not import bigworld_gateway/",
+        "No source file is edited by the reviewer"
+      ],
+      "verification_commands": [
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "cto"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "not_applicable",
+      "created_at": "2026-11-19T23:00:00+07:00",
+      "updated_at": "2026-11-19T23:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-19T23:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "security-engineer",
+          "note": "Opened from the 2026-11-19 owner request on doors, loot quantities, discard, breakable glass and character actions (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md, section 'Interaction gaps')."
         }
       ]
     }

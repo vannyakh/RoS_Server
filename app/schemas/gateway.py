@@ -7,9 +7,26 @@ from pydantic import BaseModel, Field
 EXTERNAL_UID_PATTERN = r"^[0-9A-Za-z_.\-]{1,64}$"
 
 
+class GatewayPresence(BaseModel):
+    """Original-client session report. online=true renews a 75-second lease; false ends it."""
+
+    online: bool
+
+
+class GatewayDevice(BaseModel):
+    """What the client's SDK requests reported for this device (User-Agent and query string)."""
+
+    model: str | None = Field(default=None, max_length=64)
+    os_name: str | None = Field(default=None, max_length=32)
+    client_version: str | None = Field(default=None, max_length=32)
+    time_zone: str | None = Field(default=None, max_length=64)
+    language: str | None = Field(default=None, max_length=16)
+
+
 class GatewayResolveRequest(BaseModel):
     external_uid: str = Field(pattern=EXTERNAL_UID_PATTERN)
     ip_address: str | None = Field(default=None, max_length=64)
+    device: GatewayDevice | None = None
 
 
 class GatewayCharacterRequest(BaseModel):

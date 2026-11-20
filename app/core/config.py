@@ -24,8 +24,14 @@ class Settings(BaseSettings):
     map_storage_dir: str = ""
     admin_username: str = ""
     admin_password: str = ""
+    # Longest an operator stays signed in through token refreshes, counted from the password sign-in.
+    operator_session_max_hours: int = 12
     # Shared key for the original-client gateway (bigworld_gateway/). Empty disables /api/v1/gateway.
     gateway_api_key: str = ""
+    # Offline IP-to-country database (.mmdb). Empty: country is not recorded.
+    geoip_db_path: str = ""
+    # Uploaded display images (admin asset library). Empty: storage/game_assets/icons.
+    game_asset_dir: str = ""
     # Diamonds (original-client "yuanbao") a new gateway player starts with.
     gateway_starting_yuanbao: int = 100000
     # Season the original client is in; its Stats page "Season" tab reads this season's records.

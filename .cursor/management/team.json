@@ -1,6 +1,6 @@
 {
   "version": "1.2.0",
-  "updated_at": "2026-11-12T20:55:00+07:00",
+  "updated_at": "2026-11-19T22:00:00+07:00",
   "assignment_authority": "cto",
   "agents": [
     {
@@ -70,7 +70,11 @@
       "allowed_paths": [
         "docs/engineering/**",
         "app/main.py",
-        "app/api/router.py"
+        "app/api/router.py",
+        "bigworld_gateway/server/ros_server.py",
+        "bigworld_gateway/server/battle/__init__.py",
+        "bigworld_gateway/server/battle/session.py",
+        "tests/compatibility/gateway/session/**"
       ],
       "restricted_paths": [
         ".env",
@@ -157,7 +161,10 @@
         "app/api/**",
         "app/schemas/**",
         "app/services/**",
-        "app/repositories/**"
+        "app/repositories/**",
+        "bigworld_gateway/server/account_link.py",
+        "docs/API_CONTRACT.md",
+        "tests/integration/test_gateway_match_report.py"
       ],
       "restricted_paths": [
         ".env",
@@ -280,7 +287,10 @@
       "allowed_paths": [
         "docs/compatibility/**",
         "docs/reverse-engineering/**",
-        "testdata/reference/**"
+        "testdata/reference/**",
+        "bigworld_gateway/docs/**",
+        "bigworld_gateway/client/frida/**",
+        "bigworld_gateway/server/extract/**"
       ],
       "restricted_paths": [
         ".env",
@@ -311,7 +321,9 @@
         "app/networking/protocol.py",
         "docs/reverse-engineering/CLIENT_ANALYSIS.md",
         "docs/reverse-engineering/DATA_FORMATS.md",
-        "docs/reverse-engineering/NETWORK_INTERFACE.md"
+        "docs/reverse-engineering/NETWORK_INTERFACE.md",
+        "bigworld_gateway/server/battle_flow.py",
+        "bigworld_gateway/server/battle/requests.py"
       ],
       "restricted_paths": [
         ".env",
@@ -341,7 +353,10 @@
         "tools/game_simulator/**",
         "testdata/**",
         "docs/reverse-engineering/GAME_FUNCTIONS.md",
-        "docs/reverse-engineering/UNKNOWN_BEHAVIOR.md"
+        "docs/reverse-engineering/UNKNOWN_BEHAVIOR.md",
+        "bigworld_gateway/server/battle/timeline.py",
+        "bigworld_gateway/server/battle/modules/**",
+        "bigworld_gateway/server/battle/data/**"
       ],
       "restricted_paths": [
         ".env",

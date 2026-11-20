@@ -20,3 +20,12 @@ server/certs_backup*/
 server/*capture*.bin
 server/latest_bf_key.bin
 scratch_*.png
+
+# client patches: binaries + private key stay local / private drive
+*.apk
+*.obb
+*.jar
+client/patch_tools/jdk/
+client/patch_tools/neox_rotor_key.txt
+client/patches/CURRENT.local.md
+__pycache__/

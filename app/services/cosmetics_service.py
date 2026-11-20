@@ -102,7 +102,7 @@ async def purchase_skin(session: AsyncSession, player: Player, code: str) -> dic
         raise AppError(409, "Skin already owned")
     inventory = InventoryService(session)
     if skin.price > 0 and skin.currency is not None:
-        await inventory.apply_currency(player.id, skin.currency, -skin.price, "skin_purchase", commit=False)
+        await inventory.apply_currency(player.id, skin.currency, -skin.price, "skin_purchase", commit=False, details={"skin": skin.code})
     await inventory.add_item(player.id, skin.code, 1, commit=False)
     await session.commit()
     return await wallet_snapshot(session, player)

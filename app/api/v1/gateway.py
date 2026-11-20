@@ -20,6 +20,7 @@ from app.schemas.gateway import (
     GatewayPurchaseResult,
     GatewayState,
     GatewayPortraitRequest,
+    GatewayPresence,
     GatewayResolveRequest,
 )
 from app.services.gateway_profile_service import GatewayProfileService
@@ -38,7 +39,7 @@ def require_gateway_key(x_gateway_key: str | None = Header(default=None)) -> Non
 
 @router.post("/accounts/resolve", response_model=GatewayAccount, dependencies=[Depends(require_gateway_key)])
 async def resolve_account(body: GatewayResolveRequest, db: AsyncSession = Depends(get_db)) -> GatewayAccount:
-    return await GatewayService(db).resolve(body.external_uid, body.ip_address)
+    return await GatewayService(db).resolve(body.external_uid, body.ip_address, body.device)
 
 
 @router.put(
@@ -140,3 +141,16 @@ async def claim_credit_reward(
     db: AsyncSession = Depends(get_db),
 ) -> GatewayCreditClaim:
     return await GatewayProfileService(db).claim_credit_reward(external_uid)
+
+
+@router.post(
+    "/accounts/{external_uid}/presence",
+    response_model=GatewayPresence,
+    dependencies=[Depends(require_gateway_key)],
+)
+async def report_presence(
+    body: GatewayPresence,
+    external_uid: str = Path(pattern=EXTERNAL_UID_PATTERN),
+    db: AsyncSession = Depends(get_db),
+) -> GatewayPresence:
+    return GatewayPresence(online=await GatewayService(db).report_presence(external_uid, body.online))

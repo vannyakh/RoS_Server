@@ -43,6 +43,9 @@ class OperatorSession(IdMixin, CreatedAtMixin, Base):
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Sign-in time of the chain this token belongs to; refreshes carry it forward so the
+    # whole chain ends OPERATOR_SESSION_MAX_HOURS after the password was entered.
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     operator: Mapped[Operator] = relationship(back_populates="sessions", lazy="raise")
 

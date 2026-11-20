@@ -92,5 +92,16 @@ class LoginHistory(IdMixin, CreatedAtMixin, Base):
     account_id: Mapped[str | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
     login_status: Mapped[str] = mapped_column(String(16), nullable=False)
     ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # "web" (HTTP login) or "game" (original client through the gateway). Null on rows before c6e1d84f2a37.
+    source: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # ISO 3166 alpha-2 from the offline IP database at login time; null for private IPs or no database.
+    country: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    device_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    os_name: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    client_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Time zone and language the game SDK reported, e.g. "Asia/Phnom_Penh", "en-US".
+    time_zone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    language: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(256), nullable=True)
 
     account: Mapped[Account | None] = relationship(back_populates="login_history", lazy="raise")

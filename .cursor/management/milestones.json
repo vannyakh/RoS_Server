@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updated_at": "2026-11-12T21:20:00+07:00",
+  "updated_at": "2026-11-19T23:00:00+07:00",
   "current_phase": "00",
   "phases": [
     {
@@ -128,6 +128,45 @@
         "RO-034",
         "RO-045",
         "RO-054"
+      ]
+    },
+    {
+      "phase": "09",
+      "name": "Original-client match integration",
+      "status": "not_started",
+      "summary": "The gateway puts the original client into a match on map 700 but creates no space, plane, props, doors or bots. RO-056 (entity-creation framing) blocks the rest. Nothing here is original-compatible until a reviewed task says so.",
+      "task_ids": [
+        "RO-056",
+        "RO-057",
+        "RO-058",
+        "RO-059",
+        "RO-060",
+        "RO-061",
+        "RO-062",
+        "RO-063",
+        "RO-064",
+        "RO-065",
+        "RO-066",
+        "RO-067",
+        "RO-068",
+        "RO-069",
+        "RO-070",
+        "RO-071",
+        "RO-072",
+        "RO-073",
+        "RO-074",
+        "RO-075",
+        "RO-076",
+        "RO-077",
+        "RO-078",
+        "RO-079",
+        "RO-080",
+        "RO-081",
+        "RO-082",
+        "RO-083",
+        "RO-084",
+        "RO-085",
+        "RO-086"
       ]
     }
   ]

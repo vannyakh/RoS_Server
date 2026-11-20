@@ -1,5 +1,7 @@
 """Authentication request and response bodies."""
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -17,6 +19,8 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
+    # Operator tokens only: when the sign-in chain ends however often it is refreshed.
+    session_expires_at: datetime | None = None
 
 
 class PlayerCreated(BaseModel):

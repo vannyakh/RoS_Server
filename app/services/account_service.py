@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.exceptions import AppError
+from app.core.geoip import country_for
 from app.core.security import (
     create_access_token,
     decode_access_token,
@@ -70,15 +71,15 @@ class AccountService:
             await self.session.refresh(account)
         return account
 
-    async def login(self, username: str, password: str, ip_address: str | None) -> TokenResponse:
+    async def login(self, username: str, password: str, ip_address: str | None, user_agent: str | None = None) -> TokenResponse:
         normalized = username.strip().casefold()
         account = await self.accounts.by_username(normalized)
         if account is None or not verify_password(password, account.password_hash):
-            await self._record(account.id if account else None, "failure", ip_address)
+            await self._record(account.id if account else None, "failure", ip_address, user_agent)
             await self.session.commit()
             raise AppError(401, "Invalid username or password")
         if account.status != "active":
-            await self._record(account.id, "failure", ip_address)
+            await self._record(account.id, "failure", ip_address, user_agent)
             await self.session.commit()
             raise AppError(401, "Invalid username or password")
         token = create_access_token(account.id)
@@ -91,7 +92,7 @@ class AccountService:
                 expires_at=now + timedelta(minutes=settings.jwt_expire_minutes),
             )
         )
-        await self._record(account.id, "success", ip_address)
+        await self._record(account.id, "success", ip_address, user_agent)
         await self.session.commit()
         return TokenResponse(access_token=token, expires_in=token_expires_in())
 
@@ -122,7 +123,14 @@ class AccountService:
         stored.revoked_at = datetime.now(timezone.utc)
         await self.session.commit()
 
-    async def _record(self, account_id: str | None, status: str, ip_address: str | None) -> None:
+    async def _record(self, account_id: str | None, status: str, ip_address: str | None, user_agent: str | None = None) -> None:
         await self.accounts.add_login(
-            LoginHistory(account_id=account_id, login_status=status, ip_address=ip_address)
+            LoginHistory(
+                account_id=account_id,
+                login_status=status,
+                ip_address=ip_address,
+                source="web",
+                country=country_for(ip_address),
+                user_agent=(user_agent or "")[:256] or None,
+            )
         )

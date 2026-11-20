@@ -14,12 +14,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppError
+from app.core.geoip import country_for
 from app.core.security import hash_password
 from app.models.account import Account, LoginHistory
 from app.core.config import settings
 from app.models.gateway import GatewayIdentity, GatewayItem
 from app.models.player import Player, PlayerStatistics
 from app.models.types import utc_now
+from app.schemas.gateway import GatewayDevice
 from app.schemas.gateway import (
     GatewayAccount,
     GatewayItemView,
@@ -27,6 +29,7 @@ from app.schemas.gateway import (
     GatewayPurchaseResult,
     GatewayState,
 )
+from app.networking.admin_hub import admin_hub
 from app.services.inventory_service import InventoryService
 
 _UNSAFE = re.compile(r"[^a-z0-9_]")
@@ -45,7 +48,7 @@ class GatewayService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def resolve(self, external_uid: str, ip_address: str | None) -> GatewayAccount:
+    async def resolve(self, external_uid: str, ip_address: str | None, device: GatewayDevice | None = None) -> GatewayAccount:
         identity = await self._identity(external_uid)
         if identity is None:
             identity = await self._create(external_uid)
@@ -58,7 +61,18 @@ class GatewayService:
         if allowed:
             account.last_login_at = now
         self.session.add(
-            LoginHistory(account_id=account.id, login_status="success" if allowed else "failure", ip_address=ip_address)
+            LoginHistory(
+                account_id=account.id,
+                login_status="success" if allowed else "failure",
+                ip_address=ip_address,
+                source="game",
+                country=country_for(ip_address),
+                device_model=device.model if device else None,
+                os_name=device.os_name if device else None,
+                client_version=device.client_version if device else None,
+                time_zone=device.time_zone if device else None,
+                language=device.language if device else None,
+            )
         )
         await self.session.commit()
         return self._view(account, player, identity)
@@ -155,6 +169,14 @@ class GatewayService:
                 player_id, YUANBAO, settings.gateway_starting_yuanbao, "gateway:start", commit=False
             )
         return row.balance
+
+    async def report_presence(self, external_uid: str, online: bool) -> bool:
+        """Session report from the gateway. Returns whether the account now counts as online."""
+        identity = await self._identity(external_uid)
+        if identity is None:
+            raise AppError(404, "Gateway account was not found")
+        admin_hub.gateway_presence(identity.account_id, online)
+        return admin_hub.is_online(identity.account_id)
 
     async def _identity(self, external_uid: str) -> GatewayIdentity | None:
         return await self.session.scalar(select(GatewayIdentity).where(GatewayIdentity.external_uid == external_uid))

@@ -110,6 +110,7 @@ class RoSHTTPHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         ua = self.headers.get("User-Agent", "")
         print(f"[GET] https?={isinstance(self.connection, ssl.SSLSocket)} Host={self.headers.get('Host')} Path={self.path} UA={ua[:80]}")
+        account_link.note_device(self.path, ua)  # model, OS, version, time zone for the next login
         path_lower = self.path.lower()
         host_only = canonical_host(self.headers.get("Host"))
         if host_only.endswith("mpsdk.easebar.com") and path_lower.startswith("/api/games/config"):
@@ -247,6 +248,7 @@ class RoSHTTPHandler(BaseHTTPRequestHandler):
         content_len = int(self.headers.get('Content-Length', 0))
         post_body = self.rfile.read(content_len)
         host = canonical_host(self.headers.get("Host"))
+        account_link.note_device(self.path, self.headers.get("User-Agent", ""))
 
         # Forge login success: NetEase's live server returns 1003 "service stopped" (guest)
         # or 2003 "User does not exist" (auto-login sdk_token re-validation).
@@ -380,7 +382,7 @@ _BASEAPP_EXT_MSGS = {
     0x06: 0, 0x07: None, 0x08: 8, 0x09: 8, 0x0A: 8, 0x0B: 4,
     0x0C: None, 0x0D: None, 0x0E: None, 0x0F: 1, 0x10: 1, 0x11: None,
 }
-_BASEAPP_EXT_MSGS.update({i: None for i in range(0xC0, 0x100)})
+_BASEAPP_EXT_MSGS.update({i: None for i in range(0x80, 0x100)})   # 0x80-0xBF: cell-method calls (var16)
 
 
 def client_method_ex(index, n_methods, entity_id, args):
@@ -767,6 +769,7 @@ def link_login(username, ip_address):
     if not linked["can_play"]:
         print(f"[ACC-LINK] {linked['username']} is {linked['status']}: login refused")
         return False
+    account_link.touch(uid)
     test_name = os.environ.get("TEST_ACCOUNT_NAME")
     if linked["is_new"] and test_name:
         # Fixed test account: skip the in-game character screen, as before the link existed.
@@ -962,6 +965,7 @@ class GateUDP(asyncio.DatagramProtocol):
         self.transport = transport
     def datagram_received(self, data, addr):
         import time as _t
+        account_link.touch()  # presence lease for the linked player (no I/O on this path)
         is_login = data[:4] == b"\x01\x00\x00\x84"
 
         if is_login:
@@ -1151,6 +1155,60 @@ class GateUDP(asyncio.DatagramProtocol):
                         pass
                     self._hall_entered.pop(addr, None)
                     self._send_enter_hall_calls(addr, bytes(bf_key))
+
+                # In-battle client requests (door open/close, loot pickup): answered by battle_flow.Match
+                if self._in_battle.get(addr):
+                    import battle_flow, importlib
+                    if os.environ.get("BATTLE_RELOAD", "on") == "on":
+                        _mt = os.path.getmtime(battle_flow.__file__)
+                        if _mt != getattr(self, "_bf_mtime", _mt):
+                            self._bf_mtime = _mt
+                            _old = self.__dict__.get("_matches", {}).get(addr)
+                            importlib.reload(battle_flow)
+                            if _old is not None:      # keep doors/loot across a code reload
+                                _new = self._battle_match(addr)
+                                _new.__dict__.update(_old.__dict__)
+                        self._bf_mtime = _mt
+                    for m, p in msgs:
+                        if 0x80 <= m <= 0xBF:
+                            try:
+                                reply = battle_flow.Match.handle(self._battle_match(addr), m, p, log=print)
+                            except Exception as e:
+                                reply = b""
+                                print(f"      [BATTLE] request 0x{m:02x} failed: {e!r}")
+                            if reply:
+                                self._send_bundle(addr, reply, self._last_client_seq.get(addr), bytes(bf_key))
+                    match = self.__dict__.get("_matches", {}).get(addr)
+                    # Quit Game -> Confirm sends the base method requestLeaveDynamicSpace (raw base index 181,
+                    # client index +3): msg 0xFD (var16) with sub byte 0x7B. Measured live 2026-11-20.
+                    leave_sub = int(os.environ.get("BATTLE_LEAVE_SUB", "0x7B"), 0)
+                    if any(m == 0xFD and p[:1] == bytes([leave_sub]) for m, p in msgs):
+                        match = self._battle_match(addr)
+                        match.leave = True
+                    if match is not None and getattr(match, "leave", False):
+                        # Quit Game: back to the lobby (Athlete), like the tutorial SKIP path
+                        print("      [BATTLE] player left the match -> lobby")
+                        self._matches.pop(addr, None)
+                        self._in_battle[addr] = False
+                        self._athlete_sent.pop(addr, None)
+                        self._hall_entered.pop(addr, None)
+                        self._transition_to_athlete(addr, bytes(bf_key))
+
+                # Battle-flow experiments on a live match: one command per line (battle_flow.debug_command)
+                trig_battle = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trigger_battle.txt")
+                if os.path.exists(trig_battle) and self._in_battle.get(addr):
+                    import battle_flow, importlib
+                    try:
+                        importlib.reload(battle_flow)        # edit battle_flow.py without a restart
+                        lines = open(trig_battle).read().splitlines()
+                        os.remove(trig_battle)
+                        for line in lines:
+                            data = battle_flow.debug_command(line, int(os.environ.get("BATTLE_MAP", "700")), self._battle_match(addr))
+                            if data:
+                                print(f"      [BATTLE] trigger {line!r} -> {data.hex()}")
+                                self._send_bundle(addr, data, self._last_client_seq.get(addr), bytes(bf_key))
+                    except Exception as e:
+                        print(f"      [BATTLE] trigger failed: {e!r}")
 
                 # Check if client requested skip tutorial / leave dynamic space (SKIP button in HUD)
                 if any(m == 0xFD and len(p) >= 1 and p[0] in (0x7D, 0x58, 0x78, 0x71) for m, p in msgs):
@@ -1814,10 +1872,18 @@ class GateUDP(asyncio.DatagramProtocol):
         save_local_state(yuanbao=wallet.balances.get(athlete_requests.YUANBAO, 0), add_items=props)
         return True
 
+    def _battle_match(self, addr):
+        import battle_flow
+        m = self.__dict__.setdefault("_matches", {})
+        if addr not in m:
+            m[addr] = battle_flow.Match()
+        return m[addr]
+
     def _enter_battle(self, addr):
         if self._in_battle.get(addr) or addr not in self._last_bf:
             return
         self._in_battle[addr] = True
+        self.__dict__.setdefault("_matches", {}).pop(addr, None)     # fresh doors/loot for each match
         map_id = int(os.environ.get("BATTLE_MAP", "700"))
         char = int(os.environ.get("BATTLE_CHAR", "0")) or get_account_char()
         # BattleGroundAvatar (Avatar + iDtsEquip/iDtsProp/iDtsPackage/iDtsEquipAppearanceAvatar):

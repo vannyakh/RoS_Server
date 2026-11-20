@@ -1,5 +1,7 @@
 """Support cases, reports, and the player record those permissions can read."""
 
+from datetime import date
+
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.admin_access import current_operator, require
 from app.infrastructure.database import get_db
 from app.schemas.common import Page
+from app.services.analytics_service import AnalyticsService
 from app.services.operator_service import OperatorActor
 from app.services.support_service import SupportService
 
@@ -18,9 +21,26 @@ class AccountAction(BaseModel):
     reason: str = Field(min_length=3, max_length=240)
 
 
+class OutfitUpdate(BaseModel):
+    body: list[int] = Field(default_factory=list, max_length=32)
+    wear: list[int] = Field(default_factory=list, max_length=32)
+
+
 class ProfileUpdate(BaseModel):
     nickname: str | None = Field(default=None, min_length=1, max_length=32)
     char_type: int | None = Field(default=None, ge=0)
+    level: int | None = Field(default=None, ge=1, le=1000)
+    experience: int | None = Field(default=None, ge=0)
+    outfit: OutfitUpdate | None = None
+    rank_score: int | None = Field(default=None, ge=0)
+    credit_score: int | None = Field(default=None, ge=0, le=160)
+    reason: str = Field(min_length=3, max_length=240)
+
+
+class PlayerAdjustment(BaseModel):
+    kind: str = Field(pattern="^(currency|item|prop)$")
+    key: str = Field(min_length=1, max_length=64)
+    delta: int = Field(ge=-1_000_000_000, le=1_000_000_000)
     reason: str = Field(min_length=3, max_length=240)
 
 
@@ -63,6 +83,20 @@ async def dashboard(actor: OperatorActor = Depends(require("dashboard.read")), d
     return await SupportService(db).dashboard(actor)
 
 
+@router.get("/analytics")
+async def analytics(
+    days: int | None = Query(default=None, ge=1, le=366),
+    start: date | None = Query(default=None),
+    end: date | None = Query(default=None),
+    actor: OperatorActor = Depends(require("dashboard.read")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Counts for the last `days` days (default 14), or for `start`..`end` inclusive (UTC dates)."""
+    if start is None and end is None and days is None:
+        days = 14
+    return await AnalyticsService(db).overview(actor, days, start, end)
+
+
 @router.get("/players/{account_id}")
 async def player(account_id: str, actor: OperatorActor = Depends(require("players.read")), db: AsyncSession = Depends(get_db)) -> dict:
     return await SupportService(db).player(actor, account_id)
@@ -75,7 +109,17 @@ async def update_player_profile(
     actor: OperatorActor = Depends(current_operator),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    return await SupportService(db).update_profile(actor, account_id, body.nickname, body.char_type, body.reason)
+    return await SupportService(db).update_profile(actor, account_id, body.model_dump(exclude_unset=True))
+
+
+@router.post("/players/{account_id}/adjustments")
+async def adjust_player(
+    account_id: str,
+    body: PlayerAdjustment,
+    actor: OperatorActor = Depends(current_operator),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    return await SupportService(db).adjust(actor, account_id, body.kind, body.key, body.delta, body.reason)
 
 
 @router.post("/players/{account_id}/actions")

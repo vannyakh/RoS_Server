@@ -41,11 +41,11 @@ async def logout_player(db: AsyncSession, account: Account, token: str) -> None:
     await AccountService(db).revoke_token(account.id, token)
 
 
-async def login_player(db: AsyncSession, username: str, password: str, host: str) -> TokenResponse:
+async def login_player(db: AsyncSession, username: str, password: str, host: str, user_agent: str | None = None) -> TokenResponse:
     if too_many_attempts(host):
         raise AppError(429, "Too many login attempts")
     try:
-        token = await AccountService(db).login(username, password, host)
+        token = await AccountService(db).login(username, password, host, user_agent)
     except AppError:
         record_failure(host)
         raise

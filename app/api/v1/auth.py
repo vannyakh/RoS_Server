@@ -26,7 +26,7 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
     host = request.client.host if request.client else "unknown"
-    return await login_player(db, data.username, data.password, host)
+    return await login_player(db, data.username, data.password, host, request.headers.get("user-agent"))
 
 
 @router.post("/logout", status_code=204)

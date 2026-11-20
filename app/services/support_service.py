@@ -1,21 +1,29 @@
 """Player support records. Live match and lobby commands stay with the runtime."""
 
+import re
+
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppError
-from app.models.account import Account
+from app.models.account import Account, LoginHistory
 from app.models.game_data import ItemDefinition
-from app.models.gateway import GatewayIdentity, GatewayItem
-from app.models.inventory import InventoryItem, PlayerCurrency, PlayerInventory
+from app.models.gateway import GatewayCreditRecord, GatewayIdentity, GatewayItem
+from app.models.inventory import CurrencyTransaction, InventoryItem, PlayerCurrency, PlayerInventory
 from app.models.lobby import Lobby, LobbyMember
 from app.models.match import Match, MatchParticipant
 from app.models.operator import AuditLog, Operator
 from app.models.player import Player, PlayerStatistics
 from app.models.support import ModerationAction, PlayerReport, SupportCase, SupportNote
+from app.networking.admin_hub import admin_hub
+from app.services.session_view import session_row
 from app.services.operator_service import OperatorActor, OperatorService
 
+GATEWAY_FIELDS = {"char_type", "outfit", "rank_score", "credit_score"}
+# The client's CREDIT_CHANGE_REASON uses -1 for a server or operator change.
+ADMIN_CREDIT_REASON = -1
+CURRENCY_CODE = re.compile(r"[a-z0-9_]{1,16}")
 CASE_STATUSES = {"open", "in_progress", "waiting", "escalated", "resolved", "closed"}
 PRIORITIES = {"low", "normal", "high", "urgent"}
 CATEGORIES = {"account_access", "login", "progress", "purchase", "matchmaking", "gameplay", "bug", "other"}
@@ -61,7 +69,7 @@ class SupportService:
                 select(InventoryItem, ItemDefinition)
                 .join(PlayerInventory, InventoryItem.inventory_id == PlayerInventory.id)
                 .join(ItemDefinition, ItemDefinition.id == InventoryItem.item_definition_id)
-                .where(PlayerInventory.player_id == profile.id)
+                .where(PlayerInventory.player_id == profile.id, InventoryItem.quantity > 0)
             )
         ).all()
         currencies = list(await self.session.scalars(select(PlayerCurrency).where(PlayerCurrency.player_id == profile.id)))
@@ -102,12 +110,24 @@ class SupportService:
             )
         )
         gateway = await self.session.scalar(select(GatewayIdentity).where(GatewayIdentity.account_id == account.id))
-        gateway_items = (
-            await self.session.scalar(
-                select(func.count()).select_from(GatewayItem).where(GatewayItem.identity_id == gateway.id)
+        gateway_props = (
+            list(
+                await self.session.scalars(
+                    select(GatewayItem)
+                    .where(GatewayItem.identity_id == gateway.id, GatewayItem.number > 0)
+                    .order_by(GatewayItem.prop_id)
+                )
             )
             if gateway is not None
-            else 0
+            else []
+        )
+        sessions = list(
+            await self.session.scalars(
+                select(LoginHistory)
+                .where(LoginHistory.account_id == account.id)
+                .order_by(LoginHistory.created_at.desc())
+                .limit(20)
+            )
         )
         audit = list(
             await self.session.scalars(
@@ -174,21 +194,39 @@ class SupportService:
                 "last_login_at": gateway.last_login_at,
                 "last_ip": gateway.last_ip,
                 "portrait": gateway.portrait or "",
-                "items": gateway_items,
+                "items": len(gateway_props),
+                "props": [{"prop_id": row.prop_id, "number": row.number} for row in gateway_props],
                 "outfit": gateway.outfit or {"body": [], "wear": []},
+                "rank_score": gateway.rank_score,
+                "credit_score": gateway.credit_score,
+                "credit_status_last_week": gateway.credit_status_last_week,
+                "credit_weeks": gateway.credit_weeks,
+                "space_likes": gateway.space_likes,
             },
+            "online": admin_hub.is_online(account.id),
+            "sessions": [session_row(row) for row in sessions],
         }
 
-    async def update_profile(
-        self, actor: OperatorActor, account_id: str, nickname: str | None, char_type: int | None, reason: str
-    ) -> dict:
-        self.operators._need(actor, "players.manage")
-        cleaned_reason = reason.strip()
+    async def update_profile(self, actor: OperatorActor, account_id: str, fields: dict) -> dict:
+        """Apply one audited profile edit. Each field group needs its own permission."""
+        cleaned_reason = str(fields.pop("reason", "")).strip()
         if len(cleaned_reason) < 3:
             raise AppError(422, "A reason is required")
+        fields = {key: value for key, value in fields.items() if value is not None}
+        if not fields:
+            raise AppError(422, "Nothing to change")
+        if "nickname" in fields:
+            self.operators._need(actor, "players.manage")
+        if fields.keys() & {"level", "experience", "char_type", "outfit"}:
+            self.operators._need(actor, "players.progress")
+        if fields.keys() & {"rank_score", "credit_score"}:
+            self.operators._need(actor, "players.economy")
         account, profile = await self._account(account_id)
         gateway = await self.session.scalar(select(GatewayIdentity).where(GatewayIdentity.account_id == account.id))
+        if gateway is None and fields.keys() & GATEWAY_FIELDS:
+            raise AppError(422, "Character, outfit, rank and credit apply to game-client accounts only")
         changes: list[str] = []
+        nickname = fields.get("nickname")
         if nickname is not None:
             cleaned = nickname.strip()
             if not cleaned:
@@ -201,12 +239,36 @@ class SupportService:
                     raise AppError(409, "Nickname is already taken")
                 changes.append(f"nickname {profile.nickname} -> {cleaned}")
                 profile.nickname = cleaned
-        if char_type is not None:
-            if gateway is None:
-                raise AppError(422, "Character type applies to game-client accounts only")
-            if char_type != gateway.char_type:
-                changes.append(f"char_type {gateway.char_type} -> {char_type}")
-                gateway.char_type = char_type
+        for name in ("level", "experience"):
+            value = fields.get(name)
+            if value is not None and value != getattr(profile, name):
+                changes.append(f"{name} {getattr(profile, name)} -> {value}")
+                setattr(profile, name, value)
+        if gateway is not None:
+            for name in ("char_type", "rank_score"):
+                value = fields.get(name)
+                if value is not None and value != getattr(gateway, name):
+                    changes.append(f"{name} {getattr(gateway, name)} -> {value}")
+                    setattr(gateway, name, value)
+            outfit = fields.get("outfit")
+            if outfit is not None:
+                worn = {"body": list(outfit.get("body", [])), "wear": list(outfit.get("wear", []))}
+                if worn != (gateway.outfit or {"body": [], "wear": []}):
+                    changes.append("outfit")
+                    gateway.outfit = worn
+            credit = fields.get("credit_score")
+            if credit is not None and credit != gateway.credit_score:
+                changes.append(f"credit_score {gateway.credit_score} -> {credit}")
+                self.session.add(
+                    GatewayCreditRecord(
+                        identity_id=gateway.id,
+                        delta=credit - gateway.credit_score,
+                        reason=ADMIN_CREDIT_REASON,
+                        score_after=credit,
+                        note=cleaned_reason[:128],
+                    )
+                )
+                gateway.credit_score = credit
         if not changes:
             raise AppError(422, "Nothing to change")
         await self.operators._audit(actor, "player.profile", "player", account.id, "; ".join(changes)[:240], cleaned_reason[:240])
@@ -215,7 +277,96 @@ class SupportService:
         except IntegrityError as exc:
             await self.session.rollback()
             raise AppError(409, "Nickname is already taken") from exc
+        admin_hub.player_changed(account.id, "profile", actor.operator.username)
         return await self.player(actor, account_id)
+
+    async def adjust(self, actor: OperatorActor, account_id: str, kind: str, key: str, delta: int, reason: str) -> dict:
+        """Add to or take from a balance or an item count. Nothing goes below zero; rows stay at zero."""
+        self.operators._need(actor, "players.economy")
+        cleaned_reason = reason.strip()
+        if len(cleaned_reason) < 3:
+            raise AppError(422, "A reason is required")
+        if delta == 0:
+            raise AppError(422, "Amount must not be zero")
+        account, profile = await self._account(account_id)
+        key = key.strip()
+        if kind == "currency":
+            detail = await self._adjust_currency(profile.id, key.lower(), delta, cleaned_reason)
+        elif kind == "item":
+            detail = await self._adjust_item(profile.id, key, delta)
+        elif kind == "prop":
+            detail = await self._adjust_prop(account.id, key, delta)
+        else:
+            raise AppError(422, "Unknown adjustment")
+        await self.operators._audit(actor, f"player.{kind}", "player", account.id, detail, cleaned_reason)
+        await self.session.commit()
+        admin_hub.player_changed(account.id, kind, actor.operator.username)
+        return await self.player(actor, account_id)
+
+    async def _adjust_currency(self, player_id: str, code: str, delta: int, reason: str) -> str:
+        if not CURRENCY_CODE.fullmatch(code):
+            raise AppError(422, "Currency code must be 1-16 lowercase letters, digits or underscores")
+        row = await self.session.scalar(
+            select(PlayerCurrency).where(PlayerCurrency.player_id == player_id, PlayerCurrency.currency_code == code)
+        )
+        if row is None:
+            row = PlayerCurrency(player_id=player_id, currency_code=code, balance=0)
+            self.session.add(row)
+            await self.session.flush()
+        after = row.balance + delta
+        if after < 0:
+            raise AppError(409, "Balance cannot go below zero")
+        row.balance = after
+        self.session.add(
+            CurrencyTransaction(
+                player_id=player_id, currency_code=code, amount=delta, balance_after=after, reason="admin_adjust", note=reason
+            )
+        )
+        return f"currency {code} {delta:+d} -> {after}"
+
+    async def _adjust_item(self, player_id: str, item_definition_id: str, delta: int) -> str:
+        definition = await self.session.get(ItemDefinition, item_definition_id)
+        if definition is None:
+            raise AppError(404, "Item definition was not found")
+        holder = await self.session.scalar(select(PlayerInventory).where(PlayerInventory.player_id == player_id))
+        if holder is None:
+            holder = PlayerInventory(player_id=player_id)
+            self.session.add(holder)
+            await self.session.flush()
+        row = await self.session.scalar(
+            select(InventoryItem).where(
+                InventoryItem.inventory_id == holder.id, InventoryItem.item_definition_id == item_definition_id
+            )
+        )
+        if row is None:
+            row = InventoryItem(inventory_id=holder.id, item_definition_id=item_definition_id, quantity=0)
+            self.session.add(row)
+            await self.session.flush()
+        after = row.quantity + delta
+        if after < 0:
+            raise AppError(409, "Quantity cannot go below zero")
+        row.quantity = after
+        return f"item {definition.name} {delta:+d} -> {after}"
+
+    async def _adjust_prop(self, account_id: str, key: str, delta: int) -> str:
+        gateway = await self.session.scalar(select(GatewayIdentity).where(GatewayIdentity.account_id == account_id))
+        if gateway is None:
+            raise AppError(422, "Client props apply to game-client accounts only")
+        if not key.isdigit():
+            raise AppError(422, "Prop id must be a whole number")
+        prop_id = int(key)
+        row = await self.session.scalar(
+            select(GatewayItem).where(GatewayItem.identity_id == gateway.id, GatewayItem.prop_id == prop_id)
+        )
+        if row is None:
+            row = GatewayItem(identity_id=gateway.id, prop_id=prop_id, number=0)
+            self.session.add(row)
+            await self.session.flush()
+        after = row.number + delta
+        if after < 0:
+            raise AppError(409, "Count cannot go below zero")
+        row.number = after
+        return f"prop {prop_id} {delta:+d} -> {after}"
 
     async def act(self, actor: OperatorActor, account_id: str, action: str, reason: str) -> dict:
         if action not in ACCOUNT_ACTIONS:
@@ -246,6 +397,7 @@ class SupportService:
         self.session.add(recorded)
         await self.operators._audit(actor, f"player.{action}", "player", account.id, account.status, cleaned)
         await self.session.commit()
+        admin_hub.player_changed(account.id, action, actor.operator.username)
         return await self._moderation_row(recorded)
 
     async def cases(self, actor: OperatorActor, limit: int, offset: int, query: str | None, status: str | None) -> tuple[list[dict], int]:
