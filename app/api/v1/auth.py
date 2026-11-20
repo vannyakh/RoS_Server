@@ -19,7 +19,8 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)) ->
     return PlayerCreated(id=player.id, username=player.username)
 
 
-@router.post("/login", response_model=TokenResponse)
+# Player tokens carry no session_expires_at; leave the operator-only field out.
+@router.post("/login", response_model=TokenResponse, response_model_exclude_none=True)
 async def login(
     data: LoginRequest,
     request: Request,

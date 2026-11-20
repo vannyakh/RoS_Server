@@ -22,11 +22,14 @@ def test_historical_tasks_and_evidence_remain():
     by_id = {task["id"]: task for task in tasks["tasks"]}
     assert by_id["RO-001"]["status"] == "completed"
     assert "34 passed" in by_id["RO-001"]["completion_report"]["test_results"]
-    assert by_id["RO-009"]["status"] == "ready"
-    assert by_id["RO-011"]["status"] == "blocked"
+    assert by_id["RO-009"]["status"] == "completed"
+    assert "RO-009-security.md" in str(by_id["RO-009"]["completion_report"]["files_changed"])
+    # RO-011 waited on RO-009; with RO-009 completed it is ready for the CTO.
+    assert by_id["RO-011"]["status"] == "ready"
     assert "0 are compatible" in by_id["RO-020"]["completion_report"]["summary"]
     assert by_id["RO-028"]["status"] == "completed"
-    assert by_id["RO-012"]["status"] == "review"
+    assert by_id["RO-012"]["status"] == "completed"
+    assert "validate_project_management.py" in by_id["RO-012"]["completion_report"]["summary"]
 
 
 def test_no_feature_is_marked_compatible():
