@@ -13,6 +13,7 @@ from app.models.game_data import (
     WeaponDefinition,
 )
 from app.models.game_asset import GameAsset
+from app.models.weapon_balance import WeaponBalance
 from app.models.gateway import GatewayBattleRecord, GatewayCreditRecord, GatewayIdentity, GatewayItem
 from app.models.inventory import CurrencyTransaction, InventoryItem, PlayerCurrency, PlayerInventory
 from app.models.lobby import Lobby, LobbyMember, Team, TeamMember
@@ -32,6 +33,7 @@ from app.models.support import ModerationAction, PlayerReport, SupportCase, Supp
 
 __all__ = [
     "GameAsset",
+    "WeaponBalance",
     "Account",
     "AccountDevice",
     "AuditLog",

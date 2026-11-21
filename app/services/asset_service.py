@@ -17,6 +17,8 @@ MAX_BYTES = 2 * 1024 * 1024
 # Binary glTF models: textures are packed inside the file, so they run larger than icons.
 MAX_MODEL_BYTES = 25 * 1024 * 1024
 GLB = ("model/gltf-binary", "glb")
+# Original lobby categories whose entries are 3D objects. Themes, actions and profile frames are not.
+MODEL_LOBBY_CATEGORIES = ("firearms", "clothes", "character", "vehicles", "companions")
 KEY = re.compile(r"[A-Za-z0-9_.-]{1,64}")
 # Raster images only. SVG is refused: served from the API origin it could carry script.
 SIGNATURES: tuple[tuple[str, str, bytes], ...] = (
@@ -125,6 +127,81 @@ class AssetService:
         rows = list(await self.session.scalars(listed.order_by(GameAsset.kind, GameAsset.key).limit(limit).offset(offset)))
         return [view(row) for row in rows], int(await self.session.scalar(counted) or 0)
 
+    async def model_status(self) -> dict:
+        """Which game objects have a 3D model in the library, and which uploads match none.
+
+        A model is looked up by key: `item-<item id>`, `weapon-<weapon code>`, `skin-<skin code>`,
+        `prop-<original battle prop id>` or `lobby-<original lobby item id>`. Lobby items are listed
+        only for the categories that are 3D objects (MODEL_LOBBY_CATEGORIES).
+        """
+        from app.api.v1.original_catalog import _lobby, _props
+        from app.models.game_data import ItemDefinition
+        from app.models.weapon_balance import WeaponBalance
+        from app.services.cosmetics_service import SKINS
+
+        models = {row.key: row for row in await self.session.scalars(select(GameAsset).where(GameAsset.kind == "model"))}
+        targets: list[tuple[str, str, str, str, str]] = []  # key, type, code, label, detail
+        for item in await self.session.scalars(select(ItemDefinition).order_by(ItemDefinition.name)):
+            targets.append((f"item-{item.id}", "item", item.code, item.name, item.category))
+        for weapon in await self.session.scalars(select(WeaponBalance).order_by(WeaponBalance.weapon_class, WeaponBalance.name)):
+            targets.append((f"weapon-{weapon.code}", "weapon", weapon.code, weapon.name, weapon.weapon_class))
+        for skin in SKINS:
+            targets.append((f"skin-{skin.code}", "skin", skin.code, skin.name, "skin"))
+        for prop in _props():
+            targets.append((f"prop-{prop['id']}", "prop", str(prop["id"]), prop["name"] or f"Prop {prop['id']}", prop["type"]))
+        for entry in _lobby()["items"]:
+            if entry["category"] in MODEL_LOBBY_CATEGORIES:
+                label = entry["name"] or f"Lobby item {entry['id']}"
+                targets.append((f"lobby-{entry['id']}", "lobby", str(entry["id"]), label, entry["category"]))
+
+        rows: list[dict] = []
+        by_type: dict[str, dict[str, int]] = {kind: {"total": 0, "ready": 0} for kind in ("item", "weapon", "skin", "prop", "lobby")}
+        for key, kind, code, label, detail in targets:
+            asset = models.pop(key, None)
+            by_type[kind]["total"] += 1
+            if asset is not None:
+                by_type[kind]["ready"] += 1
+            rows.append(
+                {
+                    "key": key,
+                    "type": kind,
+                    "code": code,
+                    "label": label,
+                    "detail": detail,
+                    "status": "ready" if asset is not None else "missing",
+                    "size_bytes": asset.size_bytes if asset is not None else 0,
+                    "updated_at": asset.updated_at if asset is not None else None,
+                    "url": view(asset)["url"] if asset is not None else None,
+                }
+            )
+        for key, asset in sorted(models.items()):
+            rows.append(
+                {
+                    "key": key,
+                    "type": "other",
+                    "code": key,
+                    "label": asset.name or key,
+                    "detail": "no item, weapon or skin uses this key",
+                    "status": "unlinked",
+                    "size_bytes": asset.size_bytes,
+                    "updated_at": asset.updated_at,
+                    "url": view(asset)["url"],
+                }
+            )
+        ready = sum(value["ready"] for value in by_type.values())
+        total = sum(value["total"] for value in by_type.values())
+        return {
+            "summary": {
+                "targets": total,
+                "ready": ready,
+                "missing": total - ready,
+                "unlinked": len(models),
+                "bytes": sum(row["size_bytes"] for row in rows),
+                "by_type": by_type,
+            },
+            "items": rows,
+        }
+
     async def delete(self, actor: OperatorActor, asset_id: str) -> None:
         self.operators._need(actor, "assets.manage")
         row = await self.session.get(GameAsset, asset_id)
@@ -141,6 +218,11 @@ class AssetService:
         still_used = await self.session.scalar(select(func.count()).select_from(GameAsset).where(GameAsset.sha256 == sha256))
         if not still_used:
             self.files.resolve(storage_key).unlink(missing_ok=True)
+
+    async def url_for(self, kind: str, key: str) -> str | None:
+        """Store path of one asset (with its cache-busting hash), or None when it was not uploaded."""
+        row = await self.session.scalar(select(GameAsset).where(GameAsset.kind == kind, GameAsset.key == key))
+        return view(row)["url"] if row else None
 
     async def file(self, kind: str, key: str) -> tuple[GameAsset, bytes]:
         row = await self.session.scalar(select(GameAsset).where(GameAsset.kind == kind, GameAsset.key == key))

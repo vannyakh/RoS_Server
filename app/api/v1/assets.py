@@ -12,7 +12,7 @@ from app.services.operator_service import OperatorActor
 public = APIRouter(prefix="/assets", tags=["Assets"])
 admin = APIRouter(prefix="/admin/assets", tags=["Assets"])
 
-KIND = "^(rank|prop|item|character|currency|badge|other|model)$"
+KIND = "^(rank|prop|item|character|currency|badge|other|model|background)$"
 KEY = "^[A-Za-z0-9_.-]{1,64}$"
 
 
@@ -48,6 +48,14 @@ async def list_assets(
 ) -> Page[dict]:
     items, total = await AssetService(db).listing(kind, q, limit, offset)
     return Page(items=items, total=total, limit=limit, offset=offset)
+
+
+@admin.get("/models/status")
+async def model_status(
+    _actor: OperatorActor = Depends(current_operator),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    return await AssetService(db).model_status()
 
 
 @admin.post("", status_code=201)

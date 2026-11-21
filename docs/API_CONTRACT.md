@@ -51,7 +51,6 @@ WebSocket `player_id` is `accounts.id`. Durable lobby and match-record routes us
 | POST | `/api/v1/inventory/currency` | `CurrencyChange` | `CurrencyResponse` | bearer session | Applies a non-zero amount to the caller's balance. 409 if the balance would go negative. | existing |
 | WS | `/api/v1/ws` | first message is `auth` | see WebSocket events | session token in the first payload | The token is not accepted in the URL. | existing |
 
-`/play` is a static browser client when `assets/play` exists. It is not a versioned API.
 
 ## Authentication details
 
@@ -96,12 +95,12 @@ Every message is JSON with `version` 1, `type`, `sequence`, and `payload`. Clien
 | `auth` | client to server | `token` | this message creates the session | token must match a live session | Any other first type closes with 4003. Bad JSON closes with 4002. Timeout closes with 4001. Invalid token sends `error` and closes with 4003. |
 | `auth.ok` | server to client | `player_id` (account id) | session accepted | none beyond the session | Not sent when authentication fails. |
 | `heartbeat` | both | empty object | required | none | Server echoes `heartbeat`. |
-| `lobby.join` | client to server | empty | required | the connected account | Ack `lobby.join.ack` with `ok` and `detail`. A second join while queued returns success `Already queued`. A player already in a live match gets `ok: false`. |
+| `lobby.join` | client to server | empty, or `mode` `training` for the practice range | required | the connected account | Ack `lobby.join.ack` with `ok` and `detail`. A second join while queued returns success `Already queued`. A player already in a live match gets `ok: false`. |
 | `lobby.leave` | client to server | empty | required | the connected account | Ack `lobby.leave.ack`. Leaving when not queued returns `ok: false`. |
 | `player.input` | client to server | `move_x`, `move_y`, `aim_x`, `aim_y`, each from -1 to 1 | required | the connected account | Ack `player.input.ack` with `tick`. Invalid numbers send `error`. |
-| `player.action` | client to server | `action`, optional `loot_id`, optional `item_id` | required | the connected account | Actions are `shoot`, `reload`, `pickup`, `use`, `equip`, `jump`, `discard`, `board`, `exit`. Ack `player.action.ack`. |
+| `player.action` | client to server | `action`, optional `loot_id`, optional `item_id` | required | the connected account | Actions are `shoot`, `reload`, `pickup`, `use`, `equip`, `jump`, `discard`, `board`, `exit`, `revive`, `attach`. Ack `player.action.ack`. |
 | `match.forfeit` | client to server | empty | required | the connected account must be in a live match | Ack `match.forfeit.ack`. |
-| `state` | server to client | position, health, status, match id, aim, kills, map size, vehicle, and match details when in a match | connection already authenticated | sent only to that account's current socket | Sent by the tick. Not a client request. |
+| `state` | server to client | position, health, status, match id, aim, kills, map size, vehicle, worn gear levels, and match details when in a match (loot `crate_id`, self gear/stats, end-of-match `results`; see `docs/NETWORK_PROTOCOL.md`) | connection already authenticated | sent only to that account's current socket | Sent by the tick. Not a client request. |
 | `error` | server to client | `detail` | depends on the failure | none | Validation, sequence, and rate-limit failures stay on the socket. Authentication failures close it. |
 
 Confirmed fact. A new socket for the same account replaces the previous one. The previous socket is closed with code 4000. Disconnect marks the in-memory player disconnected and removes a queued player from the queue.
@@ -141,6 +140,7 @@ Both return `account_id`, `username`, `status`, `can_play`, `is_new`, `nickname`
 
 | Method | Path | Body | Result |
 | --- | --- | --- | --- |
+| PUT | `/api/v1/gateway/accounts/{external_uid}/head-frame` | `{"head_frame": int >= 0}` | The account view with `head_frame`. The id is an original-client HeadFrameAppearanceType prop id; 0 means no frame. `GET .../state` and `.../profile` also return `head_frame`, and the gateway sends it to the client as Athlete `headFrameTag`. `GET .../profile` also returns `rank_tier` (bronze to king, score steps are this project's own design), `rank_logo_url`, `lobby_theme` and `lobby_background_url`: store paths from the asset library (kinds `rank`, keyed by tier, and `background`, keyed by the lobby theme prop id), empty when nothing was uploaded. The admin player detail `gateway` object carries the same fields, and `PATCH /api/v1/admin/players/{id}/profile` accepts `outfit.theme` to set the lobby background (kept when omitted; `GET .../state` returns it in `outfit.theme`). |
 | GET | `/api/v1/gateway/accounts/{external_uid}/profile` | none | `nickname`, `level`, `char_type`, `portrait`, `rank_score`, `space_likes`, `current_season`, `credit`, `records`. |
 | POST | `/api/v1/gateway/accounts/{external_uid}/matches` | `placement` (1–200), optional `season`, `queue` (`total`, `ranked`, `matching`), `team_mode` (`solo`, `dual`, `quad`, `five`), `kills`, `deaths`, `assists`, `damage`, `head_shots`, `hits`, `fires`, `fight_time_seconds`, `collect_count`, `heal_count`, `kill_distance_dm`, `move_distance_dm`, `rank_score_delta` | Adds one finished match and returns the profile. |
 | POST | `/api/v1/gateway/accounts/{external_uid}/credit/claim` | none | `awards` (prop ids granted once, then cleared) and `credit`. |
@@ -154,7 +154,7 @@ Operators manage these accounts through the admin routes. `GET /api/v1/admin/pla
 
 Login sessions: every web login (`POST /api/v1/auth/login`) and every gateway resolve writes a `login_history` row with `source` (`web` or `game`), `ip_address`, `country`, and for the game client the `device` the gateway sent with the resolve (`model`, `os_name`, `client_version`, `time_zone`, `language`, all optional), or for web the `User-Agent` (256 characters). The gateway takes the device from the client's SDK requests: the User-Agent `NeteaseMobileGame/a<sdk> (<model>;<android api level>)` and the query's `gv`, `time_zone` and `lang`. `country` is an ISO 3166 alpha-2 code looked up at login time in the offline database at `GEOIP_DB_PATH` (an `.mmdb` country file, such as DB-IP IP to Country Lite, read with the `maxminddb` package); no IP is sent elsewhere. It is null for private addresses, without a database, or when the IP is not listed. Admin session rows carry `id`, `created_at`, `status`, `source`, `ip_address`, `network` (`public`, `private` or null), `country`, `device_model`, `os_name`, `client_version`, `time_zone`, `language` and `user_agent`; the player detail lists the latest 20 as `sessions`.
 
-The player detail also carries `online` (the account holds an open game socket on this server) and, in `gateway`, `props` (`prop_id`, `number`), `rank_score`, `credit_score`, `credit_status_last_week`, `credit_weeks` and `space_likes`. Zero-count inventory rows and props are left out.
+The player detail also carries `online` (the account holds an open game socket on this server) and, in `gateway`, `props` (`prop_id`, `number`), `rank_score`, `credit_score`, `credit_status_last_week`, `credit_weeks`, `space_likes`, `national_flag` (the game's flag code, upper case, "" when unset), `current_season` and `records` (the battle record rows of `GET /api/v1/gateway/accounts/{external_uid}/profile`; season 0 is all-time). Zero-count inventory rows and props are left out.
 
 `PATCH /api/v1/admin/players/{account_id}/profile` accepts one audited edit with a required `reason`. Each field group needs its own permission:
 
@@ -164,6 +164,7 @@ The player detail also carries `online` (the account holds an open game socket o
 | `level` (1–1000), `experience` (≥ 0) | `players.progress` | all |
 | `char_type`, `outfit` (`body`, `wear`: prop id lists, 32 each at most) | `players.progress` | game client only |
 | `rank_score` (≥ 0), `credit_score` (0–160) | `players.economy` | game client only |
+| `national_flag` (0–8 letters, stored upper case, "" clears) | `players.manage` | game client only |
 
 A credit change also writes a `gateway_credit_records` row with `reason` -1 and the operator's reason as `note`. An unchanged edit returns 422. The response is the updated player detail.
 
@@ -187,6 +188,16 @@ Reads need `store.read`; writes need `players.economy`; writes are audited and a
 
 Web skin purchases now store `{"skin": <code>}` in the ledger row's details.
 
+### Weapon balance
+
+| Method | Path | Auth | Notes |
+| --- | --- | --- | --- |
+| GET | `/api/v1/admin/weapons` | `weapons.read` | Every weapon, ordered by class and code: `code`, `name`, `weapon_class` (`assault`, `smg`, `sniper`, `shotgun`, `pistol`, `melee`), `damage`, `fire_rate` (rounds per minute), `magazine`, `reload_seconds`, `effective_range`, `max_range`, `falloff_percent`, `spread`, `recoil`, `head_multiplier`, `torso_multiplier`, `limb_multiplier`, `vehicle_damage`, `revision`, `updated_at`. |
+| PUT | `/api/v1/admin/weapons/{code}` | `weapons.manage` | Creates or updates the weapon (`code` is 1-32 lowercase letters, digits or underscores). The body holds the fields above, plus optional `expected_revision` and `reason`. 409 when `expected_revision` is not the stored revision; 422 for out-of-range values or `max_range` below `effective_range`. A save that changes nothing keeps the revision. |
+| DELETE | `/api/v1/admin/weapons/{code}?reason=` | `weapons.manage` | 204; 404 when there is no such weapon. |
+
+This table (`weapon_balances`) is the tuning layer only; it does not replace `weapon_definitions`. Create, update and delete are audited (`weapon.create`, `weapon.update` with the changed fields, `weapon.delete`). Nothing reads these values at match time yet: the game runtime does not consume them.
+
 ### Asset library
 
 Display images the admin console (and any client) can show, looked up by `kind` (`rank`, `prop`, `item`, `character`, `currency`, `badge`, `other`) and `key` (1–64 letters, digits, `.`, `-`, `_`; a prop id, item definition id, rank tier, `char_type` or currency code).
@@ -195,6 +206,7 @@ Display images the admin console (and any client) can show, looked up by `kind` 
 | --- | --- | --- | --- |
 | GET | `/api/v1/assets/{kind}/{key}` | none | The file bytes (an image, or `model/gltf-binary` for the `model` kind), `Cache-Control: public, max-age=86400`, `ETag`, `nosniff` and a sandbox CSP. 404 when there is none. |
 | GET | `/api/v1/admin/assets?kind=&q=&limit=&offset=` | operator | Page of `id`, `kind`, `key`, `name`, `content_type`, `size_bytes`, `sha256`, `source`, `url` (`/api/v1/assets/{kind}/{key}?v=<hash>`), `created_at`, `updated_at`. |
+| GET | `/api/v1/admin/assets/models/status` | operator | Which items, weapons, skins, original battle props and original lobby items have a 3D model. `items` has one row per target: `key` (`item-<id>`, `weapon-<code>`, `skin-<code>`, `prop-<prop id>` or `lobby-<lobby item id>`; lobby items only for the firearms, clothes, character, vehicles and companions categories), `type`, `code`, `label`, `detail`, `status` (`ready`, `missing`, or `unlinked` for a model nothing uses), `size_bytes`, `updated_at`, `url`. `summary` has `targets`, `ready`, `missing`, `unlinked`, `bytes` and `by_type` counts. |
 | POST | `/api/v1/admin/assets` (multipart: `kind`, `key`, `name`, `source`, `upload`) | `assets.manage` | 201 and the row. The same kind and key replaces the file. |
 | DELETE | `/api/v1/admin/assets/{id}` | `assets.manage` | 204. |
 
@@ -229,7 +241,7 @@ The admin panel refreshes in the background before expiry (a fifth of the lifeti
 | `pong` | either | `online_players`, in reply to `{"type": "ping"}` |
 | `error` | either | `detail` |
 
-Live map: an operator holding `matches.read` sends `{"type": "watch", "payload": {"match_id": "<id>"}}` (or `null` for every running match) and then receives `match.frame` five times a second until `{"type": "unwatch"}`. A frame has `watching`, `tick`, `found` (false when the match is not in memory), `events` (engine events since the previous frame: `elimination`, `hit`, `pickup`, `heal`, `phase`, `zone`, each with `tick` and `match_id`; at most 200) and `matches`, each with `match_id`, `phase`, `clock`, `map_size`, `alive`, `total`, `winner_id`, `zone` (`x`, `y`, `radius`, `next_x`, `next_y`, `next_radius`, `index`, `dps`), `players` (every combatant's `player_id`, `nickname`, `x`, `y`, `aim_x`, `aim_y`, `health`, `status`, `kills`, `weapon`, `vehicle`, `on_plane`, `bot`, `connected`), `vehicles`, `loot` (`[x, y]` pairs) and, on the first frame of a watch only, `blockers`. Frames are skipped, not queued, while the browser is behind. The engine keeps the last 2,000 events for this.
+Live map: an operator holding `matches.read` sends `{"type": "watch", "payload": {"match_id": "<id>"}}` (or `null` for every running match) and then receives `match.frame` five times a second until `{"type": "unwatch"}`. A frame has `watching`, `tick`, `found` (false when the match is not in memory), `events` (engine events since the previous frame: `elimination`, `hit`, `pickup`, `heal`, `crate`, `phase`, `zone`, each with `tick` and `match_id`; at most 200) and `matches`, each with `match_id`, `phase`, `clock`, `map_size`, `alive`, `total`, `winner_id`, `zone` (`x`, `y`, `radius`, `next_x`, `next_y`, `next_radius`, `index`, `dps`), `players` (every combatant's `player_id`, `nickname`, `x`, `y`, `aim_x`, `aim_y`, `health`, `status`, `kills`, `weapon`, `vehicle`, `on_plane`, `bot`, `connected`), `vehicles`, `loot` (`[x, y]` pairs) and, on the first frame of a watch only, `blockers`. Frames are skipped, not queued, while the browser is behind. The engine keeps the last 2,000 events for this.
 
 The token is checked again before each snapshot, so a revoked or expired token closes the socket with 4003. A socket idle for 60 seconds closes with 4004. An operator whose queue fills (256 messages) is dropped and closed with 1013. A player is online while they hold this server's game socket or while the gateway's presence lease is current. The gateway (`bigworld_gateway/server/account_link.py`) renews the lease every 20 seconds while the client sends packets and ends it after 45 seconds of silence; a lease that is not renewed expires after 75 seconds. Presence is held in memory, so a server restart starts everyone offline until the next report.
 

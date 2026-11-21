@@ -69,7 +69,9 @@ async def test_pickup_and_heal():
     assert ok and detail == "Picked up bandage"
     player.health = 40
     ok, detail = await engine.perform("human", "use", None, "bandage")
-    assert ok and detail == "Healed"
+    assert ok and detail == "Using bandage"
+    assert player.health == 40
+    await engine.step(2.1)
     assert player.health == 60
 
 

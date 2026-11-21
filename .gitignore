@@ -10,3 +10,10 @@ logs/*.log
 storage/game_assets/maps/**
 !storage/game_assets/maps/.gitkeep
 storage/game_assets/icons/**
+
+# jev.ai local response cache
+.cache/jev/
+
+# Original game data tables imported from a local OBB (publisher data)
+storage/original_data/**
+!storage/original_data/.gitkeep

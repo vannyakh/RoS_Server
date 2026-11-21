@@ -7,7 +7,7 @@ The original Android client, package `com.netease.chiji` versionName `1.610637.6
 ## Shape
 
 ```text
-com.ros.client  (and /play when assets/play exists)
+com.ros.client
         |
         |  HTTP JSON and WebSocket JSON, version 1
         v
@@ -53,7 +53,6 @@ The control plane and the simulation share one process, which matches the curren
 | Client | Relationship |
 | --- | --- |
 | `com.ros.client` | Independent Kotlin client. It sends this server's HTTP and WebSocket JSON. |
-| Browser page at `/play` | Static client of this server when `assets/play` exists. |
 | `com.netease.chiji` | Research reference. NOT_SUPPORTED. Startup CONFIRMED only through the patch gate. |
 
 Account registration, durable lobby routes, and the live socket are specified in `docs/API_CONTRACT.md` and `docs/NETWORK_PROTOCOL.md`. A new message type belongs in `app/networking/protocol.py` together with a test. It is not imported from the original package.

@@ -19,6 +19,8 @@ from app.schemas.gateway import (
     GatewayPurchaseRequest,
     GatewayPurchaseResult,
     GatewayState,
+    GatewayNationalFlagRequest,
+    GatewayHeadFrameRequest,
     GatewayPortraitRequest,
     GatewayPresence,
     GatewayResolveRequest,
@@ -66,6 +68,32 @@ async def set_portrait(
     db: AsyncSession = Depends(get_db),
 ) -> GatewayAccount:
     return await GatewayService(db).set_portrait(external_uid, body.portrait)
+
+
+@router.put(
+    "/accounts/{external_uid}/head-frame",
+    response_model=GatewayAccount,
+    dependencies=[Depends(require_gateway_key)],
+)
+async def set_head_frame(
+    body: GatewayHeadFrameRequest,
+    external_uid: str = Path(pattern=EXTERNAL_UID_PATTERN),
+    db: AsyncSession = Depends(get_db),
+) -> GatewayAccount:
+    return await GatewayService(db).set_head_frame(external_uid, body.head_frame)
+
+
+@router.put(
+    "/accounts/{external_uid}/national-flag",
+    response_model=GatewayAccount,
+    dependencies=[Depends(require_gateway_key)],
+)
+async def set_national_flag(
+    body: GatewayNationalFlagRequest,
+    external_uid: str = Path(pattern=EXTERNAL_UID_PATTERN),
+    db: AsyncSession = Depends(get_db),
+) -> GatewayAccount:
+    return await GatewayService(db).set_national_flag(external_uid, body.national_flag)
 
 
 @router.get(

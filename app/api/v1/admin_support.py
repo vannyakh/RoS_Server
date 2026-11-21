@@ -24,6 +24,7 @@ class AccountAction(BaseModel):
 class OutfitUpdate(BaseModel):
     body: list[int] = Field(default_factory=list, max_length=32)
     wear: list[int] = Field(default_factory=list, max_length=32)
+    theme: int | None = Field(default=None, ge=0)   # lobby background prop id; None keeps the current one
 
 
 class ProfileUpdate(BaseModel):
@@ -34,6 +35,8 @@ class ProfileUpdate(BaseModel):
     outfit: OutfitUpdate | None = None
     rank_score: int | None = Field(default=None, ge=0)
     credit_score: int | None = Field(default=None, ge=0, le=160)
+    # Game flag code as the client sends it (setNationalFlag); "" clears it.
+    national_flag: str | None = Field(default=None, pattern=r"^[A-Za-z]{0,8}$")
     reason: str = Field(min_length=3, max_length=240)
 
 

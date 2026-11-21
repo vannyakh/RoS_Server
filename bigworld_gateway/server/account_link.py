@@ -189,6 +189,36 @@ def set_portrait(file_id, uid=None):
     return data
 
 
+def set_head_frame(frame_id, uid=None):
+    """Save the worn avatar frame (HeadFrameAppearanceType prop id, 0 = none). Returns the account dict or None."""
+    global _current
+    uid = uid or (_current or {}).get("external_uid")
+    if not uid:
+        return None
+    data = _call("PUT", f"/api/v1/gateway/accounts/{urllib.parse.quote(uid, safe='')}/head-frame",
+                 {"head_frame": int(frame_id)})
+    if not data or "_error" in data:
+        return None
+    data["external_uid"] = uid
+    _current = data
+    return data
+
+
+def set_national_flag(flag, uid=None):
+    """Save the player's country code ("" = none). Returns the account dict or None."""
+    global _current
+    uid = uid or (_current or {}).get("external_uid")
+    if not uid:
+        return None
+    data = _call("PUT", f"/api/v1/gateway/accounts/{urllib.parse.quote(uid, safe='')}/national-flag",
+                 {"national_flag": flag})
+    if not data or "_error" in data:
+        return None
+    data["external_uid"] = uid
+    _current = data
+    return data
+
+
 def _uid_path(suffix):
     uid = (_current or {}).get("external_uid")
     return f"/api/v1/gateway/accounts/{urllib.parse.quote(uid, safe='')}/{suffix}" if uid else None

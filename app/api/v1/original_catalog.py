@@ -2,7 +2,8 @@
 
 The data is text read from the original client's prop table (data/reference/original_battle_props.json):
 id, type, name, icon path and stack size. Pictures are not part of it; operators upload icons to the
-asset library under kind "prop" with the item id as the key.
+asset library under kind "prop" with the item id as the key. Each row also carries `stats` (armour
+damage reduction, heal amounts...) from the imported prop table when storage/original_data has it.
 """
 
 import json
@@ -12,6 +13,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.v1.admin_access import require
+from app.game.original_data import prop_stats
 from app.services.operator_service import OperatorActor
 
 router = APIRouter(prefix="/admin/original", tags=["Original client"])
@@ -39,14 +41,14 @@ async def list_props(
     types: dict[str, int] = {}
     for r in _props():
         types[r["type"]] = types.get(r["type"], 0) + 1
-    return {"items": rows, "total": len(rows), "types": types}
+    return {"items": [{**r, "stats": prop_stats(r["id"])} for r in rows], "total": len(rows), "types": types}
 
 
 @router.get("/props/{prop_id}")
 async def get_prop(prop_id: int, _: OperatorActor = Depends(require("store.read"))) -> dict:
     for r in _props():
         if r["id"] == prop_id:
-            return r
+            return {**r, "stats": prop_stats(r["id"])}
     raise HTTPException(status_code=404, detail="Unknown prop id")
 
 

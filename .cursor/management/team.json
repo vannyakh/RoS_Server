@@ -345,7 +345,8 @@
         "Avoid claiming original combat values"
       ],
       "skills": [
-        "gameplay-testing"
+        "gameplay-testing",
+        "jev-game-explorer"
       ],
       "rule": "14-gameplay-testing.mdc",
       "allowed_paths": [

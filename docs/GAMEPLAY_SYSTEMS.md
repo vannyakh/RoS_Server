@@ -21,7 +21,7 @@ Confirmed. The tick default is 20 Hz (`game_tick_rate`). A human enters the in-m
 
 Phases, in order: `countdown` (3 seconds), `dropping` (8 seconds), `playing`, then `ended`. During `playing`, the zone clock is 25 seconds per shrink. When the phase is `ended`, the clock runs until `result_time` (8 seconds), then the match is dissolved. The last living player is the winner. A match that started with one id and no living player ends with no winner. Results stored for humans are kills, win, and placement. Bots are not written as results.
 
-Players spawn on the plane at `z` 40 during countdown. `jump` during `dropping` lands that player. Everyone still on the plane is landed when `playing` starts. Health at match start is 100.
+Players spawn on the plane at `z` 40 during countdown. `jump` during `dropping` starts a parachute descent: `z` falls at `fall_speed` (10 per second) and move input steers at `glide_speed` (8 per second). The player keeps status `dropping` until `z` reaches 0, then becomes `alive`; other actions are refused with `Still parachuting`. Bots jump the same way. Everyone still on the plane or in the air is landed when `playing` starts. Health at match start is 100.
 
 ## ROS-R02 Movement
 
@@ -33,7 +33,7 @@ Unknown. Original walk, run, crouch, prone, and fall rules.
 
 ## ROS-R03 Combat
 
-Confirmed. A shot requires a weapon, rounds in the magazine, no reload in progress, no fire cooldown, a non-zero aim, and the shooter not seated in a vehicle. The aim is normalized. A target counts when it is alive, off the plane, in front of the aim, inside the weapon range, and within `hit_radius` 1.25 of the aim line. The closest such target takes the weapon's flat damage. Health at 0 eliminates the target with cause `shot`, and the shooter gains one kill. There is no armor, no hit location, and no head multiplier.
+Confirmed. A shot requires a weapon, rounds in the magazine, no reload in progress, no fire cooldown, a non-zero aim, and the shooter not seated in a vehicle. The aim is normalized. A target counts when it is alive, off the plane, in front of the aim, inside the weapon range, and within `hit_radius` 1.25 of the aim line. The closest such target takes the weapon damage after worn gear: armor removes 20/30/40 percent at level 1/2/3, then a helmet removes 10/15/20 percent. Health at 0 eliminates the target with cause `shot`, and the shooter gains one kill. There is no hit location and no head multiplier. A landed player who is eliminated drops a crate: every inventory stack and worn gear piece becomes a loot node at that spot with a shared `crate_id`. Damage dealt and distance moved on the ground are kept per match for the results table.
 
 Unknown. Original damage, armor, and hit locations.
 
@@ -52,7 +52,7 @@ Unknown. Original weapon catalog, attachments, and statistics.
 
 ## ROS-R05 Inventory
 
-Confirmed. The live match inventory is an in-memory item-id count. A player may hold 2 weapon ids. Other stacks stop at 200. `use` accepts `bandage` (heal 20) and `medkit` (heal 60), will not pass 100 health, and does nothing at full health. `discard` removes one from a stack and clears the equipped weapon when that weapon is discarded. Durable HTTP inventory is a separate store. This match inventory is not written as equipment slots.
+Confirmed. The live match inventory is an in-memory item-id count. A player may hold 2 primary weapons and 1 pistol (`desert_eagle` or `pistol`; the starter pistol fills the pistol slot). Other stacks stop at 200, plus 100/200/300 with a level 1/2/3 backpack; a pickup takes what fits and leaves the rest on the node. Gear (`armor_N`, `helmet_N`, `backpack_N`) is worn on pickup only when it is a higher level than the worn piece, and the old piece is dropped where the new one lay. `use` accepts `bandage` (heal 20, 2 s), `energy_drink` (35, 2.5 s), `medkit` (60, 3.2 s) and `first_aid` (80, 5 s). It starts a timed channel (`healing`, `heal_left`, scaled by `heal_time_scale`); the item is spent and health added when it ends. Using again, shooting, or being hit cancels it with the item kept. Health never passes 100 and a full-health player is refused. `attach` fits `scope_4x` (range x1.25, primary weapons with medium or heavy ammo) or `ext_mag` (+10 rounds, primary weapons with light or medium ammo) to the equipped weapon, one of each; fitted parts return to the pack when the weapon is discarded and drop with a death crate. `discard` removes one from a stack, puts it on the ground as a loot node, and clears the equipped weapon when the last copy of that weapon is discarded. Durable HTTP inventory is a separate store. This match inventory is not written as equipment slots.
 
 Unknown. Original backpack capacity and equipment rules.
 
@@ -64,7 +64,7 @@ Unknown. Original terrain, buildings, roads, and spawn points. The client OBB pa
 
 ## ROS-R07 Loot
 
-Confirmed. Each match places `loot_count` 36 nodes. The table repeats entries by weight: pistol 4, rifle 4, light ammo 30 quantity across 8, medium ammo 30 quantity across 8, bandage 2 across 8, medkit 1 across 4. Positions are random in the map with a margin of 10, seeded by the match id. Pickup succeeds only for an untaken node inside radius 2.5.
+Confirmed. Each match places `loot_count` (90) nodes, the whole weighted table in `app/game/items.py` (`LOOT_TABLE`): ten weapons (pistol, desert_eagle, smg, vector, rifle, m14ebr, shotgun, aa12, sniper, awm), three ammo types, four heal items, the two attachments, and armor, helmet and backpack at levels 1 to 3 (weights 3, 2, 1). Positions are random in the map with a margin of 10, seeded by the match id. Pickup succeeds only for an untaken node inside radius 2.5.
 
 Unknown. Original loot tables and spawn probabilities.
 
@@ -86,6 +86,14 @@ Confirmed. Authority stays on the server. Clients send `player.input` and `playe
 
 The original client has no confirmed gameplay connection. It stopped on the patch list. Its protocol is not this JSON contract.
 
+## ROS-R01b Warm-up and training
+
+Confirmed. `warmup_island` (default off, so the old countdown on the plane is unchanged) turns the countdown into a ground warm-up: players spawn within `island_radius` (20) of the centre without a weapon and can walk. When it ends they board the plane with the starter kit. The snapshot reports `starts_in`. Training (`engine.join_training`) is a one-player match with `mode` `training`: no zone damage or shrink, no winner, no stored result, `training_dummies` (4) stationary targets that respawn at their spot when shot, and a respawn with a fresh kit when the player dies. The kit is a rifle, an M14EBR, a pistol, ammo, heals, a scope pair and an extended mag, so attachments can be tried. Independent design; the original warm-up length and training rules are Unknown.
+
+## ROS-R10b Squads
+
+Confirmed. `engine.set_team` puts queued players in a squad before the match; with `team_size` above 1, players without a team are grouped in queue order. Bots have no team. Knock-down, bleed-out, revive and friendly fire follow `docs/NETWORK_PROTOCOL.md`: knock health 40, bleed 30 seconds, crawl speed 1.5, revive 5 seconds to 30 health. Independent design numbers; original values are Unknown. The default `team_size` is 1, so solo play is unchanged.
+
 ## ROS-R11 Progression
 
 Confirmed. A finished human result carries kills, win, and placement into the pending result list. Experience, currency rewards, and rank from that result are not applied by this simulation.
@@ -99,7 +107,7 @@ Unknown. Original ranking and rewards.
 Confirmed by absence from the files read for this audit:
 
 - Crouch, prone, and fall damage
-- Armor and hit locations
+- Hit locations
 - Weapon attachments
 - Vehicle health
 - Team revive and spectating

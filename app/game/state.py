@@ -32,6 +32,20 @@ class PlayerState:
     vehicle: str | None = None
     nickname: str | None = None
     skin: str = "recruit"
+    attachments: dict[str, list[str]] = field(default_factory=dict)
+    supplies: int = 0
+    healing: str | None = None
+    heal_left: float = 0.0
+    team_id: str | None = None
+    bleed_left: float = 0.0
+    knocked_by: str | None = None
+    reviving: str | None = None
+    revive_progress: float = 0.0
+    armor: int = 0
+    helmet: int = 0
+    backpack: int = 0
+    distance: float = 0.0
+    damage_dealt: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -61,6 +75,8 @@ class LootNode:
     item_id: str
     quantity: int
     taken: bool = False
+    # Set when the node came out of an eliminated player's crate ("Heritage" in the original UI).
+    crate_id: str | None = None
 
 
 @dataclass
@@ -92,6 +108,12 @@ class Match:
     blockers: list[Blocker] = field(default_factory=list)
     events: list[dict] = field(default_factory=list)
     elimination_order: list[str] = field(default_factory=list)
+    # Kills scored in this match; a player who re-queues keeps this match's count here.
+    kills: dict[str, int] = field(default_factory=dict)
+    drop_serial: int = 0
+    winner_ids: list[str] = field(default_factory=list)
+    mode: str = "standard"
+    spawns: dict[str, tuple[float, float]] = field(default_factory=dict)
 
 
 @dataclass

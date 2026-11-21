@@ -20,7 +20,19 @@ class MatchRules:
     zone_dps: tuple[float, ...] = (1.0, 2.0, 4.0, 8.0, 16.0)
     pickup_radius: float = 2.5
     hit_radius: float = 1.25
-    loot_count: int = 48
+    loot_count: int = 90
+    heal_time_scale: float = 1.0
+    team_size: int = 1
+    warmup_island: bool = False
+    island_radius: float = 20.0
+    training_dummies: int = 4
+    knock_health: float = 40.0
+    bleed_time: float = 30.0
+    revive_time: float = 5.0
+    revive_health: float = 30.0
+    crawl_speed: float = 1.5
+    fall_speed: float = 10.0
+    glide_speed: float = 8.0
 
 
 def default_rules() -> MatchRules:

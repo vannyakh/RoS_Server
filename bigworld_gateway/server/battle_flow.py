@@ -22,6 +22,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 MSG_CREATE_ENTITY = 9
 MSG_ENTER_AOI = 11
 MSG_LEAVE_AOI = 15
+MSG_FORCED_POSITION = 0x59
 NO_ID_ALIAS = 0xFF
 
 # DataDescription flags that are sent to a client (own or other), i.e. clientServer properties.
@@ -138,6 +139,20 @@ def arr_i32(vals): return struct.pack("<I", len(vals)) + b"".join(i32(v) for v i
 def arr_vec3(vals): return struct.pack("<I", len(vals)) + b"".join(vec3(*v) for v in vals)
 
 
+# ---- flight sequence --------------------------------------------------------------------------
+# After the PREPARE countdown: (delay in seconds after it ends, debug_command lines). {stage} is the game
+# clock (BigWorld.serverTime) at send time. Observed on the client: planeID puts the player in the
+# plane UI ("N Onboard", jump button, PARAGLIDER / PARACHUTE), gameStatus 2 (BEFORE_FIGHT) removes the
+# countdown banner, and with planeID back to 0, fallPhase 2 (CAN_FALL) and the player lifted in the air the
+# client falls on its own physics. The plane does not carry the player yet: the position is a fixed point.
+FLIGHT_START = (698.0, 19300.0, -373.0)
+FLIGHT_STEPS = (
+    (0.0, ("plane", "setp planeID %d" % int(os.environ.get("PLANE_ENTITY_ID", "20002")))),
+    (1.0, ("leave %d" % int(os.environ.get("SPACE_ENTITY_ID", "20001")), "spaces 2 {stage}")),
+    (2.5, ("setp planeID 0", "tp %s %s %s" % FLIGHT_START, "setp fallPhase 2")),
+)
+
+
 # ---- test trigger ---------------------------------------------------------------------------
 SPACE_ID = int(os.environ.get("SPACE_ENTITY_ID", "20001"))
 PLANE_ID = int(os.environ.get("PLANE_ENTITY_ID", "20002"))
@@ -157,6 +172,38 @@ def debug_command(line, map_id=700, match=None):
         return create_entity(SPACE_ID, "BattleGroundSpace")
     if cmd == "spacemap":               # mapID only: should get enterWorld past the maps_utils failure
         return create_entity(SPACE_ID, "BattleGroundSpace", values={"mapID": i32(map_id)})
+    if cmd == "tp":                     # tp <x> <y> <z> [spaceID]: forcedPosition (0x59, fixed 36) of the own player
+        x, y, z = (float(v) for v in parts[1:4])
+        space_id = int(parts[4]) if len(parts) > 4 else 1
+        # entity id, spaceID, vehicleID, position (3 x float32), direction (3 x float32)  [layout: unverified]
+        return bytes([MSG_FORCED_POSITION]) + struct.pack("<III3f3f", AVATAR_ID, space_id, 0, x, y, z, 0.0, 0.0, 0.0)
+    if cmd == "spaces":                 # spaces <gameStatus 0-4> <stage start> [x z]: space in a given game status
+        x, z = (float(v) for v in (parts[3:5] if len(parts) >= 5 else (845.0, -2467.0)))
+        return create_entity(SPACE_ID, "BattleGroundSpace", values={
+            "mapID": i32(map_id), "gameStatus": i32(int(parts[1])), "aliveNum": i32(100), "circleStage": i32(1),
+            "gameStageStartTime": f32(float(parts[2])),
+            "whiteCircleCenter": vec2(x, z), "whiteCircleRadius": i32(300),
+            "blueCircleCenter": vec2(x, z), "blueCircleRadius": i32(1200),
+            "blueCircleStartCenter": vec2(x, z), "blueCircleStartRadius": i32(1200),
+            "planeEntityIDs": arr_i32([PLANE_ID])})
+    if cmd == "spacet":                 # spacet <now|real|seconds> [x z]: space with gameStageStartTime set
+        x, z = (float(v) for v in (parts[2:4] if len(parts) >= 4 else (845.0, -2467.0)))
+        when = parts[1] if len(parts) > 1 else "now"
+        if when == "now":               # the game clock the client was given by syncServerTime
+            import athlete_requests
+            stamp = float(athlete_requests.game_now())
+        elif when == "real":
+            import time
+            stamp = time.time()
+        else:
+            stamp = float(when)
+        return create_entity(SPACE_ID, "BattleGroundSpace", values={
+            "mapID": i32(map_id), "gameStatus": i32(1), "aliveNum": i32(100), "circleStage": i32(1),
+            "gameStageStartTime": f32(stamp),
+            "whiteCircleCenter": vec2(x, z), "whiteCircleRadius": i32(300),
+            "blueCircleCenter": vec2(x, z), "blueCircleRadius": i32(1200),
+            "blueCircleStartCenter": vec2(x, z), "blueCircleStartRadius": i32(1200),
+            "planeEntityIDs": arr_i32([PLANE_ID])})
     if cmd == "space":
         x, z = (float(v) for v in (parts[1:3] if len(parts) >= 3 else (845.0, -2467.0)))
         return create_entity(SPACE_ID, "BattleGroundSpace", values={
@@ -187,8 +234,12 @@ def debug_command(line, map_id=700, match=None):
         return out
     if cmd == "pidx":                   # pidx <global index> <hex args> [eid]: entity message by raw index
         return indexed_call(int(parts[1]), int(parts[3]) if len(parts) > 3 else AVATAR_ID, bytes.fromhex(parts[2]))
-    if cmd == "setp":                   # setp <name> <int32>: own player INT32 property
-        return prop_update("BattleGroundAvatar", AVATAR_ID, parts[1], i32(int(parts[2])))
+    if cmd == "setp":                   # setp <name> <number>: own player INT8 / INT32 / FLOAT property
+        kind = dict((q[0], q[1]) for q in update_prop_list("BattleGroundAvatar")).get(parts[1])
+        enc = {"INT8": lambda v: i8(int(v)), "INT32": lambda v: i32(int(v)), "FLOAT": lambda v: f32(float(v))}.get(kind)
+        if enc is None:
+            raise ValueError("setp: property %r has type %r (INT8, INT32 and FLOAT only)" % (parts[1], kind))
+        return prop_update("BattleGroundAvatar", AVATAR_ID, parts[1], enc(parts[2]))
     if cmd == "wpn":                    # wpn <slot 1|2> <weaponID>: put a gun in a slot, make it current, wear it
         slot, wid = int(parts[1]), int(parts[2])
         return (prop_update("BattleGroundAvatar", AVATAR_ID, "dtsWeapon%d" % slot, weapon_item(wid))
@@ -311,6 +362,10 @@ class Match:
         self.seen = set()
         self.gun_slots = {1: 0, 2: 0}    # weapon slot -> weaponID
         self.leave = False               # set by Quit Game; the gateway returns the client to the lobby
+        self.pos = None                  # last (x, y, z) from the client's position message (msg 3)
+        self.max_y = None                # highest y seen, to tell a fall from standing still
+        self.still_since = None
+        self.landed = False
 
     def spawn_prop(self, prop_id, amount, pos, map_id=700):
         eid = self.next_prop
@@ -318,6 +373,30 @@ class Match:
         self.props[eid] = (prop_id, amount)
         return create_entity(eid, "DtsProp", pos=pos, values={
             "mapID": i32(map_id), "propID": i32(prop_id), "amount": i32(amount)})
+
+    def on_position(self, payload, now, log=print):
+        """Client position message (msg 3: 8 header bytes, then x, y, z float32). Detects the end of the
+        skydive (a long fall, then no vertical movement) and replies with fallPhase NORMAL / flightStage
+        Ground so the client leaves the skydive pose. Measured: the client keeps its own physics, so it
+        stops at the terrain by itself; the server only has to change state. Returns reply bytes."""
+        if len(payload) < 20 or self.landed:
+            return b""
+        x, y, z = struct.unpack_from("<3f", payload, 8)
+        last = self.pos
+        self.pos = (x, y, z)
+        self.max_y = y if self.max_y is None else max(self.max_y, y)
+        if last is None or self.max_y - y < float(os.environ.get("LAND_MIN_FALL", "1000")):
+            return b""
+        if abs(y - last[1]) > 0.5:
+            self.still_since = None
+            return b""
+        self.still_since = self.still_since or now
+        if now - self.still_since < float(os.environ.get("LAND_STILL_SECS", "1.0")):
+            return b""
+        self.landed = True
+        log("      [BATTLE] landed at (%.0f, %.0f, %.0f) -> fallPhase 0, flightStage 2" % (x, y, z))
+        return (prop_update("BattleGroundAvatar", AVATAR_ID, "fallPhase", i8(0))
+                + prop_update("BattleGroundAvatar", AVATAR_ID, "flightStage", i32(2)))
 
     def handle(self, msgid, payload, log=print):
         """Reply bytes (possibly empty) for one client message."""
@@ -333,6 +412,22 @@ class Match:
             if pose in (0, 1, 2):        # const.PlayerPose STAND, SQUAT, CRAWL
                 return prop_update("BattleGroundAvatar", AVATAR_ID, "pose", i8(pose))
             return b""
+        # Skydive / parachute. The client sends fall() once it is free-falling (after fallPhase 2 CAN_FALL)
+        # and drives later phases itself with changeFallPhase / changeGlidePhase; the server applies them
+        # to the own-client properties. const.FallPhase: NORMAL 0, BEFORE_FALL 1, CAN_FALL 2,
+        # BEFORE_OPEN_PARACHUTE 3, CAN_OPEN_PARACHUTE 4, PARACHUTE_OPENED 5.
+        if entity == "BattleGroundAvatar" and name == "fall":
+            phase = int(os.environ.get("FALL_REPLY_PHASE", "3"))
+            self.fall_phase = phase
+            log("      [BATTLE] fall -> fallPhase %d" % phase)
+            return prop_update("BattleGroundAvatar", AVATAR_ID, "fallPhase", i8(phase))
+        if entity == "BattleGroundAvatar" and name in ("changeFallPhase", "changeGlidePhase") and args:
+            phase = struct.unpack("<b", args[:1])[0]
+            prop = "fallPhase" if name == "changeFallPhase" else "glidePhase"
+            if prop == "fallPhase":
+                self.fall_phase = phase
+            log("      [BATTLE] %s(%d) -> %s %d" % (name, phase, prop, phase))
+            return prop_update("BattleGroundAvatar", AVATAR_ID, prop, i8(phase))
         if entity == "BattleGroundAvatar" and name == "doPutGun" and args:
             return prop_update("BattleGroundAvatar", AVATAR_ID, "isPutgun", args[:1])
         if entity == "BattleGroundAvatar" and name in ("requestLeaveSpaceBeforeWin", "suicideFromClient"):

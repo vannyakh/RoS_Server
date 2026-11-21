@@ -11,6 +11,7 @@ import athlete_requests  # client->server Athlete calls by name (server/athlete_
 import account_link  # RoS_Server account link (/api/v1/gateway); off when GATEWAY_API_KEY is empty
 import bwdefs   # BigWorld .def parser (server/bwdefs.py)
 import profile_screens  # My Page / Stats / Credit replies (server/profile_screens.py)
+import hero_rules  # normal male/female hero only (server/hero_rules.py)
 
 CERT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "certs")
 HTTPS_PORT = 443
@@ -773,7 +774,7 @@ def link_login(username, ip_address):
     test_name = os.environ.get("TEST_ACCOUNT_NAME")
     if linked["is_new"] and test_name:
         # Fixed test account: skip the in-game character screen, as before the link existed.
-        char = int(os.environ.get("ATHLETE_CHAR", "20001"))      # 30001 is the robot placeholder
+        char = hero_rules.normalize_hero(os.environ.get("ATHLETE_CHAR", "20001"))
         if not account_link.set_character(test_name, char):
             account_link.set_character(f"{test_name}_{uid[-4:]}", char)
     return True
@@ -782,31 +783,27 @@ def link_login(username, ip_address):
 def get_account_char():
     linked = account_link.current()
     if linked and linked.get("char_type") is not None:
-        char = int(linked["char_type"])
+        char = linked["char_type"]
     else:
         acc = load_accounts().get("default", {})
-        char = int(acc.get("char_type", int(os.environ.get("ATHLETE_CHAR", "20001"))))
-    # 30001 = bot_base, the robot placeholder (its table GENDER is 2, so the ♀ switch used to
-    # keep it): never a player body; use the human of the saved gender instead.
-    if char in ROBOT_CHARS:
-        char = GENDER_CHAR[get_account_gender()[0] if get_account_gender()[0] in GENDER_CHAR else 1]
-    return char
+        char = acc.get("char_type", os.environ.get("ATHLETE_CHAR", "20001"))
+    # Only the normal male/female heroes are player bodies. Saved 10001/10002 (no hall model),
+    # 30001 (bot_base robot) or any unknown type becomes the hero of the saved gender.
+    return hero_rules.normalize_hero(char, get_account_gender()[0])
 
 
-# Character type GENDER from the client's character table (legacyProperties.getCharactersData).
-CHAR_GENDER = {10001: 1, 10002: 1, 20001: 1, 20002: 2, 30001: 2}
 # Hall body used when the ♂/♀ switch needs a character of the other gender.
-GENDER_CHAR = {1: int(os.environ.get("MALE_CHAR", "20001")), 2: int(os.environ.get("FEMALE_CHAR", "20002"))}
-ROBOT_CHARS = {30001}
+GENDER_CHAR = hero_rules.GENDER_HERO
 
 
 def current_gender():
-    """dtsAppearanceGender: the character type's own GENDER, else the saved switch."""
-    return CHAR_GENDER.get(get_account_char()) or get_account_gender()[0]
+    """dtsAppearanceGender: the gender of the normal hero the account plays."""
+    return hero_rules.hero_gender(get_account_char())
 
 
 def set_account_char(char_type):
-    """Store the character type locally and on RoS_Server (keeps the nickname)."""
+    """Store the (normal hero) character type locally and on RoS_Server (keeps the nickname)."""
+    char_type = hero_rules.normalize_hero(char_type, get_account_gender()[0])
     acc = load_accounts().get("default") or {}
     acc["char_type"] = int(char_type)
     save_account("default", acc)
@@ -905,6 +902,8 @@ def athlete_create_message():
         for kind, (equipped, shown) in LIST_PROPS.items():
             if outfit.get(kind):
                 ov[equipped] = ov[shown] = arr(outfit[kind])
+        if int(LOGIN_STATE.get("head_frame") or 0) > 0:    # worn avatar frame (HeadFrameAppearanceType prop id)
+            ov["headFrameTag"] = struct.pack("<i", int(LOGIN_STATE["head_frame"]))
         if outfit.get("theme"):
             ov["dtsHallThemeID"] = struct.pack("<i", int(outfit["theme"]))
         print(f"[*] account state: {LOGIN_STATE.get('yuanbao')} diamonds, {len(owned)} items, outfit={outfit}")
@@ -1170,6 +1169,14 @@ class GateUDP(asyncio.DatagramProtocol):
                                 _new.__dict__.update(_old.__dict__)
                         self._bf_mtime = _mt
                     for m, p in msgs:
+                        if m == 3 and hasattr(battle_flow.Match, "on_position"):
+                            try:
+                                reply = self._battle_match(addr).on_position(p, time.time(), log=print)
+                            except Exception as e:
+                                reply = b""
+                                print(f"      [BATTLE] position failed: {e!r}")
+                            if reply:
+                                self._send_bundle(addr, reply, self._last_client_seq.get(addr), bytes(bf_key))
                         if 0x80 <= m <= 0xBF:
                             try:
                                 reply = battle_flow.Match.handle(self._battle_match(addr), m, p, log=print)
@@ -1193,6 +1200,22 @@ class GateUDP(asyncio.DatagramProtocol):
                         self._athlete_sent.pop(addr, None)
                         self._hall_entered.pop(addr, None)
                         self._transition_to_athlete(addr, bytes(bf_key))
+
+                # Pre-start space entity: BattleGroundSpace with gameStatus 1 makes the client show the
+                # "Starting in N s" countdown, the player count and the safe-zone circle. Sent once, after
+                # the map has had time to load (BATTLE_SPACE_DELAY seconds). BATTLE_SPACE=off disables it.
+                if (self._in_battle.get(addr) and os.environ.get("BATTLE_SPACE", "on") == "on"
+                        and not self.__dict__.setdefault("_space_sent", {}).get(addr)
+                        and time.time() - self.__dict__.setdefault("_battle_t0", {}).get(addr, float("inf"))
+                        >= float(os.environ.get("BATTLE_SPACE_DELAY", "20"))):
+                    self._space_sent[addr] = True
+                    self.__dict__.setdefault("_flight", {})[addr] = {"t0": time.time(), "step": 0}
+                    import battle_flow
+                    stage = 1.0 + (time.time() - self._battle_t0[addr])      # BigWorld.serverTime right now
+                    space = battle_flow.debug_command(f"spacet {stage:.3f}", int(os.environ.get("BATTLE_MAP", "700")),
+                                                      self._battle_match(addr))
+                    print(f"      [BATTLE] space entity (pre-start countdown) -> {len(space)}B")
+                    self._send_bundle(addr, space, self._last_client_seq.get(addr), bytes(bf_key))
 
                 # Battle-flow experiments on a live match: one command per line (battle_flow.debug_command)
                 trig_battle = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trigger_battle.txt")
@@ -1367,6 +1390,40 @@ class GateUDP(asyncio.DatagramProtocol):
             except Exception as e:
                 print(f"      [BASEAPP] heartbeat failed: {e}")
 
+        # Game clock. BigWorld.serverTime (ticks / 10 + 1) only moves when the server sends setGameTime
+        # (ClientInterface id 3, u32 ticks); the pre-start countdown counts against it. Ticks start at 0
+        # when the avatar is created, so serverTime = 1.0 + seconds in the match. BATTLE_GAMETIME=off disables.
+        if (self._in_battle.get(addr) and c_seq is not None and not unacked
+                and os.environ.get("BATTLE_GAMETIME", "on") == "on"
+                and now - self.__dict__.setdefault("_last_gt", {}).get(addr, 0) >= 1.0):
+            self._last_gt[addr] = now
+            t0 = self.__dict__.setdefault("_battle_t0", {}).get(addr, now)
+            try:
+                self._send_bundle(addr, b"\x03" + struct.pack("<I", int(max(0.0, now - t0) * 10)), c_seq, bf_key)
+            except Exception as e:
+                print(f"      [BASEAPP] game time failed: {e}")
+
+        # Flight sequence after the pre-start countdown (battle_flow.FLIGHT_STEPS): plane, BEFORE_FIGHT, in the air.
+        # BATTLE_FLIGHT=off disables it; BATTLE_PREPARE is the countdown length in seconds (the client's 79).
+        flight = self.__dict__.setdefault("_flight", {}).get(addr)
+        if (flight is not None and self._in_battle.get(addr) and c_seq is not None and not unacked
+                and os.environ.get("BATTLE_FLIGHT", "on") == "on"):
+            import battle_flow
+            if flight["step"] < len(battle_flow.FLIGHT_STEPS):
+                delay, lines = battle_flow.FLIGHT_STEPS[flight["step"]]
+                if now >= flight["t0"] + float(os.environ.get("BATTLE_PREPARE", "79")) + delay:
+                    flight["step"] += 1
+                    stage = "%.3f" % (1.0 + (now - self.__dict__.setdefault("_battle_t0", {}).get(addr, now)))
+                    try:
+                        for line in lines:
+                            data = battle_flow.debug_command(line.format(stage=stage),
+                                                             int(os.environ.get("BATTLE_MAP", "700")), self._battle_match(addr))
+                            if data:
+                                print(f"      [BATTLE] flight {line.format(stage=stage)!r}")
+                                self._send_bundle(addr, data, c_seq, bf_key)
+                    except Exception as e:
+                        print(f"      [BATTLE] flight step failed: {e!r}")
+
         # If no unacked packets, send regular keepalive ACK:
         if not unacked and c_seq is not None and now - self._last_sent_ka.get(addr, 0) > 1.0:
             self._last_sent_ka[addr] = now
@@ -1446,9 +1503,12 @@ class GateUDP(asyncio.DatagramProtocol):
             print(f"      [BASEAPP] <- Athlete.{name} args={args.hex()[:80]}")
         try:
             if name == "createCharacter":
-                career_type = rd.i32()
+                requested_type = rd.i32()
                 char_name = rd.string()
-                print(f"      [BASEAPP] Athlete.createCharacter: name='{char_name}', type={career_type}")
+                # Whatever the client sends, the account plays the normal male or female hero.
+                career_type = hero_rules.normalize_hero(requested_type, get_account_gender()[0])
+                set_account_gender(hero_rules.hero_gender(career_type), get_account_gender()[1])
+                print(f"      [BASEAPP] Athlete.createCharacter: name='{char_name}', type={requested_type} -> {career_type}")
                 save_account("default", {"name": char_name, "char_type": career_type})
                 if account_link.current() and not account_link.set_character(char_name, career_type):
                     print(f"      [ACC-LINK] character '{char_name}' not saved to RoS_Server")
@@ -1703,9 +1763,8 @@ class GateUDP(asyncio.DatagramProtocol):
                 # The hall model is built from baseCharacterType (UIMain.resetMainModel ->
                 # player.getCharacterType()), and each type has a fixed GENDER in the client's
                 # character table, so the gender flag alone only flips the UI.
-                char = get_account_char()
-                if CHAR_GENDER.get(char) != gender or char not in GENDER_CHAR.values():
-                    char = GENDER_CHAR[gender]
+                char = GENDER_CHAR[gender]
+                if get_account_char() != char:
                     set_account_char(char)
                 arr = lambda ids: struct.pack("<I", len(ids)) + b"".join(struct.pack("<i", i) for i in ids)
                 print(f"      [BASEAPP] setDtsAppearanceGender {old} -> {gender}, char={char}, body={outfit.body}")
@@ -1745,6 +1804,23 @@ class GateUDP(asyncio.DatagramProtocol):
             # My Page / Stats / Credit screens (server/profile_screens.py), from RoS_Server's profile.
             if name in PROFILE_REQUESTS:
                 return self._profile_reply(addr, name, rd)
+
+            # Name Change dialog and country flag (saved on RoS_Server, so the web profile matches).
+            if name == "changeNicknameWithCard":
+                new_name = rd.string().strip()
+                linked = account_link.current() or {}
+                saved = account_link.set_character(new_name, linked.get("char_type") or get_account_char())                     if linked and new_name else None
+                ok = bool(saved)
+                print(f"      [BASEAPP] changeNicknameWithCard '{new_name}' -> {'saved' if ok else 'refused'}")
+                if not ok:
+                    return athlete_method("onChangeNickname", b"\x00" + _bw_blob(new_name.encode()))
+                return (athlete_method("onChangeNickname", b"" + _bw_blob(new_name.encode())) +
+                        athlete_method("updateBaseNickname", _bw_blob(new_name.encode())))
+            if name == "setNationalFlag":
+                flag = rd.string().strip()
+                saved = account_link.set_national_flag(flag) if account_link.current() else None
+                print(f"      [BASEAPP] setNationalFlag '{flag}' -> {'saved' if saved else 'not saved'}")
+                return b""
 
             # Avatar upload: token for the FilePicker upload, then the chosen file id.
             if name == "requestFilePickerToken":
@@ -1808,8 +1884,11 @@ class GateUDP(asyncio.DatagramProtocol):
         if name == "requireBaseInfo":
             gid = rd.u64()
             nick, score, level = profile_screens.base_info(profile if gid == own_gid else None, get_account_name())
+            print(f"      [BASEAPP] requireBaseInfo gid={gid} own={gid == own_gid} linked={profile is not None} "
+                  f"-> nickname={nick!r} score={score} level={level}")
             return athlete_method("onGetBaseInfo", u64(gid) + _bw_blob(nick.encode()) + b"\x00" + u64(score)
-                                  + struct.pack("<iii", 0, 0, level) + _bw_blob(b""))
+                                  + struct.pack("<iii", 0, 0, level)
+                                  + _bw_blob(profile_screens.national_flag(profile if gid == own_gid else None).encode()))
         if name == "queryPersonalInfo":
             gid = rd.u64()
             linked = account_link.current() or {}
@@ -1884,6 +1963,10 @@ class GateUDP(asyncio.DatagramProtocol):
             return
         self._in_battle[addr] = True
         self.__dict__.setdefault("_matches", {}).pop(addr, None)     # fresh doors/loot for each match
+        self.__dict__.setdefault("_battle_t0", {})[addr] = time.time()
+        self.__dict__.setdefault("_space_sent", {}).pop(addr, None)
+        self.__dict__.setdefault("_last_gt", {}).pop(addr, None)
+        self.__dict__.setdefault("_flight", {}).pop(addr, None)
         map_id = int(os.environ.get("BATTLE_MAP", "700"))
         char = int(os.environ.get("BATTLE_CHAR", "0")) or get_account_char()
         # BattleGroundAvatar (Avatar + iDtsEquip/iDtsProp/iDtsPackage/iDtsEquipAppearanceAvatar):

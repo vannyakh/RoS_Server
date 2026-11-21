@@ -10,8 +10,8 @@ from app.game.state import Blocker, Match, PlayerState, WorldState
 
 def _world() -> tuple[WorldState, Match]:
     world = WorldState()
-    world.players["a"] = PlayerState(player_id="a", x=10.5, y=20.25, nickname="Raven", status="alive", kills=2)
-    world.players["b"] = PlayerState(player_id="b", x=30, y=40, is_bot=True, status="eliminated", health=0)
+    world.players["a"] = PlayerState(player_id="a", x=10.5, y=20.25, nickname="Raven", status="alive", kills=2, match_id="m1")
+    world.players["b"] = PlayerState(player_id="b", x=30, y=40, is_bot=True, status="eliminated", health=0, match_id="m1")
     match = Match(match_id="m1", player_ids=["a", "b"], phase="playing", blockers=[Blocker(1, 2, 3, 4, "rock")])
     world.matches["m1"] = match
     return world, match

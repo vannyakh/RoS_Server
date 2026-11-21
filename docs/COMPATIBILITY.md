@@ -15,7 +15,6 @@ Original combat, movement, weapon, zone, and reward values remain UNKNOWN. A tes
 | Can the original APK log in, join a lobby, or play a match on this process? | No supported path. Startup stopped at the patch-gate text. Login and lobby were not reached. No original message was shown to match `/api/v1` or `/api/v1/ws`. | NOT_SUPPORTED |
 | Do this server's rule numbers match original Rules of Survival? | No authorized original specification was compared. The matrix records 0 compatible and 43 unknown. | UNKNOWN |
 | Does `com.ros.client` use this server's JSON? | The sibling research records health, invalid login, and profile calls. Live lobby join and the match socket were not part of that completed check. | CONFIRMED for those HTTP checks. The live match path is DOCUMENTED in `docs/NETWORK_PROTOCOL.md` and still needs a two-client run |
-| Does the browser page at `/play` speak this JSON when `assets/play` is present? | It is a client of this server when that static tree exists. It is not the original mobile client. | DOCUMENTED in `docs/ARCHITECTURE.md` and `docs/reverse-engineering/CLIENT_ANALYSIS.md` |
 
 ## Original client, by research order
 

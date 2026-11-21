@@ -50,7 +50,9 @@ Copy `.env.example` to `.env` in this folder (`.env` is gitignored, never commit
 ## Status (2026-11-18)
 Login -> lobby works (base-only Athlete). Lobby UI loads; remaining work and the debugging
 pattern are in `docs/LOBBY_FINDINGS.md`. Character type is set in `server/saved_accounts.json`
-(`20001` = human male; `30001` = robot placeholder).
+(`20001` = normal male hero, `20002` = normal female hero). Any other type (10001, 10002, the
+30001 robot placeholder, unknown values) is mapped to the hero of the saved gender by
+`server/hero_rules.py`.
 
 ## Next: real launcher
 A single GUI/CLI launcher can wrap `start.cmd` + `install_ros.ps1`: detect adb device,

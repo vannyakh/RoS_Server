@@ -174,6 +174,14 @@ async def test_admin_sees_game_client_data_and_edits_the_profile(client, gateway
         "credit_status_last_week": 0,
         "credit_weeks": 0,
         "space_likes": 0,
+        "national_flag": "",
+        "head_frame": 0,
+        "rank_tier": "bronze",
+        "rank_logo_url": "",
+        "lobby_theme": 0,
+        "lobby_background_url": "",
+        "current_season": detail.json()["gateway"]["current_season"],
+        "records": [],
     }
 
     no_reason = await client.patch(
@@ -242,7 +250,7 @@ async def test_items_diamonds_and_outfit_survive_the_next_login(client, gateway_
 
     start = await client.get("/api/v1/gateway/accounts/666/state", headers=gateway_key)
     assert start.status_code == 200
-    assert start.json() == {"yuanbao": 100000, "items": [], "outfit": {"body": [], "wear": []}}
+    assert start.json() == {"yuanbao": 100000, "items": [], "outfit": {"body": [], "wear": [], "theme": 0}, "head_frame": 0}
 
     bought = await client.post(
         "/api/v1/gateway/accounts/666/purchase",
@@ -265,7 +273,7 @@ async def test_items_diamonds_and_outfit_survive_the_next_login(client, gateway_
     again = (await client.get("/api/v1/gateway/accounts/666/state", headers=gateway_key)).json()
     assert again["yuanbao"] == 99900
     assert again["items"] == [{"prop_id": 2007, "number": 2}, {"prop_id": 111897, "number": 1}]
-    assert again["outfit"] == {"body": [], "wear": [2007]}
+    assert again["outfit"] == {"body": [], "wear": [2007], "theme": 0}
 
 
 async def test_a_purchase_above_the_balance_changes_nothing(client, gateway_key):
@@ -284,3 +292,34 @@ async def test_a_purchase_above_the_balance_changes_nothing(client, gateway_key)
     assert unknown.status_code == 404
     keyless = await client.get("/api/v1/gateway/accounts/777/state")
     assert keyless.status_code == 401
+
+
+async def test_head_frame_is_saved_and_sent_with_state_and_profile(client, gateway_key):
+    await client.post("/api/v1/gateway/accounts/resolve", json={"external_uid": "445"}, headers=gateway_key)
+    assert (await client.get("/api/v1/gateway/accounts/445/state", headers=gateway_key)).json()["head_frame"] == 0
+
+    saved = await client.put("/api/v1/gateway/accounts/445/head-frame", json={"head_frame": 2990236}, headers=gateway_key)
+    assert saved.status_code == 200
+    assert saved.json()["head_frame"] == 2990236
+
+    again = await client.post("/api/v1/gateway/accounts/resolve", json={"external_uid": "445"}, headers=gateway_key)
+    assert again.json()["head_frame"] == 2990236
+    state = await client.get("/api/v1/gateway/accounts/445/state", headers=gateway_key)
+    assert state.json()["head_frame"] == 2990236
+    profile = await client.get("/api/v1/gateway/accounts/445/profile", headers=gateway_key)
+    assert profile.json()["head_frame"] == 2990236
+
+    cleared = await client.put("/api/v1/gateway/accounts/445/head-frame", json={"head_frame": 0}, headers=gateway_key)
+    assert cleared.json()["head_frame"] == 0
+    assert (await client.put("/api/v1/gateway/accounts/445/head-frame", json={"head_frame": -1}, headers=gateway_key)).status_code == 422
+    assert (await client.put("/api/v1/gateway/accounts/999/head-frame", json={"head_frame": 5}, headers=gateway_key)).status_code == 404
+
+
+async def test_profile_and_admin_detail_carry_rank_logo_and_lobby_background(client, gateway_key):
+    from app.services.rank_tiers import rank_tier
+
+    assert [rank_tier(s) for s in (0, 999, 1000, 4500, 99999)] == ["bronze", "bronze", "silver", "diamond", "king"]
+    await client.post("/api/v1/gateway/accounts/resolve", json={"external_uid": "446"}, headers=gateway_key)
+    profile = (await client.get("/api/v1/gateway/accounts/446/profile", headers=gateway_key)).json()
+    assert profile["rank_tier"] == "bronze"
+    assert profile["rank_logo_url"] == "" and profile["lobby_background_url"] == "" and profile["lobby_theme"] == 0

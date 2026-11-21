@@ -132,7 +132,10 @@ async def _session_loop(websocket: WebSocket, player_id: str, auth_sequence: int
             )
             continue
         if message.type == "lobby.join":
-            ok, detail = await game_engine.join_queue(player_id)
+            if message.payload.get("mode") == "training":
+                ok, detail = await game_engine.join_training(player_id)
+            else:
+                ok, detail = await game_engine.join_queue(player_id)
             await _ack(websocket, "lobby.join.ack", message.sequence, ok, detail)
             continue
         if message.type == "lobby.leave":

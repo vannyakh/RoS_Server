@@ -146,3 +146,67 @@ async def test_gameplay_edits_need_their_own_permissions(client, gateway_key):
         json={"kind": "currency", "key": "GOLD", "delta": 1, "reason": "Try it."},
     )
     assert economy.status_code == 403
+
+
+async def test_detail_shows_flag_and_battle_records_and_flag_is_editable(client, gateway_key):
+    account_id = await _game_player(client, gateway_key)
+    headers = await _operator(client, "record_support", ["support"])
+    reported = await client.post(
+        "/api/v1/gateway/accounts/9100000001/matches",
+        headers=gateway_key,
+        json={"queue": "ranked", "team_mode": "solo", "placement": 3, "kills": 4, "damage": 520, "move_distance_dm": 12000},
+    )
+    assert reported.status_code == 200, reported.text
+    flagged = await client.put(
+        "/api/v1/gateway/accounts/9100000001/national-flag", headers=gateway_key, json={"national_flag": "cb"}
+    )
+    assert flagged.status_code == 200
+
+    detail = (await client.get(f"/api/v1/admin/players/{account_id}", headers=headers)).json()["gateway"]
+    assert detail["national_flag"] == "CB"
+    assert detail["current_season"] >= 1
+    keys = {(row["season"], row["queue"], row["team_mode"]) for row in detail["records"]}
+    assert (0, "ranked", "overall") in keys and (detail["current_season"], "ranked", "solo") in keys
+    overall = next(row for row in detail["records"] if (row["season"], row["queue"], row["team_mode"]) == (0, "ranked", "overall"))
+    assert (overall["fight_count"], overall["top5_count"], overall["kill_count"], overall["max_move_distance_dm"]) == (1, 1, 4, 12000)
+
+    edited = await client.patch(
+        f"/api/v1/admin/players/{account_id}/profile", headers=headers, json={"national_flag": "vm", "reason": "Player asked."}
+    )
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["gateway"]["national_flag"] == "VM"
+    bad = await client.patch(
+        f"/api/v1/admin/players/{account_id}/profile", headers=headers, json={"national_flag": "C1", "reason": "Bad code."}
+    )
+    assert bad.status_code == 422
+
+
+async def test_admin_detail_and_gateway_profile_show_rank_logo_and_lobby_background(
+    client, gateway_key, tmp_path, monkeypatch
+):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "game_asset_dir", str(tmp_path))
+    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+    account_id = await _game_player(client, gateway_key)
+    headers = await _operator(client, "logo_support", ["support"])
+    for kind, key in (("rank", "bronze"), ("background", "5001")):
+        up = await client.post(
+            "/api/v1/admin/assets", headers=headers,
+            data={"kind": kind, "key": key, "name": key, "source": "test"}, files={"upload": ("x.png", png)},
+        )
+        assert up.status_code == 201, up.text
+
+    edited = await client.patch(
+        f"/api/v1/admin/players/{account_id}/profile", headers=headers,
+        json={"outfit": {"body": [], "wear": [], "theme": 5001}, "reason": "Pick lobby background."},
+    )
+    assert edited.status_code == 200, edited.text
+    gw = (await client.get(f"/api/v1/admin/players/{account_id}", headers=headers)).json()["gateway"]
+    assert gw["rank_tier"] == "bronze" and gw["rank_logo_url"].startswith("/api/v1/assets/rank/bronze?v=")
+    assert gw["lobby_theme"] == 5001 and gw["lobby_background_url"].startswith("/api/v1/assets/background/5001?v=")
+
+    profile = (await client.get("/api/v1/gateway/accounts/9100000001/profile", headers=gateway_key)).json()
+    assert profile["lobby_background_url"] == gw["lobby_background_url"] and profile["rank_logo_url"] == gw["rank_logo_url"]
+    state = (await client.get("/api/v1/gateway/accounts/9100000001/state", headers=gateway_key)).json()
+    assert state["outfit"]["theme"] == 5001

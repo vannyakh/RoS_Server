@@ -1,7 +1,7 @@
 {
   "project": "RoS_Server",
   "version": "1.1.0",
-  "updated_at": "2026-11-19T23:00:00+07:00",
+  "updated_at": "2026-11-21T12:00:00+07:00",
   "task_statuses": [
     "backlog",
     "research",
@@ -743,7 +743,7 @@
       "description": "Review the database foundation only after seeds, services, QA, and the security review are complete.",
       "category": "governance",
       "assigned_agent": "cto",
-      "status": "ready",
+      "status": "review",
       "priority": "critical",
       "dependencies": [
         "RO-005",
@@ -772,7 +772,7 @@
       "test_evidence": [],
       "compatibility_status": "not_applicable",
       "created_at": "2026-11-10T22:45:00+07:00",
-      "updated_at": "2026-11-12T21:10:00+07:00",
+      "updated_at": "2026-11-20T08:58:03+07:00",
       "completed_at": null,
       "completion_report": null,
       "block_reason": null,
@@ -795,6 +795,33 @@
           "from_agent": "cto",
           "to_agent": "cto",
           "note": "RO-009 is completed. The integration review can start after the suite is run again."
+        },
+        {
+          "at": "2026-11-20T08:58:03+07:00",
+          "actor": "cto",
+          "from_status": "ready",
+          "to_status": "assigned",
+          "from_agent": "cto",
+          "to_agent": "cto",
+          "note": "CTO started the integration review after the security report was present."
+        },
+        {
+          "at": "2026-11-20T08:58:03+07:00",
+          "actor": "cto",
+          "from_status": "assigned",
+          "to_status": "in_progress",
+          "from_agent": "cto",
+          "to_agent": "cto",
+          "note": "Reran the required suite and inspected the RO-009 report."
+        },
+        {
+          "at": "2026-11-20T08:58:03+07:00",
+          "actor": "cto",
+          "from_status": "in_progress",
+          "to_status": "review",
+          "from_agent": "cto",
+          "to_agent": "cto",
+          "note": "Submitted the integration findings for QA review; the full suite has one SQLite readonly-database failure."
         }
       ]
     },
@@ -6967,6 +6994,454 @@
           "from_agent": null,
           "to_agent": "security-engineer",
           "note": "Opened from the 2026-11-19 owner request on doors, loot quantities, discard, breakable glass and character actions (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md, section 'Interaction gaps')."
+        }
+      ]
+    },
+    {
+      "id": "RO-087",
+      "title": "Research shooting, damage, reload and fire modes on the original client",
+      "phase": "09",
+      "description": "Capture what the original client sends when it fires, reloads, switches fire mode and throws a grenade, and what it expects back: hit report, damage value, ammo property updates, kill message. Mark which of hit detection and damage the client decides alone and which the server must decide. Recoil, spread and projectile speed stay client-side unless a capture shows otherwise.",
+      "category": "research",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "backlog",
+      "priority": "medium",
+      "dependencies": [
+        "RO-056",
+        "RO-057"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/docs/SHOOTING_DAMAGE.md",
+        "bigworld_gateway/client/frida/payloads/shooting_damage/**"
+      ],
+      "acceptance_criteria": [
+        "SHOOTING_DAMAGE.md has one row per action (fire, reload, fire-mode switch, throw, melee) with request msg id, argument bytes from a capture, reply needed or client-only, and the property that changes",
+        "Says who decides a hit (client report or server) with capture evidence, or marks it unknown with hex samples",
+        "In-game check run by the specialist with bigworld_gateway/tools/to_match.sh: fire, reload and throw; attach gateway log lines"
+      ],
+      "verification_commands": [
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "protocol-test-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-21T12:00:00+07:00",
+      "updated_at": "2026-11-21T12:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-21T12:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Opened from the 2026-11-21 owner request to cover known ROS gameplay functions not yet in a task (docs/GAMEPLAY_SYSTEMS.md, section 'Not implemented')."
+        }
+      ]
+    },
+    {
+      "id": "RO-088",
+      "title": "Shooting, damage, ammo and elimination in the match",
+      "phase": "09",
+      "description": "Implements what RO-087 shows is server-owned: ammo and magazine properties, reload replies, damage and health updates, armor and helmet reduction, elimination and the kill message. Input is untrusted: bound counts, rates and ids, reject fire with an empty magazine, and keep damage numbers in a data table marked unknown until a source is cited.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "medium",
+      "dependencies": [
+        "RO-059",
+        "RO-060",
+        "RO-077",
+        "RO-084",
+        "RO-087"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/combat.py",
+        "tests/compatibility/gateway/combat/**"
+      ],
+      "acceptance_criteria": [
+        "combat.py applies each server-owned action RO-087 lists and ignores client-only ones with one log line",
+        "Tests: empty magazine, negative or oversized counts, self-hit and a dead target raise nothing and change no health",
+        "In-game check run by the specialist with bigworld_gateway/tools/to_match.sh: shoot another character and a bot; ammo drops, health changes, elimination shows with no script error",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/combat -q --tb=line passes"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/combat -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-21T12:00:00+07:00",
+      "updated_at": "2026-11-21T12:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-21T12:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-21 owner request to cover known ROS gameplay functions not yet in a task (docs/GAMEPLAY_SYSTEMS.md, section 'Not implemented')."
+        }
+      ]
+    },
+    {
+      "id": "RO-089",
+      "title": "Research healing items, armor and helmet use on the original client",
+      "phase": "09",
+      "description": "Capture use of healing items (bandage, medkit, drink), the channel or progress state, cancel, and wearing armor, helmet and backpack. Record request ids, the progress properties and what the client shows if the server never replies.",
+      "category": "research",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "backlog",
+      "priority": "medium",
+      "dependencies": [
+        "RO-076",
+        "RO-082"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/docs/CONSUMABLES.md",
+        "bigworld_gateway/client/frida/payloads/consumables/**"
+      ],
+      "acceptance_criteria": [
+        "CONSUMABLES.md has one row per item class with request, reply, changed properties and cancel behavior from a capture",
+        "Armor, helmet and backpack wear rules are documented with hex samples or marked unknown",
+        "In-game check run by the specialist with bigworld_gateway/tools/to_match.sh: use one heal item and wear one armor piece; attach log lines"
+      ],
+      "verification_commands": [
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "protocol-test-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-21T12:00:00+07:00",
+      "updated_at": "2026-11-21T12:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-21T12:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Opened from the 2026-11-21 owner request to cover known ROS gameplay functions not yet in a task (docs/GAMEPLAY_SYSTEMS.md, section 'Not implemented')."
+        }
+      ]
+    },
+    {
+      "id": "RO-090",
+      "title": "Healing, consumables and wearable gear in the match",
+      "phase": "09",
+      "description": "Implements the use-item and wear-gear replies RO-089 documents: timed heal channel with cancel on hit or shot, health and gear property updates, item removal from the bag through the RO-077 stack code. Bound item ids and counts, and never spend an item twice on a repeated request.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "medium",
+      "dependencies": [
+        "RO-059",
+        "RO-077",
+        "RO-084",
+        "RO-089"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/consumables.py",
+        "tests/compatibility/gateway/consumables/**"
+      ],
+      "acceptance_criteria": [
+        "consumables.py heals, spends one item and cancels on damage as RO-089 shows",
+        "Tests: repeated use, unknown item id, full health and a count of zero raise nothing and never remove more than one item",
+        "In-game check run by the specialist with bigworld_gateway/tools/to_match.sh: heal, cancel by moving or firing, wear armor; client log shows no script error",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/consumables -q --tb=line passes"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/consumables -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-21T12:00:00+07:00",
+      "updated_at": "2026-11-21T12:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-21T12:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-21 owner request to cover known ROS gameplay functions not yet in a task (docs/GAMEPLAY_SYSTEMS.md, section 'Not implemented')."
+        }
+      ]
+    },
+    {
+      "id": "RO-091",
+      "title": "Research vehicles on the original client: spawn, enter, drive, exit, damage",
+      "phase": "09",
+      "description": "Capture the vehicle entity, seat enter and exit requests, driver input messages, fuel and health properties, and boat versus ground vehicles. Record which vehicle types exist in the client data and how position is reported while seated.",
+      "category": "research",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "backlog",
+      "priority": "medium",
+      "dependencies": [
+        "RO-056",
+        "RO-057",
+        "RO-060",
+        "RO-066"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/docs/VEHICLES.md",
+        "bigworld_gateway/client/frida/payloads/vehicles/**"
+      ],
+      "acceptance_criteria": [
+        "VEHICLES.md lists each vehicle type with entity class, seats, enter and exit request ids, driver input message and the properties that change",
+        "Says how seated position is reported and whether the server or client moves the vehicle, with evidence or unknown",
+        "In-game check run by the specialist with bigworld_gateway/tools/to_match.sh: enter, drive a short route and exit one vehicle; attach log lines"
+      ],
+      "verification_commands": [
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "protocol-test-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-21T12:00:00+07:00",
+      "updated_at": "2026-11-21T12:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-21T12:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Opened from the 2026-11-21 owner request to cover known ROS gameplay functions not yet in a task (docs/GAMEPLAY_SYSTEMS.md, section 'Not implemented')."
+        }
+      ]
+    },
+    {
+      "id": "RO-092",
+      "title": "Vehicles in the match: spawn, enter, drive, exit",
+      "phase": "09",
+      "description": "Implements the vehicle entity and seat handling RO-091 documents on top of the RO-066 prop spawning. Start with one ground vehicle type. Bound driver input, check seat occupancy on the server so two players never take one seat, and hand position back to normal tracking on exit.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "medium",
+      "dependencies": [
+        "RO-059",
+        "RO-060",
+        "RO-066",
+        "RO-091"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/vehicles.py",
+        "tests/compatibility/gateway/vehicles/**"
+      ],
+      "acceptance_criteria": [
+        "vehicles.py spawns the vehicle, answers enter and exit, and relays driver input as RO-091 shows",
+        "Tests: two players entering one seat, exit while not seated, out-of-range driver input and a vehicle that no longer exists raise nothing",
+        "In-game check run by the specialist with bigworld_gateway/tools/to_match.sh: enter, drive, exit; character resumes walking with no script error",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/vehicles -q --tb=line passes"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/vehicles -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-21T12:00:00+07:00",
+      "updated_at": "2026-11-21T12:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-21T12:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-21 owner request to cover known ROS gameplay functions not yet in a task (docs/GAMEPLAY_SYSTEMS.md, section 'Not implemented')."
+        }
+      ]
+    },
+    {
+      "id": "RO-093",
+      "title": "Research knock-down, revive, spectate and team markers on the original client",
+      "phase": "09",
+      "description": "Capture the knocked-down state, bleed-out timer, revive request and progress, teammate health panel, team and enemy markers, and the spectate view after elimination. Record the entity properties and request ids involved.",
+      "category": "research",
+      "assigned_agent": "game-compatibility-engineer",
+      "status": "backlog",
+      "priority": "medium",
+      "dependencies": [
+        "RO-056",
+        "RO-057",
+        "RO-071"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/docs/TEAM_STATES.md",
+        "bigworld_gateway/client/frida/payloads/team_states/**"
+      ],
+      "acceptance_criteria": [
+        "TEAM_STATES.md has one row per state or action with request id, reply, and changed properties from a capture",
+        "Spectate target switching and marker messages are documented or marked unknown with hex samples",
+        "In-game check run by the specialist with bigworld_gateway/tools/to_match.sh: use a second client or bot team if possible; attach log lines"
+      ],
+      "verification_commands": [
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "protocol-test-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-21T12:00:00+07:00",
+      "updated_at": "2026-11-21T12:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-21T12:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "game-compatibility-engineer",
+          "note": "Opened from the 2026-11-21 owner request to cover known ROS gameplay functions not yet in a task (docs/GAMEPLAY_SYSTEMS.md, section 'Not implemented')."
+        }
+      ]
+    },
+    {
+      "id": "RO-094",
+      "title": "Knock-down, revive and spectate in the match",
+      "phase": "09",
+      "description": "Implements the team states RO-093 documents using the RO-059 property-update encoder: knock-down on lethal damage in team modes, bleed-out, revive with progress, spectate after elimination. Solo play stays direct elimination. Validate that revive targets are teammates and in range.",
+      "category": "gameplay",
+      "assigned_agent": "gameplay-test-engineer",
+      "status": "backlog",
+      "priority": "medium",
+      "dependencies": [
+        "RO-059",
+        "RO-071",
+        "RO-088",
+        "RO-093"
+      ],
+      "research_references": [
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md",
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md"
+      ],
+      "files_allowed": [
+        "bigworld_gateway/server/battle/modules/team_states.py",
+        "tests/compatibility/gateway/team_states/**"
+      ],
+      "acceptance_criteria": [
+        "team_states.py moves a character through knocked, revived and eliminated as RO-093 shows",
+        "Tests: revive a non-teammate, revive a dead player, revive out of range and double revive raise nothing and change no state",
+        "In-game check run by the specialist with bigworld_gateway/tools/to_match.sh: knock down, revive, then eliminate and spectate; client log shows no script error",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/team_states -q --tb=line passes"
+      ],
+      "verification_commands": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/team_states -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "review_agents": [
+        "qa-engineer",
+        "security-engineer"
+      ],
+      "test_evidence": [],
+      "compatibility_status": "researching",
+      "created_at": "2026-11-21T12:00:00+07:00",
+      "updated_at": "2026-11-21T12:00:00+07:00",
+      "completed_at": null,
+      "completion_report": null,
+      "block_reason": null,
+      "resolution_plan": null,
+      "history": [
+        {
+          "at": "2026-11-21T12:00:00+07:00",
+          "actor": "cto",
+          "from_status": null,
+          "to_status": "backlog",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Opened from the 2026-11-21 owner request to cover known ROS gameplay functions not yet in a task (docs/GAMEPLAY_SYSTEMS.md, section 'Not implemented')."
         }
       ]
     }

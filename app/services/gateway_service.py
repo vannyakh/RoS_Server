@@ -108,6 +108,26 @@ class GatewayService:
         await self.session.commit()
         return self._view(account, player, identity)
 
+    async def set_head_frame(self, external_uid: str, head_frame: int) -> GatewayAccount:
+        identity = await self._identity(external_uid)
+        if identity is None:
+            raise AppError(404, "Gateway identity was not found")
+        account = await self.session.get(Account, identity.account_id)
+        player = await self._player(identity.account_id)
+        identity.head_frame = head_frame
+        await self.session.commit()
+        return self._view(account, player, identity)
+
+    async def set_national_flag(self, external_uid: str, national_flag: str) -> GatewayAccount:
+        identity = await self._identity(external_uid)
+        if identity is None:
+            raise AppError(404, "Gateway identity was not found")
+        account = await self.session.get(Account, identity.account_id)
+        player = await self._player(identity.account_id)
+        identity.national_flag = national_flag.upper()
+        await self.session.commit()
+        return self._view(account, player, identity)
+
     async def state(self, external_uid: str) -> GatewayState:
         identity, player = await self._known(external_uid)
         yuanbao = await self._yuanbao(player.id)
@@ -121,6 +141,7 @@ class GatewayService:
             yuanbao=yuanbao,
             items=[GatewayItemView(prop_id=i.prop_id, number=i.number) for i in items],
             outfit=GatewayOutfit(**(identity.outfit or {})),
+            head_frame=identity.head_frame or 0,
         )
 
     async def purchase(self, external_uid: str, price: int, props: list[int], reason: str) -> GatewayPurchaseResult:
@@ -222,4 +243,6 @@ class GatewayService:
             nickname=player.nickname,
             char_type=identity.char_type,
             portrait=identity.portrait or "",
+            national_flag=identity.national_flag or "",
+            head_frame=identity.head_frame or 0,
         )

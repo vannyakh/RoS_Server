@@ -22,6 +22,9 @@ class GatewayIdentity(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     char_type: Mapped[int | None] = mapped_column(nullable=True)
     # Uploaded avatar: FilePicker file id. Empty means the built-in image for char_type.
     portrait: Mapped[str] = mapped_column(String(128), nullable=False, default="", server_default="")
+    # Worn avatar frame: an original-client HeadFrameAppearanceType prop id. 0 means no frame.
+    head_frame: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
+    national_flag: Mapped[str] = mapped_column(String(8), nullable=False, default="", server_default="")
     # Worn original-client appearance ids: {"body": [...], "wear": [...]}. Null until first change.
     outfit: Mapped[dict | None] = mapped_column(PortableJSON, nullable=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -19,7 +19,9 @@ from app.schemas.gateway import (
     GatewayMatchReport,
     GatewayProfile,
 )
+from app.services.asset_service import AssetService
 from app.services.gateway_service import GatewayService
+from app.services.rank_tiers import rank_tier
 
 CREDIT_HISTORY = 20       # rows sent to the client's "Score inquire" list
 
@@ -54,6 +56,9 @@ class GatewayProfileService:
             level=player.level,
             char_type=identity.char_type,
             portrait=identity.portrait or "",
+            national_flag=identity.national_flag or "",
+            head_frame=identity.head_frame or 0,
+            **await _store_paths(self.session, identity),
             rank_score=identity.rank_score,
             space_likes=identity.space_likes,
             current_season=settings.gateway_current_season,
@@ -153,3 +158,16 @@ def _add_match(row: GatewayBattleRecord, report: GatewayMatchReport) -> None:
 
 def _record_view(row: GatewayBattleRecord) -> GatewayBattleRecordView:
     return GatewayBattleRecordView(**{name: getattr(row, name) for name in GatewayBattleRecordView.model_fields})
+
+
+async def _store_paths(session: AsyncSession, identity: GatewayIdentity) -> dict:
+    """Rank tier, lobby theme and the asset library paths of their images."""
+    assets = AssetService(session)
+    tier = rank_tier(identity.rank_score)
+    theme = int((identity.outfit or {}).get("theme") or 0)
+    return {
+        "rank_tier": tier,
+        "rank_logo_url": await assets.url_for("rank", tier) or "",
+        "lobby_theme": theme,
+        "lobby_background_url": (await assets.url_for("background", str(theme)) or "") if theme else "",
+    }

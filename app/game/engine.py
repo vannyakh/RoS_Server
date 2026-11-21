@@ -12,6 +12,7 @@ from app.game.simulate import (
     match_view,
     matches_view,
     queue_player,
+    start_training,
     simulate,
     snapshot,
 )
@@ -80,9 +81,22 @@ class GameEngine:
             if player.status == "queued":
                 player.status = "roaming"
 
+    async def set_team(self, player_id: str, team_id: str | None) -> tuple[bool, str]:
+        """Group players into a squad before they queue. Players sharing a team_id are allies."""
+        async with self._lock:
+            player = self.world.players.setdefault(player_id, PlayerState(player_id=player_id))
+            if player.match_id is not None:
+                return False, "Already in a match"
+            player.team_id = team_id
+            return True, "Team set"
+
     async def join_queue(self, player_id: str) -> tuple[bool, str]:
         async with self._lock:
             return queue_player(self.world, player_id)
+
+    async def join_training(self, player_id: str) -> tuple[bool, str]:
+        async with self._lock:
+            return start_training(self.world, player_id, self.rules)
 
     async def leave_queue(self, player_id: str) -> tuple[bool, str]:
         async with self._lock:

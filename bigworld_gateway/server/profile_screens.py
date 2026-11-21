@@ -20,6 +20,9 @@ The profile dict is RoS_Server's GET /api/v1/gateway/accounts/{uid}/profile body
 link every screen gets zeros, which is what a new player has.
 """
 
+import hero_rules
+
+
 QUEUES = ("total", "ranked", "matching")
 TEAM_MODES = ("overall", "solo", "dual", "quad", "five")
 _QUEUE_NAMES = {"total": "Total", "ranked": "Ranked", "matching": "Matching"}
@@ -105,15 +108,19 @@ def credit(profile):
     return int(c.get("score", 100)), int(c.get("status_last_week", 0)), int(c.get("weeks", 0)), list(c.get("gifts", [])), rows
 
 
+def national_flag(profile, fallback=""):
+    return (profile or {}).get("national_flag") or fallback or ""
+
+
 def personal_info(profile, gid, fallback_name, char_type, portrait):
     """queryPersonalInfoCB's dict (keys from UIPersonalSpace._getPersonInfo; 'protrait' is the client's spelling)."""
     profile = profile or {}
     return {
         "gid": gid,
         "nickname": profile.get("nickname") or fallback_name,
-        "characterType": profile.get("char_type") or char_type,
+        "characterType": hero_rules.normalize_hero(profile.get("char_type") or char_type),
         "protrait": profile.get("portrait", portrait) or "",
-        "nationalFlag": "",
+        "nationalFlag": national_flag(profile),
         "dtsLevel": int(profile.get("level", 1)),
         "score": int(profile.get("rank_score", 0)),
     }

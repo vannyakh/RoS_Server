@@ -1,14 +1,14 @@
 {
   "users": 2,
   "duration_s": 10,
-  "requests": 65,
+  "requests": 76,
   "failures": 0,
-  "requests_per_s": 8.184728920957088,
-  "average_ms": 31.696293843336978,
-  "p50_ms": 21.0,
-  "p95_ms": 120.0,
-  "p99_ms": 430.0,
-  "server_rss_mb": 105.4,
+  "requests_per_s": 8.469233318192707,
+  "average_ms": 21.738303952396993,
+  "p50_ms": 3.0,
+  "p95_ms": 130.0,
+  "p99_ms": 290.0,
+  "server_rss_mb": 106.1,
   "server_cpu_percent": 0.0,
   "note": "Two simulated players for 10 seconds. This is not match capacity and MAX_PLAYERS_PER_MATCH was not used as a capacity claim."
 }

@@ -32,6 +32,8 @@ This page describes this server's JSON protocol. It is not an official Rules of 
 - `discard`
 - `board`
 - `exit`
+- `revive`
+- `attach`
 
 OBSERVED FACT: These names are the `Literal` values in `app/networking/protocol.py`.
 

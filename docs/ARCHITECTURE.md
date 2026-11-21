@@ -30,7 +30,6 @@ Player statistics
 | Database | Accounts, durable game records, map metadata | `migrations/versions`, SQLite in development |
 | Redis | Optional cache client. It is not in `/ready` and it does not hold match state. | `app/infrastructure/redis.py` |
 | Map publishing | Username allow-list, not a full admin console | `app/api/v1/admin_maps.py`, `MAP_PUBLISHERS` |
-| Browser page | Static client at `/play` when `assets/play` exists | `app/main.py` |
 
 `GET /health` reports process liveness. `GET /ready` runs `SELECT 1`. Development startup applies Alembic. Production is expected to migrate before serving.
 

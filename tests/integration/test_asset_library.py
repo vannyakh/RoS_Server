@@ -101,3 +101,43 @@ async def test_models_take_glb_only_and_glb_only_goes_in_models(client, asset_di
     assert (await client.post("/api/v1/admin/assets", headers=headers, **_form("model", "y", PNG))).status_code == 415
     truncated = model[:-4]
     assert (await client.post("/api/v1/admin/assets", headers=headers, **_form("model", "z", truncated))).status_code == 422
+
+
+async def test_model_status_lists_targets_and_unlinked_uploads(client, asset_dir):
+    from app.infrastructure.database import SessionLocal
+    from app.models.game_data import ItemDefinition
+
+    headers = await _operator(client, "status_admin", ["support"])
+    async with SessionLocal() as session:
+        item = ItemDefinition(code="status_item", name="Status Item", category="weapon", max_stack=1)
+        session.add(item)
+        await session.commit()
+        item_id = item.id
+
+    model = _glb()
+    for key in (f"item-{item_id}", "skin-field_jacket", "prop-1", "stray-model"):
+        assert (await client.post("/api/v1/admin/assets", headers=headers, **_form("model", key, model))).status_code == 201
+
+    status = await client.get("/api/v1/admin/assets/models/status", headers=headers)
+    assert status.status_code == 200, status.text
+    body = status.json()
+    by_key = {row["key"]: row for row in body["items"]}
+    assert by_key[f"item-{item_id}"]["status"] == "ready"
+    assert by_key[f"item-{item_id}"]["label"] == "Status Item"
+    assert by_key["skin-field_jacket"]["status"] == "ready"
+    assert by_key["skin-recruit"]["status"] == "missing"
+    assert by_key["stray-model"]["status"] == "unlinked"
+    assert by_key["stray-model"]["type"] == "other"
+    assert by_key["prop-1"]["status"] == "ready"
+    assert by_key["prop-1"]["type"] == "prop"
+    assert by_key["prop-1"]["label"] == "Lv 1 helmet"
+    assert by_key["lobby-1"]["type"] == "lobby" and by_key["lobby-1"]["detail"] == "character"
+    lobby_details = {row["detail"] for row in body["items"] if row["type"] == "lobby"}
+    assert lobby_details == {"firearms", "clothes", "character", "vehicles", "companions"}
+    summary = body["summary"]
+    assert summary["ready"] == 3 and summary["unlinked"] == 1
+    assert summary["targets"] == summary["ready"] + summary["missing"]
+    assert summary["by_type"]["skin"]["total"] == 9
+    assert summary["by_type"]["prop"] == {"total": 411, "ready": 1}
+    assert summary["by_type"]["lobby"]["total"] == 5031
+    assert (await client.get("/api/v1/admin/assets/models/status")).status_code == 401

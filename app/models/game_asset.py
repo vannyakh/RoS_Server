@@ -10,15 +10,16 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.infrastructure.database import Base
 from app.models.types import CreatedAtMixin, IdMixin, UpdatedAtMixin
 
-# "model" holds a binary glTF (.glb) 3D model; the others hold images.
-ASSET_KINDS = ("rank", "prop", "item", "character", "currency", "badge", "other", "model")
+# "model" holds a binary glTF (.glb) 3D model; the others hold images. "rank" is keyed by tier name
+# (app/services/rank_tiers.py), "background" by the lobby theme prop id.
+ASSET_KINDS = ("rank", "prop", "item", "character", "currency", "badge", "other", "model", "background")
 
 
 class GameAsset(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     __tablename__ = "game_assets"
     __table_args__ = (
         UniqueConstraint("kind", "key", name="uq_game_assets_kind_key"),
-        CheckConstraint("kind IN ('rank', 'prop', 'item', 'character', 'currency', 'badge', 'other', 'model')", name="kind"),
+        CheckConstraint("kind IN ('rank', 'prop', 'item', 'character', 'currency', 'badge', 'other', 'model', 'background')", name="kind"),
         CheckConstraint("size_bytes > 0", name="size_bytes"),
     )
 

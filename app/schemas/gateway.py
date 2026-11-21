@@ -41,6 +41,17 @@ class GatewayPortraitRequest(BaseModel):
     portrait: str = Field(pattern=PORTRAIT_PATTERN)
 
 
+NATIONAL_FLAG_PATTERN = r"^[A-Za-z]{0,8}$"
+
+
+class GatewayHeadFrameRequest(BaseModel):
+    head_frame: int = Field(ge=0, le=2_147_483_647)
+
+
+class GatewayNationalFlagRequest(BaseModel):
+    national_flag: str = Field(pattern=NATIONAL_FLAG_PATTERN)
+
+
 class GatewayAccount(BaseModel):
     account_id: str
     username: str
@@ -50,6 +61,8 @@ class GatewayAccount(BaseModel):
     nickname: str
     char_type: int | None
     portrait: str = ""
+    national_flag: str = ""
+    head_frame: int = 0
 
 
 PROP_IDS = Field(default_factory=list, max_length=200)
@@ -63,6 +76,8 @@ class GatewayItemView(BaseModel):
 class GatewayOutfit(BaseModel):
     body: list[int] = Field(default_factory=list, max_length=64)
     wear: list[int] = Field(default_factory=list, max_length=64)
+    # Lobby theme (hall background) prop id; 0 keeps the client default.
+    theme: int = Field(default=0, ge=0)
 
 
 class GatewayState(BaseModel):
@@ -71,6 +86,7 @@ class GatewayState(BaseModel):
     yuanbao: int
     items: list[GatewayItemView]
     outfit: GatewayOutfit
+    head_frame: int = 0
 
 
 class GatewayPurchaseRequest(BaseModel):
@@ -140,6 +156,13 @@ class GatewayProfile(BaseModel):
     level: int
     char_type: int | None
     portrait: str
+    national_flag: str = ""
+    head_frame: int = 0
+    # Store paths from the asset library; empty when no image was uploaded for them.
+    rank_tier: str = ""
+    rank_logo_url: str = ""
+    lobby_theme: int = 0
+    lobby_background_url: str = ""
     rank_score: int
     space_likes: int
     current_season: int

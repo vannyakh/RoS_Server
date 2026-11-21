@@ -9,7 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import AppError
 from app.models.account import Account, LoginHistory
 from app.models.game_data import ItemDefinition
-from app.models.gateway import GatewayCreditRecord, GatewayIdentity, GatewayItem
+from app.core.config import settings
+from app.models.gateway import GatewayBattleRecord, GatewayCreditRecord, GatewayIdentity, GatewayItem
 from app.models.inventory import CurrencyTransaction, InventoryItem, PlayerCurrency, PlayerInventory
 from app.models.lobby import Lobby, LobbyMember
 from app.models.match import Match, MatchParticipant
@@ -17,10 +18,13 @@ from app.models.operator import AuditLog, Operator
 from app.models.player import Player, PlayerStatistics
 from app.models.support import ModerationAction, PlayerReport, SupportCase, SupportNote
 from app.networking.admin_hub import admin_hub
+from app.services.asset_service import AssetService
+from app.services.gateway_profile_service import _record_view
+from app.services.rank_tiers import rank_tier
 from app.services.session_view import session_row
 from app.services.operator_service import OperatorActor, OperatorService
 
-GATEWAY_FIELDS = {"char_type", "outfit", "rank_score", "credit_score"}
+GATEWAY_FIELDS = {"char_type", "outfit", "rank_score", "credit_score", "national_flag"}
 # The client's CREDIT_CHANGE_REASON uses -1 for a server or operator change.
 ADMIN_CREDIT_REASON = -1
 CURRENCY_CODE = re.compile(r"[a-z0-9_]{1,16}")
@@ -121,6 +125,18 @@ class SupportService:
             if gateway is not None
             else []
         )
+        # Battle records as the client's Stats page reads them: season 0 is all-time.
+        gateway_records = (
+            list(
+                await self.session.scalars(
+                    select(GatewayBattleRecord)
+                    .where(GatewayBattleRecord.identity_id == gateway.id)
+                    .order_by(GatewayBattleRecord.season, GatewayBattleRecord.queue, GatewayBattleRecord.team_mode)
+                )
+            )
+            if gateway is not None
+            else []
+        )
         sessions = list(
             await self.session.scalars(
                 select(LoginHistory)
@@ -202,10 +218,22 @@ class SupportService:
                 "credit_status_last_week": gateway.credit_status_last_week,
                 "credit_weeks": gateway.credit_weeks,
                 "space_likes": gateway.space_likes,
+                "national_flag": gateway.national_flag or "",
+                "head_frame": gateway.head_frame or 0,
+                "rank_tier": rank_tier(gateway.rank_score),
+                "rank_logo_url": await AssetService(self.session).url_for("rank", rank_tier(gateway.rank_score)) or "",
+                "lobby_theme": int((gateway.outfit or {}).get("theme") or 0),
+                "lobby_background_url": await self._background_url(gateway),
+                "current_season": settings.gateway_current_season,
+                "records": [_record_view(row).model_dump() for row in gateway_records],
             },
             "online": admin_hub.is_online(account.id),
             "sessions": [session_row(row) for row in sessions],
         }
+
+    async def _background_url(self, gateway: GatewayIdentity) -> str:
+        theme = int((gateway.outfit or {}).get("theme") or 0)
+        return (await AssetService(self.session).url_for("background", str(theme)) or "") if theme else ""
 
     async def update_profile(self, actor: OperatorActor, account_id: str, fields: dict) -> dict:
         """Apply one audited profile edit. Each field group needs its own permission."""
@@ -215,7 +243,7 @@ class SupportService:
         fields = {key: value for key, value in fields.items() if value is not None}
         if not fields:
             raise AppError(422, "Nothing to change")
-        if "nickname" in fields:
+        if fields.keys() & {"nickname", "national_flag"}:
             self.operators._need(actor, "players.manage")
         if fields.keys() & {"level", "experience", "char_type", "outfit"}:
             self.operators._need(actor, "players.progress")
@@ -245,6 +273,10 @@ class SupportService:
                 changes.append(f"{name} {getattr(profile, name)} -> {value}")
                 setattr(profile, name, value)
         if gateway is not None:
+            flag = fields.get("national_flag")
+            if flag is not None and flag.upper() != (gateway.national_flag or ""):
+                changes.append(f"national_flag {gateway.national_flag or '-'} -> {flag.upper() or '-'}")
+                gateway.national_flag = flag.upper()
             for name in ("char_type", "rank_score"):
                 value = fields.get(name)
                 if value is not None and value != getattr(gateway, name):
@@ -252,8 +284,13 @@ class SupportService:
                     setattr(gateway, name, value)
             outfit = fields.get("outfit")
             if outfit is not None:
+                current = gateway.outfit or {"body": [], "wear": []}
                 worn = {"body": list(outfit.get("body", [])), "wear": list(outfit.get("wear", []))}
-                if worn != (gateway.outfit or {"body": [], "wear": []}):
+                theme = outfit.get("theme")
+                theme = current.get("theme") if theme is None else theme
+                if theme:
+                    worn["theme"] = int(theme)
+                if worn != current:
                     changes.append("outfit")
                     gateway.outfit = worn
             credit = fields.get("credit_score")
