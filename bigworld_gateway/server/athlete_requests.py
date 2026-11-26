@@ -144,6 +144,17 @@ def supplement_info():
     return _supp_info
 
 
+def supply_ticket_currencies():
+    """Sorted non-diamond currency ids any supply box accepts (the ticket currencies)."""
+    ids = set()
+    for v in supplement_info().values():
+        c = v.get("CURRENCY_ID")
+        for cid in (c if isinstance(c, list) else [c]):
+            if isinstance(cid, int) and cid != YUANBAO:
+                ids.add(cid)
+    return sorted(ids)
+
+
 def supplement_prizes(sid):
     """Prop ids a supply box can award (client's getAllPossiblePropID)."""
     global _supp_props

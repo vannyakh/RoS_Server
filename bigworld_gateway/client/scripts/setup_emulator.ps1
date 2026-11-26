@@ -3,12 +3,12 @@
 #  - installs certs\<hash>.0 (local test CA) into the system trust store
 #  - DNATs all emulator DNS (udp/53) to the PC's dns_server.py
 # Run: powershell -ExecutionPolicy Bypass -File setup_emulator.ps1   (add -Undo to revert)
-param([switch]$Undo)
+param([switch]$Undo, [string]$Serial = "")   # -Serial emulator-5556 to pick one LDPlayer instance
 
 . "$PSScriptRoot\adb_common.ps1"
 $adb = $script:RosAdb
 $PC_IP = $script:RosPcIp
-$serial = Resolve-RosSerial -Target ldplayer
+$serial = Resolve-RosSerial -Target ldplayer -Serial $Serial
 if (-not $serial) { throw "LDPlayer not found (emulator-5554). Start LDPlayer first." }
 $adbArgs = @("-s", $serial)
 $caFile = Get-ChildItem "$script:RosServerDir\certs\*.0" | Select-Object -First 1
