@@ -1,0 +1,22 @@
+# BattleGroundAvatar.fall()
+# Source: bigworld_gateway/logs/server.prev6.log
+#
+# Framing: msgid 0xBC, length var16, payload = eid u32 + sub_byte + args
+# Wire: sub 0xF5 -> client index 60+245 = 305 (= .def exposed index of fall when shift not applied
+# to this id; LOBBY_FINDINGS update 17 also names fall as exposed index 305).
+# Trailing byte 01 observed; .def signature is empty.
+
+full_message_hex=
+bc060000000000f501
+
+breakdown=
+bc          msgid 0xBC
+0600        length 6
+00000000    entity id 0
+f5          sub byte 245
+01          observed trailing byte
+
+decoded_log=
+[BATTLE] <- BattleGroundAvatar(0).fall args=01
+recv_cleartext_excerpt=
+bc060000000000f501

@@ -1,0 +1,31 @@
+# Client messages 0xBC and 0xBD in a match (NOT a dedicated position channel)
+# Source: bigworld_gateway/logs/server.prev5.log cleartext client msgs
+#
+# With BattleGroundAvatar exposed_count=369, eff=60:
+#   msgid 0xBC = 0x80|60  -> extended cell methods with client index 60 + sub
+#   msgid 0xBD = 0x80|61  -> extended cell methods with client index 60 + 256 + sub
+# Early notes that called 0xBC/0xBD "position updates" were a misread of these method calls.
+# Position after landing is ClientInterface message 3 (LOBBY_FINDINGS update 16); layout of that
+# message is separate. Field layout of 0xBC/0xBD as a position packet: unknown / not applicable.
+
+# --- 0xBC samples (msgid decimal 188) ---
+# onRecvClientFPS(30): eid=0, sub=0xE7 -> client index 291; raw after EXPOSED_SHIFT=2 -> 289
+0xBC full (var16): bc090000000000e71e000000
+payload_hex: 00000000e71e000000
+
+# short anticheat-style call: eid=0, sub=0x93, no further args in this sample
+0xBC full: bc05000000000093
+payload_hex: 000000009300000000
+# note: logged payload length varies; quote gateway payload field as stored
+
+# --- 0xBD samples (msgid decimal 189) ---
+# eid=0, sub=0x0B, args INT32 0  -> client index 60+256+11 = 327
+0xBD full: bd0900000000000b00000000
+payload_hex: 000000000b00000000
+
+# eid=0, sub=0x12, args empty (len 6)
+0xBD full: bd06000000000012
+payload_hex: 000000001200
+
+# Position-looking float blobs appear on ClientInterface id 2 in the same bundles, e.g.:
+# (2, 'ed7a7844...') — not on 0xBC/0xBD. Layout of msg 2 / msg 3: unknown for RO-057.

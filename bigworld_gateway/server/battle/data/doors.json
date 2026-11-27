@@ -1,0 +1,85 @@
+{
+  "_comment": "Door table from RO-074 extract/map700_elements.json (partial AC4; gateway params).",
+  "_source": "bigworld_gateway/server/extract/map700_elements.json",
+  "map_id": 700,
+  "space_entity_id": 20001,
+  "default_open_state": 1,
+  "default_close_state": 0,
+  "opened_elements_on_reply": false,
+  "unknown_elem_policy": "echo_and_log_once",
+  "doors": [
+    {
+      "elem_id": 832,
+      "building_label": "unknown",
+      "open_states": [1, 2],
+      "close_state": 0,
+      "pair_elem_ids": null,
+      "notes": "Captured wire; visible motion unverified"
+    },
+    {
+      "elem_id": 815,
+      "building_label": "unknown",
+      "open_states": [1],
+      "close_state": 0,
+      "pair_elem_ids": null
+    },
+    {
+      "elem_id": 817,
+      "building_label": "unknown",
+      "open_states": [1],
+      "close_state": 0,
+      "pair_elem_ids": null
+    },
+    {
+      "elem_id": 818,
+      "building_label": "unknown",
+      "open_states": [1],
+      "close_state": 0,
+      "pair_elem_ids": null
+    },
+    {
+      "elem_id": 831,
+      "building_label": "unknown",
+      "open_states": [1],
+      "close_state": 0,
+      "pair_elem_ids": null
+    },
+    {
+      "elem_id": 833,
+      "building_label": "unknown",
+      "open_states": [1],
+      "close_state": 0,
+      "pair_elem_ids": null
+    },
+    {
+      "elem_id": 834,
+      "building_label": "unknown",
+      "open_states": [1],
+      "close_state": 0,
+      "pair_elem_ids": null
+    },
+    {
+      "elem_id": 836,
+      "building_label": "unknown",
+      "open_states": [1],
+      "close_state": 0,
+      "pair_elem_ids": null
+    },
+    {
+      "elem_id": 4660,
+      "building_label": "unknown_double_candidate",
+      "open_states": [3],
+      "close_state": 0,
+      "pair_elem_ids": [4661],
+      "notes": "Double-door hypothesis: also answer 4661 on open burst"
+    },
+    {
+      "elem_id": 4661,
+      "building_label": "unknown_double_candidate_leaf",
+      "open_states": [1],
+      "close_state": 0,
+      "pair_elem_ids": [4660],
+      "notes": "Paired leaf for 4660"
+    }
+  ]
+}

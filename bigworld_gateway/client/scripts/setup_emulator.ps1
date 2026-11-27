@@ -3,7 +3,7 @@
 #  - installs certs\<hash>.0 (local test CA) into the system trust store
 #  - DNATs all emulator DNS (udp/53) to the PC's dns_server.py
 # Run: powershell -ExecutionPolicy Bypass -File setup_emulator.ps1   (add -Undo to revert)
-param([switch]$Undo, [string]$Serial = "")   # -Serial emulator-5556 to pick one LDPlayer instance
+param([switch]$Undo, [switch]$SkipLobbyDate, [string]$Serial = "")   # -Serial emulator-5556 to pick one LDPlayer instance
 
 . "$PSScriptRoot\adb_common.ps1"
 $adb = $script:RosAdb
@@ -27,6 +27,7 @@ if (-not $asRoot) { Write-Host "adb shell is not root; using su" }
 
 if ($Undo) {
     Invoke-RootShell "iptables -t nat -D OUTPUT -p udp --dport 53 -j DNAT --to-destination ${PC_IP}:53 2>/dev/null; umount /system/etc/security/cacerts 2>/dev/null; settings put global private_dns_mode opportunistic"
+    Invoke-RootShell "settings put global auto_time 1"
     "Reverted."
     exit
 }
@@ -40,9 +41,28 @@ Invoke-RootShell "iptables -t nat -C OUTPUT -p udp --dport 53 -j DNAT --to-desti
 $check = ((Invoke-RootShell "iptables -t nat -L OUTPUT -n | grep -c ${PC_IP}:53") -join "").Trim()
 if ($check -eq "0" -or -not $check) { throw "DNS redirect was not applied (no root on the emulator?)" }
 
+# RO-113: stale HTTP proxy breaks hall HTTPS before createHallTeam (Network Error 15).
+Write-Host "Clearing emulator HTTP proxy (gateway PC_IP=$PC_IP)..."
+Invoke-RootShell "settings put global http_proxy :0"
+Invoke-RootShell "settings delete global http_proxy 2>/dev/null; settings delete global global_http_proxy_host 2>/dev/null; settings delete global global_http_proxy_port 2>/dev/null"
+$proxyHost = ((Invoke-RootShell "settings get global http_proxy") -join "").Trim()
+Write-Host "http_proxy after clear: $proxyHost"
+
 # Install custom loginapp.pubkey so client encrypts login with our key
 $pubKey = "$script:RosServerDir\server_keys\loginapp.pubkey"
 if (Test-Path $pubKey) {
     Push-RosLoginPubKey -Serial $serial
 }
+
+# Supreme / monthly Supply (UIMonthlySupplyPackage) uses the Android clock, not server time.
+# Match GAME_DATE in config.cmd (default 2022-04-20). See bigworld_gateway/docs/LOBBY_FINDINGS.md.
+if (-not $SkipLobbyDate) {
+    Write-Host "Setting emulator date to 2022-04-20 UTC (monthly Supply UI)..."
+    Invoke-RootShell "settings put global auto_time 0"
+    Invoke-RootShell "settings put global auto_time_zone 0"
+    Invoke-RootShell "date -u 042012002022.00"
+    $androidDate = ((Invoke-RootShell "date") -join "").Trim()
+    Write-Host "Emulator date: $androidDate"
+}
+
 "Emulator configured."

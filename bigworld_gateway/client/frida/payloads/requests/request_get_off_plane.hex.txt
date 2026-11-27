@@ -1,0 +1,24 @@
+# BattleGroundAvatar.requestGetOffPlane()
+# Source: bigworld_gateway/logs/server.prev-restart.log
+#
+# Framing: msgid 0xBC (extended Avatar cell method; eff=60), length var16,
+# payload = eid u32 + sub_byte + args
+# Wire client index k = 60 + 0x13 = 79; with EXPOSED_SHIFT=2 -> raw exposed index 77 = requestGetOffPlane
+# Entity id in this capture is 0 (own-player cell calls often use 0 in this build's logs)
+# Extra args bytes ffffffff present on the wire despite empty .def signature — keep as observed.
+
+full_message_hex=
+bc08000000000013ffffffff
+
+breakdown=
+bc          msgid 0xBC
+0800        length 8
+00000000    entity id 0
+13          sub byte 19 (client index 79)
+ffffffff    observed trailing bytes (not in .def)
+
+decoded_log=
+[BATTLE] <- BattleGroundAvatar(0).requestGetOffPlane args=ffffffff
+bundle_peer=
+(188, '0000000014df0eb244604421c5') -> requestGetOffAircraft (sub 0x14)
+(188, '0000000013ffffffff') -> requestGetOffPlane (sub 0x13)

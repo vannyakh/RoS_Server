@@ -9,14 +9,13 @@ Settings (environment first, then <gateway>/.env, then the RoS_Server .env two f
 """
 
 import hashlib
-import json
 import os
 import re
 import threading
 import time
-import urllib.error
 import urllib.parse
-import urllib.request
+
+import api_client  # pooled keep-alive HTTP client for /api/v1/gateway (server/api_client.py)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ENV_FILES = (os.path.join(_HERE, "..", ".env"), os.path.join(_HERE, "..", "..", ".env"))
@@ -109,27 +108,18 @@ def uid_from_login(username):
     return (username or "").split("@", 1)[0].strip() or None
 
 
-def _call(method, path, body):
-    key = _setting("GATEWAY_API_KEY")
-    if not key:
+def _call(method, path, body, retry_stale=False):
+    """One request to RoS_Server through the shared pooled api_client.ApiClient (same return
+    contract as before: None when not linked/down, {"_error": status, "detail"?} on non-2xx).
+    Tests replace this function; every RoS_Server call in this module goes through it."""
+    if not _setting("GATEWAY_API_KEY"):
         return None
-    url = _setting("ROS_API_URL", "http://127.0.0.1:8000").rstrip("/") + path
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(body).encode() if body is not None else None,
-        method=method,
-        headers={"Content-Type": "application/json", "X-Gateway-Key": key},
-    )
     try:
-        with urllib.request.urlopen(req, timeout=float(_setting("ROS_API_TIMEOUT", "2"))) as resp:
-            return json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        detail = e.read()[:200]
-        print(f"[ACC-LINK] {method} {path} -> HTTP {e.code} {detail!r}")
-        return {"_error": e.code}
-    except (urllib.error.URLError, OSError, ValueError) as e:
+        client = api_client.from_settings(_setting)
+    except ValueError as e:  # bad ROS_API_URL / timeout setting: behave as "not reachable"
         print(f"[ACC-LINK] {method} {path} failed ({e}); using local accounts")
         return None
+    return client.call(method, path, body, retry_stale=retry_stale)
 
 
 def resolve(uid, ip_address=None):
@@ -225,23 +215,104 @@ def _uid_path(suffix):
 
 
 def get_state():
-    """{"yuanbao", "items": [{"prop_id", "number"}], "outfit": {"body", "wear"}} or None."""
+    """{"yuanbao", "items": [{"prop_id", "number"}], "outfit": {"body", "wear", "theme"}, "head_frame",
+    "recent_got": [prop_id, ...], "currencies": {"1": gold}} or None. Items with number 0 are not
+    listed; currency keys are the client currency id as a string (only "1", gold coins, is stored)."""
     path = _uid_path("state")
     data = _call("GET", path, None) if path else None
     return None if not data or "_error" in data else data
 
 
-def purchase(price, props, reason):
+def ledger_reason(reason):
+    """RoS_Server only takes ledger reasons matching ^[a-z0-9_.:-]+$ (max 64); anything else is
+    answered 422 and the purchase is refused (e.g. "mall-multi:[10002]" from the Lobby Theme BUY)."""
+    text = re.sub(r"[^a-z0-9_.:-]+", ".", str(reason).lower()).strip(".")[:64]
+    return text or "gateway"
+
+
+def topup(amount, reference, reason="topup"):
+    """Add diamonds on RoS_Server for a private IAP reference.
+    Returns {"yuanbao", "replayed"?}; 409 when the reference was already credited; None if down."""
+    path = _uid_path("topup")
+    if not path:
+        return None
+    ref = ledger_reason(reference)[:40] or "iap"
+    body = {
+        "amount": int(amount),
+        "reference": ref,
+        "reason": ledger_reason(reason) or "gateway:topup",
+    }
+    return _call("POST", path, body, retry_stale=True)
+
+
+def purchase(price, props, reason, request_id=None):
     """Charge `price` diamonds and add `props` on RoS_Server.
-    Returns {"yuanbao", "added"}; {"_error": 409} when the balance is too low; None if not linked/down."""
+    Returns {"yuanbao", "added", "replayed"?}; {"_error": 409} when the balance is too low; None if
+    not linked/down. `request_id` (8..64 of [A-Za-z0-9_-]) makes the purchase idempotent: RoS_Server
+    applies one id once and answers a repeat with the first result and replayed=true."""
     path = _uid_path("purchase")
-    return _call("POST", path, {"price": int(price), "props": [int(p) for p in props], "reason": reason}) if path else None
+    if not path:
+        return None
+    body = {"price": int(price), "props": [int(p) for p in props], "reason": ledger_reason(reason)}
+    if request_id:
+        body["request_id"] = str(request_id)
+    return _call("POST", path, body, retry_stale=bool(request_id))
 
 
-def set_outfit(body, wear):
-    path = _uid_path("outfit")
-    data = _call("PUT", path, {"body": list(body), "wear": list(wear)}) if path else None
+def _counts(pairs):
+    return [{"prop_id": int(p), "number": int(n)} for p, n in pairs]
+
+
+def workshop_compound(request_id, require, consume, consume_currency, add, reason):
+    """Depot > Workshop upgrade, applied atomically by RoS_Server.
+
+    require / consume / add are lists of (prop_id, number); consume_currency is a list of
+    (currency_id, amount) and only currency 1 (gold) is accepted. Returns
+    {"items": [{"prop_id", "number"}], "currencies": {"1": gold}, "replayed": bool};
+    {"_error": 409, "detail": {"code": "insufficient", "missing": [...]}} when the player lacks
+    an item or gold (nothing changed); None if not linked/down. The same request_id is applied
+    once: a retry returns the first result with replayed=True."""
+    path = _uid_path("workshop/compound")
+    if not path:
+        return None
+    return _call("POST", path, {
+        "request_id": str(request_id),
+        "require": _counts(require),
+        "consume": _counts(consume),
+        "consume_currency": [{"currency_id": int(c), "amount": int(a)} for c, a in consume_currency],
+        "add": _counts(add),
+        "reason": ledger_reason(reason),
+    })
+
+
+def dev_grant(props, currencies):
+    """Development only (RoS_Server answers 404 unless APP_ENV=development): add props
+    [(prop_id, number)] and currencies [(currency_id, amount)]. Returns the state dict or None."""
+    path = _uid_path("dev/grant")
+    data = _call("POST", path, {
+        "props": _counts(props),
+        "currencies": [{"currency_id": int(c), "amount": int(a)} for c, a in currencies],
+    }) if path else None
     return None if not data or "_error" in data else data
+
+
+def set_outfit(outfit):
+    """Save depot outfit (body, wear, weapon, vehicle, hall_vehicle, show_*, theme, recent_got)."""
+    path = _uid_path("outfit")
+    if not path:
+        return None
+    if not isinstance(outfit, dict):
+        outfit = {"body": list(outfit), "wear": [], "theme": 0}
+    data = _call("PUT", path, outfit)
+    return None if not data or "_error" in data else data
+
+
+def persist_recent_got(recent):
+    """Store Athlete.recentGotPropIDList without changing the worn outfit."""
+    state = get_state() or {}
+    outfit = dict(state.get("outfit") or {})
+    outfit["recent_got"] = [int(x) for x in recent[:20]]
+    return set_outfit(outfit)
 
 
 def get_profile():
@@ -251,11 +322,82 @@ def get_profile():
     return None if not data or "_error" in data else data
 
 
+def record_match(report):
+    """POST one finished match (`GatewayMatchReport` fields) for the linked account.
+
+    Returns the updated profile dict, or None when the link is off, RoS_Server is down, the uid
+    is unknown (404), or validation fails. Never raises into the match loop. There is no match id
+    on the route: each call adds one row to season/all-time stats — call at most once per match;
+    retries double-count."""
+    path = _uid_path("matches")
+    if not path or not isinstance(report, dict):
+        return None
+    data = _call("POST", path, report)
+    return None if not data or "_error" in data else data
+
+
 def claim_credit_reward():
     """{"awards": [prop ids], "credit": {...}} for the Claim button, or None if not linked/down."""
     path = _uid_path("credit/claim")
     data = _call("POST", path, {}) if path else None
     return None if not data or "_error" in data else data
+
+
+# System mail (UISystemMail). MailView = {"mail_id", "type" (SysMailTypeEnum: 0 TXT, 1 PROPS),
+# "title", "sender", "abstract", "sent_at" (unix), "deadline" (unix, 0 = none), "unread", "claimed",
+# "attachments": [{"prop_id", "number"}], "gold"}. Deleted and expired mail is never listed.
+
+def list_mails():
+    """[MailView, ...] newest first, or None if not linked/down."""
+    path = _uid_path("mails")
+    data = _call("GET", path, None) if path else None
+    return None if not data or "_error" in data else data.get("mails", [])
+
+
+def mail_detail(mail_id):
+    """MailView + "content", and marks the mail read. {"_error": 404, ...} when it is missing,
+    deleted or expired (client: onLoadMailDetailFailed); None if not linked/down."""
+    path = _uid_path(f"mails/{int(mail_id)}")
+    return _call("GET", path, None) if path else None
+
+
+def claim_mail(mail_id):
+    """Add the mail's attachments and gold on RoS_Server, once. Returns {"props": [{"prop_id",
+    "number"}], "gold", "items": [{"prop_id", "number"}] (current counts), "currencies": {"1": gold},
+    "replayed": bool}; a repeat claim adds nothing and has replayed=True. {"_error": 404, ...} when
+    missing/deleted/expired; None if not linked/down."""
+    path = _uid_path(f"mails/{int(mail_id)}/claim")
+    return _call("POST", path, {}) if path else None
+
+
+def delete_mail(mail_id):
+    """Soft delete; unclaimed attachments are forfeited. True when RoS_Server deleted it."""
+    path = _uid_path(f"mails/{int(mail_id)}")
+    data = _call("DELETE", path, None) if path else None
+    return data is not None and "_error" not in data
+
+
+# Operator store listings (price / on-sale overrides). Fetched at most every LISTINGS_TTL
+# seconds, so an admin change reaches the store without a gateway restart. When RoS_Server
+# is down or the link is off the result is [] (client prices), also cached for the TTL so a
+# dead server does not add a timeout to every store request.
+# The fetch goes through _call (the pooled api_client) rather than ApiClient.get_cached, so
+# the one seam tests replace (_call) also serves listings; this cache is pinned by
+# tests/unit/test_gateway_store_listings.py (_listings_cache, time.monotonic).
+LISTINGS_TTL = 15.0
+_listings_cache = (None, [])  # (monotonic fetch time or None, rows)
+
+
+def store_listings():
+    global _listings_cache
+    fetched, rows = _listings_cache
+    now = time.monotonic()
+    if fetched is not None and now - fetched < LISTINGS_TTL:
+        return rows
+    data = _call("GET", "/api/v1/gateway/store/listings", None)
+    rows = data.get("listings", []) if isinstance(data, dict) and "_error" not in data else []
+    _listings_cache = (now, rows)
+    return rows
 
 
 def current():
@@ -301,7 +443,7 @@ def touch(uid=None):
 
 def report_presence(uid, online):
     """POST /presence. Returns the server's answer (bool) or None if not linked/down."""
-    data = _call("POST", f"/api/v1/gateway/accounts/{urllib.parse.quote(uid, safe='')}/presence", {"online": bool(online)})
+    data = _call("POST", f"/api/v1/gateway/accounts/{urllib.parse.quote(uid, safe='')}/presence", {"online": bool(online)}, retry_stale=True)
     return None if not data or "_error" in data else bool(data.get("online"))
 
 

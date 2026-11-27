@@ -1,0 +1,138 @@
+{
+  "task": "RO-056",
+  "updated_at": "2026-11-26T22:09:00+07:00",
+  "client_binary": "libclient.so (arm64, RosGG/extract copy)",
+  "compatibility_status": "unknown",
+  "create_entity_message_id": 9,
+  "wire_layout": {
+    "summary": "u32 id, u16 type, 3xf32 pos, 3xint8 dir, u8 flag, u8 compression, u8 mask_flag, optional ceil(N/8) mask, property values in OTHER/ALL_CLIENTS list order",
+    "non_player_dictionary_mode": 3,
+    "property_list_source": "EntityDescription desc+0x88 (flags bit1 = OTHER_CLIENTS or ALL_CLIENTS)",
+    "compression_type_0": "pass-through (no extra wrapper bytes)"
+  },
+  "libclient_evidence": [
+    {
+      "symbol": "createEntity handler",
+      "file_va": "0x94d6b0",
+      "claim": "Reads id, type, position, four single-byte direction/flag values then CompressionIStream on remainder",
+      "error_strings": []
+    },
+    {
+      "symbol": "CompressionIStream::CompressionIStream",
+      "file_va": "0x98c3c8",
+      "call_site": "0x94d80c",
+      "claim": "First byte: 0=none, 1-10 decompressors, else invalid type",
+      "error_strings": [
+        "CompressionIStream::CompressionIStream: Invalid compression type: %d @ 0x2a464b0 (xrefs 0x98c464, 0x98c690)"
+      ]
+    },
+    {
+      "symbol": "ClientApp::createEntity",
+      "file_va": "0x91ded4",
+      "claim": "Calls EntityType::newDictionary(stream, 3) for non-player entities",
+      "error_strings": ["Failed to set %s @ 0x91e1dc region"]
+    },
+    {
+      "symbol": "EntityType::newDictionary",
+      "file_va": "0x92e944",
+      "claim": "Mode 3: mask flag byte; non-zero mask reads ceil(N/8) bits; bit set skips stream value (default)",
+      "error_strings": [
+        "SequenceDataType: Invalid size on stream: %d (%d bytes remaining)",
+        "PythonDataType: Not enough data on stream to read value"
+      ]
+    },
+    {
+      "symbol": "EntityDescription::parseProperties",
+      "file_va": "0x9d22d4",
+      "claim": "Duplicate .def names keep first list position, last definition wins",
+      "error_strings": ["property %s.%s is being overridden @ 0x9d2438"]
+    }
+  ],
+  "malformed_stream_repro": {
+    "source": "battle_flow.debug_command('space') before CE_MASK mask byte (historical)",
+    "symptom": "CompressionIStream: Invalid compression type: 188 OR SequenceDataType invalid size -2147090432 (341 bytes remaining)",
+    "cause": "Missing mask flag byte; low byte of mapID 700 (0xBC) interpreted as mask flag",
+    "reference": "docs/CREATE_ENTITY_FORMAT.md section 3"
+  },
+  "live_space_trigger_hex": {
+    "source": "logs/server.log [BATTLE] trigger 'space' (2026-11-26 RO-056 resume)",
+    "hex": "0b214e0000ff096000214e00000e00000000000000000000000000000000000001eeffffffffffff81f9feff0fbc02000001000000010000000040534400301ac5b0040000b00400000040534400301ac50040534400301ac52c01000001000000224e000064000000",
+    "parse": {
+      "enterAoI": "0b + u32 eid 20001 + u8 alias 0xff",
+      "createEntity": "09 var16 len 0x0060",
+      "header": "eid 20001, type 14, pos 0,0,0, dir 0,0,0",
+      "property_stream_prefix": "flag=0 compression=0 mask_flag=1 + 12-byte mask + values starting mapID=700"
+    }
+  },
+  "candidate_stream_hex": {
+    "source": "property tail after directions from live trigger 'space' (same layout as battle_flow.prop_data)",
+    "hex": "000001eeffffffffffff81f9feff0fbc02000001000000010000000040534400301ac5b0040000b00400000040534400301ac50040534400301ac52c01000001000000224e000064000000",
+    "note": "flag=0, compression=0, mask_flag=1, 12-byte mask, selected BattleGroundSpace values"
+  },
+  "entity_list_counts": {
+    "BattleGroundSpace_create": 92,
+    "Plane_create": 8,
+    "BattleGroundSpace_property_update_list_desc70": 95,
+    "Plane_property_update_list_desc70": 11
+  },
+  "live_verification_ro056": {
+    "status": "passed_with_caveats",
+    "emulator": "LDPlayer emulator-5554",
+    "adb": "E:/LDPlayer/LDPlayer9/adb.exe",
+    "gateway_log": "bigworld_gateway/logs/server.log",
+    "match_entry": {
+      "working": "adb tap START (1630,970) on visible main lobby",
+      "working_ro107": "bash tools/to_match.sh succeeded 2026-11-26 22:04:38 local (createHallTeam/matchBattleGround/resetEntities on UDP 56690)",
+      "fragile": "tools/to_match.sh can miss START if UI is depot/workshop or popups before RO-107 handoff"
+    },
+    "commands": [
+      "adb shell input tap 1630 970 -> createHallTeam / matchBattleGround / -> battle: resetEntities",
+      "Automatic BATTLE_SPACE spacet -> notifyEnterWorld for BattleGroundSpace(20001)",
+      "bash tools/probe.sh client/frida/payloads/framing/ro056_entities_check.py (first match circleStage=1)",
+      "echo space > server/trigger_battle.txt -> live hex capture",
+      "echo leave 20001 / space -> recreate; Frida capture in framing/captures/ro056_entities_leave_space.log"
+    ],
+    "acceptance_criterion_3": {
+      "enterWorld_without_maps_utils_none": true,
+      "evidence": "BattleGroundSpace(20001).notifyEnterWorld in gateway log; Frida ent20001.circleStage=1",
+      "frida_circleStage": 1,
+      "frida_log": "client/frida/payloads/framing/captures/ro056_entities_leave_space.log",
+      "frida_log_to_match": "client/frida/payloads/framing/ro056_live_out.log",
+      "resend_active_port_56690_after_22_04_53": 0,
+      "resend_first_match_after_space_21_50_55_to_21_52": 0,
+      "orphan_resend_note": "After duplicate createEntity without leave, RESEND seq=1504 ack=546 continued to dead peer port 51892; later healthy match/Frida still succeeded. Two ros_server.py processes observed."
+    }
+  },
+  "historical_live_evidence": {
+    "reference": "docs/LOBBY_FINDINGS.md updates 9 and 13",
+    "create_entity_framing": "space/plane/spacemap triggers created BattleGroundSpace 20001 without stream errors; circleStage=1 read via entities_state.py",
+    "property_update_0xc0_avatar": "Update 12: 0xC0|idx (+ 0xFD path) verified on BattleGroundAvatar (dtsWeapon4, wpn equip)"
+  },
+  "property_and_method_framing_status": {
+    "client_interface_update_entity_id_10": {
+      "verified": false,
+      "evidence": "ENTITY_PROPERTY_UPDATE_FORMAT.md: updates use 0xC0..0xFF entity message ids, not message 10; no live capture of id 10"
+    },
+    "property_update_0xc0_or_idx": {
+      "verified_avatar_only": true,
+      "verified_non_player": false,
+      "evidence_static": "EntityMessageHandler 0x94bbf0, propertyEvent 0x9644a4; index = desc+0x70 list (differs from createEntity desc+0x88 for Space/Plane)",
+      "evidence_live": "LOBBY_FINDINGS update 12 (BattleGroundAvatar only)"
+    },
+    "entity_method_0x80_or_idx_client_to_server": {
+      "verified_non_player": true,
+      "evidence": "LOBBY_FINDINGS update 10: BattleGroundSpace.openElement 0x88, closeElement 0x89, DtsProp.tryPickUp 0x81"
+    },
+    "entity_method_0x80_or_idx_server_to_client": {
+      "verified_non_player": false,
+      "evidence": "Door echo onElementOpen/Close caused no client errors (update 11) but outbound byte layout not captured"
+    }
+  },
+  "remaining_issues": [
+    "Live verify property updates on BattleGroundSpace/Plane/DtsProp (separate index space from createEntity)",
+    "Capture server-to-client 0x80|idx bytes on non-player entities",
+    "Confirm whether ClientInterface message 10 is ever used on this client build",
+    "Do not re-createEntity the same eid without leaveAoI (duplicate space caused RESEND)",
+    "Ops: single ros_server.py process; optional to_match.sh UI detection (outside RO-056 files_allowed)"
+  ]
+}

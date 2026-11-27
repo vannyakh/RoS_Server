@@ -1,0 +1,78 @@
+{
+  "benchmark": "gateway_supply",
+  "measured_at": "2026-11-26T21:28:23+0700",
+  "command": "python bigworld_gateway/tools/bench_gateway.py --iterations 200",
+  "environment": {
+    "python": "3.12.10",
+    "implementation": "CPython",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "machine": "AMD64"
+  },
+  "iterations": 200,
+  "draw_iterations_per_box": 200,
+  "boxes_with_pool": 264,
+  "supplement_blob_bytes": 17090,
+  "cached_equals_uncached": true,
+  "cold": {
+    "supplement_info_load_ms": 0.9792999771889299,
+    "supplement_blob_first_build_ms": 0.1928999845404178
+  },
+  "results": {
+    "supplement_reply.uncached": {
+      "count": 200,
+      "total": 200,
+      "p50_ms": 0.15060001169331372,
+      "p95_ms": 0.40329998591914773,
+      "max_ms": 0.44109998270869255,
+      "mean_ms": 0.1892784985830076,
+      "mean_bytes": 17090.0
+    },
+    "supplement_reply.cached": {
+      "count": 200,
+      "total": 200,
+      "p50_ms": 0.000400003045797348,
+      "p95_ms": 0.000600004568696022,
+      "max_ms": 0.0185999961104244,
+      "mean_ms": 0.0005624994810204953,
+      "mean_bytes": 17090.0
+    },
+    "draw.single.uncached": {
+      "count": 12800,
+      "total": 52800,
+      "p50_ms": 0.001400010660290718,
+      "p95_ms": 0.0025999906938523054,
+      "max_ms": 0.818600005004555,
+      "mean_ms": 0.0018283359440829372,
+      "mean_bytes": 0.0
+    },
+    "draw.single.cached": {
+      "count": 12800,
+      "total": 52800,
+      "p50_ms": 0.001400010660290718,
+      "p95_ms": 0.0025999906938523054,
+      "max_ms": 0.5326000100467354,
+      "mean_ms": 0.0017114375395976822,
+      "mean_bytes": 0.0
+    },
+    "draw.multi.uncached": {
+      "count": 12800,
+      "total": 52800,
+      "p50_ms": 0.005400012014433742,
+      "p95_ms": 0.010299991117790341,
+      "max_ms": 2.535599982365966,
+      "mean_ms": 0.006751414136942913,
+      "mean_bytes": 0.0
+    },
+    "draw.multi.cached": {
+      "count": 12800,
+      "total": 52800,
+      "p50_ms": 0.0053000112529844046,
+      "p95_ms": 0.010000017937272787,
+      "max_ms": 1.3948999985586852,
+      "mean_ms": 0.006718882832501549,
+      "mean_bytes": 0.0
+    }
+  },
+  "supplement_reply_mean_speedup": 336.4954190528596,
+  "notes": "Offline in-process timing (time.perf_counter); no network, no database. draw rows count one sample per box per iteration."
+}

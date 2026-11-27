@@ -1,0 +1,47 @@
+{
+  "benchmark": "gateway_api_client",
+  "task": "RO-120",
+  "measured_at": "2026-11-26T22:39:40+0700",
+  "command": "python tests/compatibility/gateway/api_client/bench_api_client.py --iterations 500",
+  "environment": {
+    "python": "3.12.10",
+    "implementation": "CPython",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "machine": "AMD64"
+  },
+  "server": "local http.server.ThreadingHTTPServer, HTTP/1.1, 127.0.0.1 (no app work per request)",
+  "iterations_per_case": 500,
+  "warmup_per_case": 20,
+  "results": {
+    "GET": {
+      "urllib_per_request": {
+        "p50_ms": 1.4143,
+        "p95_ms": 11.0253,
+        "mean_ms": 2.3734,
+        "server_connections": 520
+      },
+      "api_client": {
+        "p50_ms": 0.5061,
+        "p95_ms": 0.6221,
+        "mean_ms": 0.5063,
+        "server_connections": 1
+      },
+      "p50_speedup": 2.79
+    },
+    "POST": {
+      "urllib_per_request": {
+        "p50_ms": 1.2355,
+        "p95_ms": 11.2117,
+        "mean_ms": 2.4488,
+        "server_connections": 520
+      },
+      "api_client": {
+        "p50_ms": 0.633,
+        "p95_ms": 0.8073,
+        "mean_ms": 0.6389,
+        "server_connections": 0
+      },
+      "p50_speedup": 1.95
+    }
+  }
+}

@@ -1,0 +1,309 @@
+{
+  "_source": "RO-074 door research (game-compatibility-engineer). Live AC4 subagent pass: grepped bigworld_gateway/logs/server.log — zero openElement/closeElement/onElementOpen lines; merged elemIDs from server.before-flight.log, server.before-spin-restart.log, server.prev4.log, server.prev5.log. Building landmarks still unlabeled.",
+  "log_grep_ac4": {
+    "server_log_path": "bigworld_gateway/logs/server.log",
+    "patterns": ["openElement", "closeElement", "onElementOpen"],
+    "server_log_hits": 0,
+    "archive_logs_with_hits": [
+      "server.before-flight.log",
+      "server.before-spin-restart.log",
+      "server.prev4.log",
+      "server.prev5.log"
+    ],
+    "on_element_open_outbound_logged": false,
+    "ldplayer_live_run_this_session": false
+  },
+  "_build": "1.610637.617289",
+  "map_id": 700,
+  "compatibility_status": "unknown",
+  "gateway_implementation": "partial",
+  "wire": {
+    "entity": "BattleGroundSpace",
+    "space_entity_id_default": 20001,
+    "open_method": "openElement",
+    "open_msg_id_hex": "0x88",
+    "open_args": ["INT32 elemID", "INT8 state"],
+    "close_method": "closeElement",
+    "close_msg_id_hex": "0x89",
+    "close_args": ["INT32 elemID"],
+    "reply_open": "onElementOpen(INT32 elemID, INT8 state)",
+    "reply_close": "onElementClose(INT32 elemID)",
+    "evidence": [
+      "bigworld_gateway/docs/BATTLE_CLIENT_REQUESTS.md section 2",
+      "bigworld_gateway/docs/LOBBY_FINDINGS.md update 10"
+    ]
+  },
+  "opened_elements_property": {
+    "def_type": "ARRAY<DTS_ELEMENT>",
+    "dts_element_fields": ["elemID INT32", "state INT8"],
+    "flags": "ALL_CLIENTS",
+    "create_entity_property_index": 67,
+    "gateway_sends_property_update": false,
+    "gateway_includes_in_create_entity": "unverified",
+    "evidence": [
+      "bigworld_gateway/docs/CREATE_ENTITY_FORMAT.md section 7",
+      "bigworld_gateway/docs/LOBBY_FINDINGS.md update 10: not used yet",
+      "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md row (1b)"
+    ]
+  },
+  "observations": [
+    {
+      "elem_id": 832,
+      "building_label": "unknown",
+      "building_notes": "Scene/building name not extracted for map 700 in this repo; elem 832 came from the first captured OPEN press or Frida call_open_element.py.",
+      "door_type": "unknown",
+      "is_double_door": null,
+      "pair_elem_ids": null,
+      "states_seen_client_to_server": [1, 2],
+      "states_seen_other": [],
+      "state_meaning": "unverified (client sent 1 on open; gateway echoes same INT8 on onElementOpen)",
+      "client_request_log": "[BATTLE] <- BattleGroundSpace(20001).openElement args=4003000001",
+      "client_request_hex": "880900214e00004003000001",
+      "close_observed": true,
+      "close_request_hex": "890800214e000040030000",
+      "gateway_reply": "client_call onElementOpen / onElementClose with echoed elemID (+ state on open)",
+      "gateway_match_doors_dict": true,
+      "opened_elements_updated_by_gateway": false,
+      "scene_lookup_required": "unverified (LOBBY_FINDINGS update 11: onElementOpen looks up scene object)",
+      "visible_result": "unknown",
+      "client_script_errors": false,
+      "evidence": [
+        "bigworld_gateway/client/frida/payloads/requests/open_element_832.hex.txt",
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md update 11",
+        "bigworld_gateway/server/extract/battle_cell_exposed.json _captures.BattleGroundSpace.openElement"
+      ]
+    }
+  ],
+  "failure_reports": [
+    {
+      "symptom": "OPEN button: no gateway log line",
+      "buildings_affected": "unknown (owner: some or all)",
+      "elem_id_if_known": null,
+      "candidate_causes": [
+        "client frozen or UI blocked",
+        "door type uses a path other than BattleGroundSpace.openElement",
+        "interact prompt shown but cell method not invoked"
+      ],
+      "cause_verified": false,
+      "evidence": "bigworld_gateway/docs/LOBBY_FINDINGS.md update 13"
+    },
+    {
+      "symptom": "OPEN answered on wire but door does not move on screen",
+      "buildings_affected": "unknown",
+      "elem_id_if_known": 832,
+      "candidate_causes": [
+        "elemID not present in loaded scene interact table",
+        "openedElements not updated so client rejects state",
+        "wrong INT8 state echoed",
+        "double door: second leaf elemID not answered",
+        "outbound onElementOpen byte layout wrong (inbound only verified)"
+      ],
+      "cause_verified": false,
+      "evidence": [
+        "docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md row (1)",
+        "bigworld_gateway/docs/LOBBY_FINDINGS.md update 11"
+      ]
+    }
+  ],
+  "out_of_scope_door_paths": [
+    {
+      "kind": "vehicle_door",
+      "api": "IVehicle.openDoor / closeDoor; onOpenDoor / onCloseDoor; doorOpened property",
+      "uses_battleground_open_element": false,
+      "evidence": "bigworld_gateway/docs/CREATE_ENTITY_FORMAT.md section 7"
+    },
+    {
+      "kind": "elevator_cage",
+      "api": "ElevatorCage / DungeonSpace openDoor",
+      "uses_battleground_open_element": false,
+      "evidence": "bigworld_gateway/docs/CREATE_ENTITY_FORMAT.md section 7"
+    },
+    {
+      "kind": "sliding_garage_unverified",
+      "api": "unknown",
+      "uses_battleground_open_element": "unverified",
+      "evidence": "RO-074 task description; no capture in repo"
+    }
+  ],
+  "buildings": [
+    {
+      "building_label": "unknown",
+      "elem_id": 832,
+      "states_tried": [1, 2],
+      "pair_elem_ids": null,
+      "capture_method": "gateway_log_ui_or_frida_unverified",
+      "gateway_reply": "onElementOpen / onElementClose echo",
+      "close_observed": true,
+      "visible_result": "unknown",
+      "client_script_errors": false,
+      "failure_cause": null,
+      "log_evidence": [
+        "bigworld_gateway/logs/server.before-flight.log (openElement args=4003000001)",
+        "bigworld_gateway/logs/server.prev5.log (openElement args=4003000002; closeElement args=40030000)",
+        "bigworld_gateway/client/frida/payloads/requests/open_element_832.hex.txt"
+      ],
+      "ac4_row_kind": "observed_wire"
+    },
+    {
+      "building_label": "unknown",
+      "elem_id": 815,
+      "states_tried": [1],
+      "pair_elem_ids": null,
+      "capture_method": "gateway_log",
+      "gateway_reply": "onElementOpen echo (assumed)",
+      "close_observed": false,
+      "visible_result": "unknown",
+      "client_script_errors": null,
+      "failure_cause": null,
+      "log_evidence": [
+        "bigworld_gateway/logs/server.before-flight.log: openElement args=2f03000001"
+      ],
+      "ac4_row_kind": "observed_wire"
+    },
+    {
+      "building_label": "unknown",
+      "elem_id": 817,
+      "states_tried": [1],
+      "pair_elem_ids": null,
+      "capture_method": "gateway_log",
+      "gateway_reply": "onElementOpen echo (assumed)",
+      "close_observed": false,
+      "visible_result": "unknown",
+      "client_script_errors": null,
+      "failure_cause": null,
+      "log_evidence": [
+        "bigworld_gateway/logs/server.before-flight.log: openElement args=3103000001"
+      ],
+      "ac4_row_kind": "observed_wire"
+    },
+    {
+      "building_label": "unknown",
+      "elem_id": 818,
+      "states_tried": [1],
+      "pair_elem_ids": null,
+      "capture_method": "gateway_log",
+      "gateway_reply": "onElementOpen echo (assumed)",
+      "close_observed": false,
+      "visible_result": "unknown",
+      "client_script_errors": null,
+      "failure_cause": null,
+      "log_evidence": [
+        "bigworld_gateway/logs/server.before-flight.log: openElement args=3203000001"
+      ],
+      "ac4_row_kind": "observed_wire"
+    },
+    {
+      "building_label": "unknown",
+      "elem_id": 831,
+      "states_tried": [1],
+      "pair_elem_ids": null,
+      "capture_method": "gateway_log",
+      "gateway_reply": "onElementOpen / onElementClose echo",
+      "close_observed": true,
+      "visible_result": "unknown",
+      "client_script_errors": null,
+      "failure_cause": null,
+      "log_evidence": [
+        "bigworld_gateway/logs/server.before-spin-restart.log: openElement args=3f03000001; closeElement args=3f030000; reopen"
+      ],
+      "ac4_row_kind": "observed_wire"
+    },
+    {
+      "building_label": "unknown",
+      "elem_id": 833,
+      "states_tried": [1],
+      "pair_elem_ids": null,
+      "capture_method": "gateway_log",
+      "gateway_reply": "onElementOpen echo (assumed)",
+      "close_observed": false,
+      "visible_result": "unknown",
+      "client_script_errors": null,
+      "failure_cause": null,
+      "log_evidence": [
+        "bigworld_gateway/logs/server.before-spin-restart.log: openElement args=4103000001",
+        "bigworld_gateway/logs/server.prev4.log: openElement args=4103000001"
+      ],
+      "ac4_row_kind": "observed_wire"
+    },
+    {
+      "building_label": "unknown",
+      "elem_id": 834,
+      "states_tried": [1],
+      "pair_elem_ids": null,
+      "capture_method": "gateway_log",
+      "gateway_reply": "onElementOpen echo (assumed)",
+      "close_observed": false,
+      "visible_result": "unknown",
+      "client_script_errors": null,
+      "failure_cause": null,
+      "log_evidence": [
+        "bigworld_gateway/logs/server.before-flight.log: openElement args=4203000001",
+        "bigworld_gateway/logs/server.prev4.log: openElement args=4203000001"
+      ],
+      "ac4_row_kind": "observed_wire"
+    },
+    {
+      "building_label": "unknown",
+      "elem_id": 836,
+      "states_tried": [1],
+      "pair_elem_ids": null,
+      "capture_method": "gateway_log",
+      "gateway_reply": "onElementOpen echo (assumed)",
+      "close_observed": false,
+      "visible_result": "unknown",
+      "client_script_errors": null,
+      "failure_cause": null,
+      "log_evidence": [
+        "bigworld_gateway/logs/server.before-flight.log: openElement args=4403000001"
+      ],
+      "ac4_row_kind": "observed_wire"
+    },
+    {
+      "building_label": "unknown",
+      "elem_id": 4660,
+      "states_tried": [3],
+      "pair_elem_ids": [4661],
+      "capture_method": "gateway_log_same_recv_bundle",
+      "gateway_reply": "onElementOpen(4660,3) + onElementClose(4661) in one client burst",
+      "close_observed": true,
+      "visible_result": "unknown",
+      "client_script_errors": null,
+      "failure_cause": null,
+      "log_evidence": [
+        "bigworld_gateway/logs/server.prev4.log: openElement args=3412000003 then closeElement args=35120000 (adjacent elemIDs; double-leaf hypothesis)"
+      ],
+      "ac4_row_kind": "observed_wire_double_door_candidate"
+    },
+    {
+      "building_label": "AC4_PENDING — landmark name required",
+      "elem_id": null,
+      "states_tried": [],
+      "pair_elem_ids": null,
+      "capture_method": "pending_ldplayer_to_match",
+      "gateway_reply": null,
+      "close_observed": null,
+      "visible_result": null,
+      "client_script_errors": null,
+      "failure_cause": null,
+      "log_evidence": [],
+      "ac4_row_kind": "placeholder_building_2_of_3",
+      "notes": "Fill after on-foot OPEN at a third distinct minimap building; attach fresh server.log line."
+    },
+    {
+      "building_label": "AC4_PENDING — labeled failure site",
+      "elem_id": null,
+      "states_tried": [],
+      "pair_elem_ids": null,
+      "capture_method": "pending_ldplayer_to_match",
+      "gateway_reply": null,
+      "close_observed": null,
+      "visible_result": "no change or no OPEN button",
+      "client_script_errors": null,
+      "failure_cause": "unknown",
+      "log_evidence": [
+        "Prior: LOBBY_FINDINGS update 13 — UI OPEN with no openElement line (symptom A)"
+      ],
+      "ac4_row_kind": "placeholder_documented_failure"
+    }
+  ]
+}

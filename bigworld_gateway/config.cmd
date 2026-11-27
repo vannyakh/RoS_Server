@@ -1,7 +1,7 @@
 @echo off
 rem ===== RoS private server config (edit this) =====
 rem LAN IP of this PC (must match what the phone/emulator uses as DNS + game server)
-if "%ROS_PC_IP%"=="" set ROS_PC_IP=192.168.201.137
+if "%ROS_PC_IP%"=="" set ROS_PC_IP=192.168.180.137
 rem Fixed lobby test account. Leave EMPTY for real new-player behaviour: a new device account
 rem gets the in-game character screen (normal male/female human, starter outfit, no hero).
 rem Set it (e.g. TestPlayer) only to skip that screen for quick tests.
@@ -27,7 +27,19 @@ set HALL_HEARTBEAT=0
 set FRAG_BODY=700
 rem --- lobby date (2026-11-19) ---
 rem Game data ends in 2022: the server clock runs from GAME_DATE. LDPlayer's own date is set to
-rem 2022-04-20 too, so the monthly Supreme page (device clock) works: keep SysEnableMonthSupply ON
-rem here. On a device with the real 2026 date, remove this line (server default turns it off).
+rem 2022-04-20 too (setup_emulator.ps1 after each cold start).
 if "%GAME_DATE%"=="" set GAME_DATE=2022-04-20 12:00:00
+rem SysEnableMonthSupply OFF avoids Supreme/Helios art on the Looks tab on first Supply open.
+rem To test the monthly Supreme page again, drop SysEnableMonthSupply from this list.
 set LOBBY_SWITCHES_OFF=SysEnableHuiliuRecallSystem,EnableRecallPlayer,EnableNewRecallPlayer
+rem Supply: full catalogue at login; strip IS_THIS_WEEK so weekly Supreme boxes do not own the UI.
+rem Do not set SUPPLY_PREACK_WEEKLY_PUSH=1 (stores Supreme box 9778 and pins the wrong banner).
+set SUPPLY_CATALOG_AT_LOGIN=1
+set SUPPLY_CLEAR_WEEKLY_FLAGS=1
+rem Complete Top-up IAP on the gateway (no real USD / mpay). off = check/limit replies only.
+if "%GATEWAY_PRIVATE_TOPUP%"=="" set GATEWAY_PRIVATE_TOPUP=on
+rem Special Distinction (Brave Book): free Buy Special on the gateway by default (diamond cost via GATEWAY_BRAVE_BOOK_PASS_DIAMONDS).
+if "%GATEWAY_FREE_BRAVE_BOOK_PASS%"=="" set GATEWAY_FREE_BRAVE_BOOK_PASS=on
+if "%GATEWAY_CURRENT_SEASON%"=="" set GATEWAY_CURRENT_SEASON=21
+rem Match modules (space/plane/jump/zone/props) own entity creation; disable legacy spacet.
+if "%BATTLE_SPACE%"=="" set BATTLE_SPACE=off

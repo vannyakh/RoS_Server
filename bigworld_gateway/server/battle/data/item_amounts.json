@@ -1,0 +1,18 @@
+{
+  "_source": "Gateway defaults for RO-077. stack_cap values mirror client battle_props.json capacity where noted; not original server balance.",
+  "package_grid_limit": 300,
+  "default_stack_cap": 1,
+  "default_max_stacks": 2,
+  "fold_by_default": true,
+  "props": {
+    "101": { "stack_cap": 5, "folded": true, "category": "heal" },
+    "102": { "stack_cap": 5, "folded": true, "category": "heal" },
+    "1101": { "stack_cap": 15, "folded": true, "category": "ammo" },
+    "1102": { "stack_cap": 15, "folded": true, "category": "ammo" },
+    "1401": { "stack_cap": 3, "folded": true, "category": "throwable" }
+  },
+  "try_pickup_int32": {
+    "notes": "Captured tryPickUp args=0100000001: INT32 1 + BOOL true. Values <= 1 mean take as much as allowed by stack room; values > 1 cap the requested take.",
+    "verified": false
+  }
+}

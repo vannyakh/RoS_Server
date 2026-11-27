@@ -1,0 +1,10 @@
+{
+  "_comment": "Gateway-authored map 700 loot ring (RO-065). Not original spawn data.",
+  "map_id": 700,
+  "pickup_range_xz": 5.0,
+  "entries": [
+    {"prop_id": 1001, "amount": 1, "x": 701.0, "y": -677.0, "z": -373.0},
+    {"prop_id": 1002, "amount": 1, "x": 700.43, "y": -677.0, "z": -371.24},
+    {"prop_id": 1101, "amount": 1, "x": 698.93, "y": -677.0, "z": -370.15}
+  ]
+}

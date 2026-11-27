@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "updated_at": "2026-11-21T12:00:00+07:00",
-  "current_phase": "00",
+  "updated_at": "2026-11-27T12:54:00+07:00",
+  "current_phase": "09",
   "phases": [
     {
       "phase": "00",
@@ -132,9 +132,9 @@
     },
     {
       "phase": "09",
-      "name": "Original-client match integration",
-      "status": "not_started",
-      "summary": "The gateway puts the original client into a match on map 700 but creates no space, plane, props, doors or bots. RO-056 (entity-creation framing) blocks the rest. Nothing here is original-compatible until a reviewed task says so.",
+      "name": "Original-client Solo BR match integration",
+      "status": "in_progress",
+      "summary": "RO-064 zone and RO-066 props in testing (gateway pytest zone 4 + props 4; AC4 LDPlayer open). RO-065 completed. RO-074 doors research in testing (building matrix/AC4 open). RO-075 door table in testing (doors_coverage 5 passed; AC4 LDPlayer open). RO-112 completed. RO-113 LDPlayer BLOCKED (Network Error 15).",
       "task_ids": [
         "RO-056",
         "RO-057",
@@ -174,7 +174,40 @@
         "RO-091",
         "RO-092",
         "RO-093",
-        "RO-094"
+        "RO-094",
+        "RO-095",
+        "RO-096",
+        "RO-097",
+        "RO-098",
+        "RO-099",
+        "RO-100",
+        "RO-101",
+        "RO-102",
+        "RO-103",
+        "RO-104",
+        "RO-105",
+        "RO-106",
+        "RO-107",
+        "RO-108",
+        "RO-109",
+        "RO-110",
+        "RO-111",
+        "RO-112",
+        "RO-113",
+        "RO-114",
+        "RO-115",
+        "RO-116",
+        "RO-117",
+        "RO-118",
+        "RO-119",
+        "RO-120",
+        "RO-121",
+        "RO-122",
+        "RO-123",
+        "RO-124",
+        "RO-125",
+        "RO-126",
+        "RO-127"
       ]
     }
   ]

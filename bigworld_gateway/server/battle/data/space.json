@@ -1,0 +1,25 @@
+{
+  "_comment": "BattleGroundSpace create defaults for the gateway. Values recorded from client Frida/scripts (LOBBY_FINDINGS updates 14-15); durations and counts are gateway parameters, not original RoS.",
+  "mapID": 700,
+  "gameStartTime": 0,
+  "gameStatus": 1,
+  "gameStatus_enum": {
+    "READY": 0,
+    "PREPARE": 1,
+    "BEFORE_FIGHT": 2,
+    "FIGHT": 3,
+    "END": 4
+  },
+  "clientStatus": null,
+  "weatherID": 0,
+  "aliveNum": 100,
+  "hud_countdown_trigger": "gameStatus=1 (PREPARE); HUD 'Starting in N s!' uses gameStageStartTime vs BigWorld.serverTime; client mapData.PREPARE_TIME supplies N when stage start is current serverTime",
+  "aliveNum_hud": "Shown as 'N LEFT'; client default is 120 when the property is unset",
+  "circleStage": 1,
+  "whiteCircleCenter": [845.0, -2467.0],
+  "whiteCircleRadius": 300,
+  "blueCircleCenter": [845.0, -2467.0],
+  "blueCircleRadius": 1200,
+  "blueCircleStartCenter": [845.0, -2467.0],
+  "blueCircleStartRadius": 1200
+}

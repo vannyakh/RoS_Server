@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.admin_access import current_operator, require
 from app.infrastructure.database import get_db
 from app.schemas.common import Page
+from app.services.currency_catalog import currency_list
 from app.services.operator_service import OperatorActor
 from app.services.store_service import StoreService
 
@@ -58,6 +59,12 @@ async def summary(
 @router.get("/catalog")
 async def catalog(actor: OperatorActor = Depends(require("store.read")), db: AsyncSession = Depends(get_db)) -> list[dict]:
     return await StoreService(db).catalog(actor)
+
+
+@router.get("/currencies")
+async def currencies(_actor: OperatorActor = Depends(current_operator)) -> list[dict]:
+    """Web wallet codes and the original client's currencies, with their client ids."""
+    return currency_list()
 
 
 @router.post("/topup", status_code=201)

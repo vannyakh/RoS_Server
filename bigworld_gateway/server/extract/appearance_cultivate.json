@@ -1,0 +1,1994 @@
+{
+ "chains": {
+  "140001": {
+   "name": "Sports Car", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Rosy Comet", 
+     "rule_id": 140001, 
+     "second_consume": null, 
+     "target": 140001, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140001
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Comet - T4", 
+     "rule_id": 140004, 
+     "second_consume": null, 
+     "target": 140004, 
+     "unlock": [
+      {
+       "appearance_id": 140001, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140001
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Comet - T6", 
+     "rule_id": 140003, 
+     "second_consume": null, 
+     "target": 140003, 
+     "unlock": [
+      {
+       "appearance_id": 140001, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140004, 
+       "num": 1
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140001
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Eclipse - S1", 
+     "rule_id": 140006, 
+     "second_consume": null, 
+     "target": 140006, 
+     "unlock": [
+      {
+       "appearance_id": 140001, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140003, 
+       "num": 1
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140001
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Eclipse - S2", 
+     "rule_id": 140009, 
+     "second_consume": null, 
+     "target": 140009, 
+     "unlock": [
+      {
+       "appearance_id": 140001, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140006, 
+       "num": 1
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140001
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Eclipse - S3", 
+     "rule_id": 140008, 
+     "second_consume": null, 
+     "target": 140008, 
+     "unlock": [
+      {
+       "appearance_id": 140001, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140009, 
+       "num": 1
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140001
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Blue Eclipse", 
+     "rule_id": 140007, 
+     "second_consume": null, 
+     "target": 140007, 
+     "unlock": [
+      {
+       "appearance_id": 140001, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140009, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140010": {
+   "name": "Thunderbird", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Spark V3", 
+     "rule_id": 140010, 
+     "second_consume": null, 
+     "target": 140010, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140010
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Spark V5", 
+     "rule_id": 140011, 
+     "second_consume": null, 
+     "target": 140011, 
+     "unlock": [
+      {
+       "appearance_id": 140010, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140010
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Spark V7", 
+     "rule_id": 140012, 
+     "second_consume": null, 
+     "target": 140012, 
+     "unlock": [
+      {
+       "appearance_id": 140010, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140011, 
+       "num": 1
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140010
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Thunderbird", 
+     "rule_id": 140013, 
+     "second_consume": null, 
+     "target": 140013, 
+     "unlock": [
+      {
+       "appearance_id": 140010, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140012, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140021": {
+   "name": "Storm", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Twister - T1", 
+     "rule_id": 140021, 
+     "second_consume": null, 
+     "target": 140021, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140021
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Twister - T2", 
+     "rule_id": 140022, 
+     "second_consume": null, 
+     "target": 140022, 
+     "unlock": [
+      {
+       "appearance_id": 140021, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140021
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Storm", 
+     "rule_id": 140024, 
+     "second_consume": null, 
+     "target": 140024, 
+     "unlock": [
+      {
+       "appearance_id": 140021, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140022, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140034": {
+   "name": "Supernova", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Nova X1", 
+     "rule_id": 140031, 
+     "second_consume": null, 
+     "target": 140031, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140031
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Nova X2", 
+     "rule_id": 140032, 
+     "second_consume": null, 
+     "target": 140032, 
+     "unlock": [
+      {
+       "appearance_id": 140031, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140031
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Nova X3", 
+     "rule_id": 140033, 
+     "second_consume": null, 
+     "target": 140033, 
+     "unlock": [
+      {
+       "appearance_id": 140031, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140032, 
+       "num": 1
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140031
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Supernova", 
+     "rule_id": 140034, 
+     "second_consume": null, 
+     "target": 140034, 
+     "unlock": [
+      {
+       "appearance_id": 140031, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140033, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140041": {
+   "name": "\u7ef5\u7ef5\u51b0\u610f", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Frosty Frills - I", 
+     "rule_id": 140041, 
+     "second_consume": null, 
+     "target": 140041, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140041
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Frosty Frills - II", 
+     "rule_id": 140042, 
+     "second_consume": null, 
+     "target": 140042, 
+     "unlock": [
+      {
+       "appearance_id": 140041, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140041
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Frosty Frills - III", 
+     "rule_id": 140043, 
+     "second_consume": null, 
+     "target": 140043, 
+     "unlock": [
+      {
+       "appearance_id": 140041, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140042, 
+       "num": 1
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140041
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "\u7ef5\u7ef5\u51b0\u610f", 
+     "rule_id": 140045, 
+     "second_consume": null, 
+     "target": 140045, 
+     "unlock": [
+      {
+       "appearance_id": 140041, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140043, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140059": {
+   "name": "Hovering Car", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Hovering Car Lv.1", 
+     "rule_id": 140056, 
+     "second_consume": null, 
+     "target": 140056, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140056
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Hovering Car Lv.2", 
+     "rule_id": 140057, 
+     "second_consume": {
+      "currency_id": 22, 
+      "num": 50
+     }, 
+     "target": 140057, 
+     "unlock": [
+      {
+       "appearance_id": 140056, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140056
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Hovering Car Lv. Max", 
+     "rule_id": 140059, 
+     "second_consume": null, 
+     "target": 140059, 
+     "unlock": [
+      {
+       "appearance_id": 140056, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140057, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140075": {
+   "name": "Summer Bicycle", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Summer Bicycle", 
+     "rule_id": 140073, 
+     "second_consume": null, 
+     "target": 140073, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140073
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Cool Summer Bicycle", 
+     "rule_id": 140074, 
+     "second_consume": null, 
+     "target": 140074, 
+     "unlock": [
+      {
+       "appearance_id": 140073, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140073
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Exquisite Summer Bicycle", 
+     "rule_id": 140075, 
+     "second_consume": null, 
+     "target": 140075, 
+     "unlock": [
+      {
+       "appearance_id": 140073, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140074, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140205": {
+   "name": "Phoenix", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Blazing Flash A1", 
+     "rule_id": 140202, 
+     "second_consume": null, 
+     "target": 140202, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140202
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Blazing Flash A3", 
+     "rule_id": 140203, 
+     "second_consume": null, 
+     "target": 140203, 
+     "unlock": [
+      {
+       "appearance_id": 140202, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140202
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Blazing Flash A5", 
+     "rule_id": 140204, 
+     "second_consume": null, 
+     "target": 140204, 
+     "unlock": [
+      {
+       "appearance_id": 140202, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140203, 
+       "num": 1
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140202
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Phoenix", 
+     "rule_id": 140205, 
+     "second_consume": null, 
+     "target": 140205, 
+     "unlock": [
+      {
+       "appearance_id": 140202, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140204, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140214": {
+   "name": "Pegasus Turbo", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Pegasus - I", 
+     "rule_id": 140211, 
+     "second_consume": null, 
+     "target": 140211, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140211
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Pegasus - II", 
+     "rule_id": 140212, 
+     "second_consume": null, 
+     "target": 140212, 
+     "unlock": [
+      {
+       "appearance_id": 140211, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140211
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Pegasus - III", 
+     "rule_id": 140213, 
+     "second_consume": null, 
+     "target": 140213, 
+     "unlock": [
+      {
+       "appearance_id": 140211, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140212, 
+       "num": 1
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140211
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Pegasus Turbo", 
+     "rule_id": 140214, 
+     "second_consume": null, 
+     "target": 140214, 
+     "unlock": [
+      {
+       "appearance_id": 140211, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140213, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140223": {
+   "name": "Discovery", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Discovery lv.1", 
+     "rule_id": 140223, 
+     "second_consume": null, 
+     "target": 140223, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140223
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Discovery", 
+     "rule_id": 140224, 
+     "second_consume": null, 
+     "target": 140224, 
+     "unlock": [
+      {
+       "appearance_id": 140223, 
+       "num": 2
+      }
+     ]
+    }
+   ]
+  }, 
+  "140404": {
+   "name": "Wild Beast", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Monster-M1", 
+     "rule_id": 140403, 
+     "second_consume": null, 
+     "target": 140403, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140403
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Monster-M2", 
+     "rule_id": 140404, 
+     "second_consume": null, 
+     "target": 140404, 
+     "unlock": [
+      {
+       "appearance_id": 140403, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140403
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Monster-M3", 
+     "rule_id": 140405, 
+     "second_consume": null, 
+     "target": 140405, 
+     "unlock": [
+      {
+       "appearance_id": 140403, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140404, 
+       "num": 1
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140403
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Wild Beast", 
+     "rule_id": 140406, 
+     "second_consume": null, 
+     "target": 140406, 
+     "unlock": [
+      {
+       "appearance_id": 140403, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140405, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140901": {
+   "name": "Reign of Fire", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "\u795e\u79d8\u5de8\u8c61", 
+     "rule_id": 140902, 
+     "second_consume": null, 
+     "target": 140902, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140902
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Party On", 
+     "rule_id": 140903, 
+     "second_consume": null, 
+     "target": 140903, 
+     "unlock": [
+      {
+       "appearance_id": 140902, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140902
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Destroyer", 
+     "rule_id": 140904, 
+     "second_consume": null, 
+     "target": 140904, 
+     "unlock": [
+      {
+       "appearance_id": 140902, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140903, 
+       "num": 1
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140902
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Reign of Fire", 
+     "rule_id": 140905, 
+     "second_consume": null, 
+     "target": 140905, 
+     "unlock": [
+      {
+       "appearance_id": 140902, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140904, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140902": {
+   "name": "Sting lv 3", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Red Hare", 
+     "rule_id": 140906, 
+     "second_consume": null, 
+     "target": 140906, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140906
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Smash", 
+     "rule_id": 140907, 
+     "second_consume": null, 
+     "target": 140907, 
+     "unlock": [
+      {
+       "appearance_id": 140906, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140906
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Scorch", 
+     "rule_id": 140908, 
+     "second_consume": null, 
+     "target": 140908, 
+     "unlock": [
+      {
+       "appearance_id": 140906, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140907, 
+       "num": 1
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140906
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Purple Lightning", 
+     "rule_id": 140909, 
+     "second_consume": null, 
+     "target": 140909, 
+     "unlock": [
+      {
+       "appearance_id": 140906, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140908, 
+       "num": 1
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140906
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Sting lv 3", 
+     "rule_id": 140910, 
+     "second_consume": null, 
+     "target": 140910, 
+     "unlock": [
+      {
+       "appearance_id": 140906, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140909, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140903": {
+   "name": "Warjeep lv 4", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Warjeep lv 1", 
+     "rule_id": 140911, 
+     "second_consume": null, 
+     "target": 140911, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140911
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Warjeep lv 2", 
+     "rule_id": 140912, 
+     "second_consume": null, 
+     "target": 140912, 
+     "unlock": [
+      {
+       "appearance_id": 140911, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140911
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Warjeep lv 3", 
+     "rule_id": 140913, 
+     "second_consume": null, 
+     "target": 140913, 
+     "unlock": [
+      {
+       "appearance_id": 140911, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140912, 
+       "num": 1
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140911
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Warjeep lv 4", 
+     "rule_id": 140914, 
+     "second_consume": null, 
+     "target": 140914, 
+     "unlock": [
+      {
+       "appearance_id": 140911, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140913, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140904": {
+   "name": "Hovercycle", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Hovercycle - Emerald", 
+     "rule_id": 140915, 
+     "second_consume": null, 
+     "target": 140915, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140915
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Hovercycle - sunset", 
+     "rule_id": 140916, 
+     "second_consume": null, 
+     "target": 140916, 
+     "unlock": [
+      {
+       "appearance_id": 140915, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140915
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Hovercycle - Sapphire", 
+     "rule_id": 140917, 
+     "second_consume": null, 
+     "target": 140917, 
+     "unlock": [
+      {
+       "appearance_id": 140915, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140916, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140905": {
+   "name": "Love Scooter", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Love Scooter lv 1", 
+     "rule_id": 140918, 
+     "second_consume": null, 
+     "target": 140918, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140918
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Love Scooter lv 2", 
+     "rule_id": 140919, 
+     "second_consume": null, 
+     "target": 140919, 
+     "unlock": [
+      {
+       "appearance_id": 140918, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140918
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Love Scooter lv 3", 
+     "rule_id": 140920, 
+     "second_consume": null, 
+     "target": 140920, 
+     "unlock": [
+      {
+       "appearance_id": 140918, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140919, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140923": {
+   "name": "Sting", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Sting lv 1", 
+     "rule_id": 140921, 
+     "second_consume": null, 
+     "target": 140921, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140921
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Sting lv 2", 
+     "rule_id": 140922, 
+     "second_consume": null, 
+     "target": 140922, 
+     "unlock": [
+      {
+       "appearance_id": 140921, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140921
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Sting lv 3", 
+     "rule_id": 140923, 
+     "second_consume": null, 
+     "target": 140923, 
+     "unlock": [
+      {
+       "appearance_id": 140921, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140922, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140925": {
+   "name": "Elephant Blessing", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Elephant Blessing", 
+     "rule_id": 140924, 
+     "second_consume": null, 
+     "target": 140924, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140924
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Golden Elephant", 
+     "rule_id": 140925, 
+     "second_consume": null, 
+     "target": 140925, 
+     "unlock": [
+      {
+       "appearance_id": 140924, 
+       "num": 2
+      }
+     ]
+    }
+   ]
+  }, 
+  "140926": {
+   "name": "Scorpion-lv3", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Scorpion-lv1", 
+     "rule_id": 140926, 
+     "second_consume": null, 
+     "target": 140926, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140926
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Scorpion-lv2", 
+     "rule_id": 140927, 
+     "second_consume": null, 
+     "target": 140927, 
+     "unlock": [
+      {
+       "appearance_id": 140926, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140926
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Scorpion-lv3", 
+     "rule_id": 140928, 
+     "second_consume": null, 
+     "target": 140928, 
+     "unlock": [
+      {
+       "appearance_id": 140926, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140927, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140927": {
+   "name": "Terror Truck", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Terror Truck lv.1", 
+     "rule_id": 140932, 
+     "second_consume": null, 
+     "target": 140932, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140932
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Terror Truck lv.2", 
+     "rule_id": 140933, 
+     "second_consume": null, 
+     "target": 140933, 
+     "unlock": [
+      {
+       "appearance_id": 140932, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140932
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Terror Truck lv.3", 
+     "rule_id": 140934, 
+     "second_consume": null, 
+     "target": 140934, 
+     "unlock": [
+      {
+       "appearance_id": 140932, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140933, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140928": {
+   "name": "Dynamic Streamer", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Dynamic Streamer lv.1", 
+     "rule_id": 140064, 
+     "second_consume": null, 
+     "target": 140064, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140064
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Dynamic Streamer-Lv.MAX", 
+     "rule_id": 140065, 
+     "second_consume": null, 
+     "target": 140065, 
+     "unlock": [
+      {
+       "appearance_id": 140064, 
+       "num": 2
+      }
+     ]
+    }
+   ]
+  }, 
+  "140942": {
+   "name": "Doctor Blue", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Sonic Serpent", 
+     "rule_id": 140940, 
+     "second_consume": null, 
+     "target": 140940, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140940
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Blaze Jackal", 
+     "rule_id": 140941, 
+     "second_consume": null, 
+     "target": 140941, 
+     "unlock": [
+      {
+       "appearance_id": 140940, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140940
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Ice Cobra", 
+     "rule_id": 140942, 
+     "second_consume": null, 
+     "target": 140942, 
+     "unlock": [
+      {
+       "appearance_id": 140940, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 140941, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "140945": {
+   "name": "Crush", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Crush", 
+     "rule_id": 140945, 
+     "second_consume": null, 
+     "target": 140945, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 140945
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Crush Lv.2", 
+     "rule_id": 140946, 
+     "second_consume": null, 
+     "target": 140946, 
+     "unlock": [
+      {
+       "appearance_id": 140945, 
+       "num": 2
+      }
+     ]
+    }
+   ]
+  }, 
+  "142004": {
+   "name": "Golden Flash", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Golden Flash Lv. 1", 
+     "rule_id": 142004, 
+     "second_consume": null, 
+     "target": 142004, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 142004
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Golden Flash Lv. 2", 
+     "rule_id": 142006, 
+     "second_consume": null, 
+     "target": 142006, 
+     "unlock": [
+      {
+       "appearance_id": 142004, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 142004
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Golden Flash Lv. 3", 
+     "rule_id": 142005, 
+     "second_consume": null, 
+     "target": 142005, 
+     "unlock": [
+      {
+       "appearance_id": 142004, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 142006, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "142005": {
+   "name": "Shadowfax", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Shadowfax - Noble", 
+     "rule_id": 142011, 
+     "second_consume": null, 
+     "target": 142011, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 142011
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Shadowfax - Kingly", 
+     "rule_id": 142012, 
+     "second_consume": null, 
+     "target": 142012, 
+     "unlock": [
+      {
+       "appearance_id": 142011, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 142011
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Shadowfax - Furious", 
+     "rule_id": 142013, 
+     "second_consume": null, 
+     "target": 142013, 
+     "unlock": [
+      {
+       "appearance_id": 142011, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 142012, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "142006": {
+   "name": "Venomous Tracks ", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Venomous Tracks LV.1", 
+     "rule_id": 142014, 
+     "second_consume": null, 
+     "target": 142014, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 142014
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Venomous Tracks LV.2", 
+     "rule_id": 142015, 
+     "second_consume": null, 
+     "target": 142015, 
+     "unlock": [
+      {
+       "appearance_id": 142014, 
+       "num": 2
+      }
+     ]
+    }
+   ]
+  }, 
+  "142007": {
+   "name": "Velociraptor", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Velociraptor Lv. 1", 
+     "rule_id": 142007, 
+     "second_consume": null, 
+     "target": 142007, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 142007
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Velociraptor Lv. 2", 
+     "rule_id": 142008, 
+     "second_consume": null, 
+     "target": 142008, 
+     "unlock": [
+      {
+       "appearance_id": 142007, 
+       "num": 2
+      }
+     ]
+    }
+   ]
+  }, 
+  "142008": {
+   "name": "Knight Formula", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Knight Formula lv.1", 
+     "rule_id": 142017, 
+     "second_consume": null, 
+     "target": 142017, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 142017
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Knight Formula lv.2", 
+     "rule_id": 142018, 
+     "second_consume": null, 
+     "target": 142018, 
+     "unlock": [
+      {
+       "appearance_id": 142017, 
+       "num": 2
+      }
+     ]
+    }
+   ]
+  }, 
+  "142028": {
+   "name": "Burst Sedan", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Burst Sedan Lv.1", 
+     "rule_id": 142028, 
+     "second_consume": null, 
+     "target": 142028, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 142028
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Burst Sedan Lv.2", 
+     "rule_id": 142029, 
+     "second_consume": null, 
+     "target": 142029, 
+     "unlock": [
+      {
+       "appearance_id": 142028, 
+       "num": 2
+      }
+     ]
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 142028
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 2000
+      }
+     ], 
+     "name": "Burst Sedan Lv.3", 
+     "rule_id": 142030, 
+     "second_consume": null, 
+     "target": 142030, 
+     "unlock": [
+      {
+       "appearance_id": 142028, 
+       "num": 2
+      }, 
+      {
+       "appearance_id": 142029, 
+       "num": 1
+      }
+     ]
+    }
+   ]
+  }, 
+  "142091": {
+   "name": "Thunder", 
+   "rules": [
+    {
+     "consume": [], 
+     "name": "Thunder Lv.1", 
+     "rule_id": 142091, 
+     "second_consume": null, 
+     "target": 142091, 
+     "unlock": []
+    }, 
+    {
+     "consume": [
+      {
+       "num": 1, 
+       "prop_id": 142091
+      }, 
+      {
+       "currency_id": 1, 
+       "num": 1000
+      }
+     ], 
+     "name": "Thunder Lv.2", 
+     "rule_id": 142092, 
+     "second_consume": null, 
+     "target": 142092, 
+     "unlock": [
+      {
+       "appearance_id": 142091, 
+       "num": 2
+      }
+     ]
+    }
+   ]
+  }
+ }, 
+ "kind": "vehicle"
+}

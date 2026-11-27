@@ -9,7 +9,7 @@ cracked NPK hash in npk_hash.py) to:
 
 Order rule confirmed on the live client with Account (iProxy props, then isMobileAccount).
 """
-import json, os, pickle, re, struct
+import json, os, pickle, re, struct, threading
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BS = chr(92)
@@ -30,6 +30,8 @@ class Defs:
         self.alias_src = _strip(open(os.path.join(root, 'entities_out', alias_fn), 'rb').read().decode('utf-8', 'replace'))
         self._alias = {}
         self.defaults = {}          # prop name -> raw <Default> text (last definition wins)
+        self._base_defaults = {}    # entity -> base_client_defaults() rows (built once)
+        self._lock = threading.Lock()
         self._parse_alias()
 
     # ---------- files ----------
@@ -227,6 +229,39 @@ class Defs:
             last[p[0]] = p
         return [last[n] for n in order if last[n][2] == 'BASE_AND_CLIENT']
 
+    def base_client_defaults(self, name):
+        """((prop, owner, kind, default bytes), ...) for base_client_props(name), in the same
+        order. The .def files do not change while the process runs, so the rows are built once
+        per Defs instance; stream_for() then only encodes the per-call overrides."""
+        rows = self._base_defaults.get(name)
+        if rows is None:
+            with self._lock:
+                rows = self._base_defaults.get(name)
+                if rows is None:
+                    built = []
+                    for prop, ttext, _flags, owner in self.base_client_props(name):
+                        t = self.resolve(ttext)
+                        built.append((prop, owner, t[0], encode_default(t, self.defaults.get(prop))))
+                    rows = self._base_defaults[name] = tuple(built)
+        return rows
+
+
+_shared = None
+_shared_lock = threading.Lock()
+
+
+def shared():
+    """One parsed Defs per process (the extract files are read-only while the gateway runs).
+    Callers must not change it; Defs() still gives a private instance."""
+    global _shared
+    d = _shared
+    if d is None:
+        with _shared_lock:
+            if _shared is None:
+                _shared = Defs()
+            d = _shared
+    return d
+
 
 # ---------- serialization (BigWorld wire format) ----------
 FIXED = {'INT8': '<b', 'UINT8': '<B', 'INT16': '<h', 'UINT16': '<H', 'INT32': '<i', 'UINT32': '<I',
@@ -312,7 +347,18 @@ def encode_default(t, text):
 
 def stream_for(defs, entity, overrides=None, log=None, props=None):
     """Property stream with .def defaults (+ raw-bytes overrides by prop name).
-    props defaults to the createBasePlayer set (BASE_AND_CLIENT)."""
+    props defaults to the createBasePlayer set (BASE_AND_CLIENT), whose default encodings come
+    from defs.base_client_defaults() (built once per Defs instance, same bytes)."""
+    if props is None:
+        ov = overrides or {}
+        parts = []
+        for prop, owner, kind, dflt in defs.base_client_defaults(entity):
+            val = ov.get(prop)
+            enc = val if val is not None else dflt
+            if log is not None:
+                log.append((prop, owner, kind, len(enc)))
+            parts.append(enc)
+        return b''.join(parts)
     out = b''
     for prop, ttext, flags, owner in (props if props is not None else defs.base_client_props(entity)):
         t = defs.resolve(ttext)

@@ -127,3 +127,42 @@ class GatewayItem(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     )
     prop_id: Mapped[int] = mapped_column(nullable=False)
     number: Mapped[int] = mapped_column(default=1, nullable=False)
+
+
+MAIL_TYPE_TXT = 0    # client SysMailTypeEnum.TXT: text only
+MAIL_TYPE_PROPS = 1  # client SysMailTypeEnum.PROPS: has attachments or gold (gift icon)
+MAIL_MAX_ATTACHMENTS = 6  # the client detail view shows prop_1 .. prop_6
+
+
+class GatewayMail(IdMixin, CreatedAtMixin, Base):
+    """System mail for one original-client player (client screen UISystemMail).
+
+    mail_id is the client's INT32 mailID: a per-identity sequence starting at 1. attachments is
+    [{"prop_id", "number"}] (at most 6). read_at / claimed_at / deleted_at are null until the
+    player opens, claims or deletes the mail; a mail past its deadline is hidden and unclaimable.
+    """
+
+    __tablename__ = "gateway_mails"
+    __table_args__ = (
+        UniqueConstraint("identity_id", "mail_id", name="uq_gateway_mails_identity_mail"),
+        CheckConstraint("mail_id >= 1", name="mail_id"),
+        CheckConstraint("mail_type IN (0, 1)", name="mail_type"),
+        CheckConstraint("gold >= 0", name="gold"),
+        Index("ix_gateway_mails_identity_sent", "identity_id", "sent_at"),
+    )
+
+    identity_id: Mapped[str] = mapped_column(ForeignKey("gateway_identities.id", ondelete="CASCADE"), nullable=False)
+    mail_id: Mapped[int] = mapped_column(nullable=False)
+    mail_type: Mapped[int] = mapped_column(default=MAIL_TYPE_TXT, nullable=False)
+    title: Mapped[str] = mapped_column(String(64), nullable=False)
+    content: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
+    sender: Mapped[str] = mapped_column(String(32), nullable=False, default="System")
+    attachments: Mapped[list | None] = mapped_column(PortableJSON, nullable=True)
+    gold: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Operator username that sent it; null for mail the server sent itself.
+    sent_by: Mapped[str | None] = mapped_column(String(64), nullable=True)

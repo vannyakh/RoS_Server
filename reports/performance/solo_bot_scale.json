@@ -1,0 +1,82 @@
+{
+  "benchmark": "solo_bot_scale",
+  "task": "RO-112",
+  "measured_at": "2026-11-27T00:51:44+0700",
+  "command": "python -m pytest tests/performance/test_solo_bot_scale.py -q",
+  "environment": {
+    "python": "3.12.10",
+    "implementation": "CPython",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "machine": "AMD64"
+  },
+  "notes": [
+    "Offline MatchSession enqueue via bots.py; not a live gateway process load test.",
+    "N=9 gate uses 50 iterations; 29/59/119 are single probes only.",
+    "No secrets; no original-compatibility claim."
+  ],
+  "process": {
+    "rss_start_mb": 49.49,
+    "rss_end_mb": 52.27,
+    "rss_delta_mb": 2.78,
+    "cpu_percent": 0.0,
+    "wall_s_n9_bench": 4.882
+  },
+  "gates": {
+    "n9": {
+      "bot_count": 9,
+      "iterations": 50,
+      "warmup": 5,
+      "spawn": {
+        "count": 50,
+        "mean_ms": 86.7339,
+        "p50_ms": 83.4141,
+        "p95_ms": 119.0723,
+        "max_ms": 164.923
+      },
+      "teardown": {
+        "count": 50,
+        "mean_ms": 0.019,
+        "p50_ms": 0.0171,
+        "p95_ms": 0.0293,
+        "max_ms": 0.0371
+      },
+      "wire_bytes_per_cycle": {
+        "mean": 751,
+        "min": 751,
+        "max": 751
+      },
+      "wire_packets_per_cycle": {
+        "mean": 10.0,
+        "value": 10
+      },
+      "status": "measured",
+      "human_count": 1
+    },
+    "future": {
+      "n29": {
+        "bot_count": 29,
+        "status": "NOT measured",
+        "note": "Single offline probe only; no iterative gate run.",
+        "probe_spawn_ms": 278.3628,
+        "probe_wire_bytes_spawn": 2391,
+        "probe_wire_packets_spawn": 30
+      },
+      "n59": {
+        "bot_count": 59,
+        "status": "NOT measured",
+        "note": "Single offline probe only; no iterative gate run.",
+        "probe_spawn_ms": 525.752,
+        "probe_wire_bytes_spawn": 4851,
+        "probe_wire_packets_spawn": 60
+      },
+      "n119": {
+        "bot_count": 119,
+        "status": "NOT measured",
+        "note": "Single offline probe only; no iterative gate run.",
+        "probe_spawn_ms": 1182.5704,
+        "probe_wire_bytes_spawn": 9791,
+        "probe_wire_packets_spawn": 120
+      }
+    }
+  }
+}
