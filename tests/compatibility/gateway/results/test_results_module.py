@@ -63,11 +63,11 @@ def test_suicide_inbound_triggers_end(session, results_mod, bf, monkeypatch):
     monkeypatch.setattr(results_mod.account_link, "record_match", lambda r: None)
     mod = results_mod.register(session)
 
-    # suicideFromClient is raw BattleGroundAvatar exposed index 61: msg 0xBC (first extended id,
-    # eff=60) with sub-byte 61-60=1. It is unshifted: the Avatar shift starts in 151..207
-    # (requestGetOffPlane 77 and verifyClientValue 150 arrive unshifted, battle_flow.decode_request).
+    # suicideFromClient (raw exposed index 61) as the client sends it: msg 0xBC (eff=60) with the
+    # sub-byte for its wire index under the one shift rule (battle_flow.avatar_wire_index).
     msgid = 0xBC
-    payload = struct.pack("<I", bf.AVATAR_ID) + bytes([1])
+    wire = bf.avatar_wire_index(61)
+    payload = struct.pack("<I", bf.AVATAR_ID) + bytes([wire - 60])
     assert bf.decode_request(msgid, payload)[2] == "suicideFromClient"
 
     handled = session.dispatch_inbound(msgid, payload)

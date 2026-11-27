@@ -137,6 +137,7 @@ def test_register_deferred_shares_space_timeline(sent, clock, plane_mod):
         timeline = tl
 
     session.space_module = _SpaceShim()
+    session.timeline = tl          # the session owns the match's one timeline (battle/flow.py)
     tl.start(session)
     mod = plane_mod.register(session)
     clock.advance(0.0)  # deferred plane start + warmup

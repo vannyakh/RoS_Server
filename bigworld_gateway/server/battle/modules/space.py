@@ -17,7 +17,7 @@ from pathlib import Path
 
 import battle_flow as bf
 import bwdefs
-from battle.timeline import MatchTimeline, load_phase_durations
+from battle.timeline import MatchTimeline, load_phase_durations, shared_timeline
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DEFAULT_SPACE_PATH = DATA_DIR / "space.json"
@@ -95,7 +95,8 @@ class SpaceModule:
         self.space_id = session.alloc_space_id()
         self.plane_id = session.alloc_plane_id()
         self.defaults = _load_space_defaults(space_data_path)
-        self.timeline = timeline if timeline is not None else MatchTimeline(load_phase_durations())
+        self.timeline = timeline if timeline is not None else (
+            shared_timeline(session) or MatchTimeline(load_phase_durations()))
         self.created = False
         self.removed = False
         # serverTime at create ~= 1.0 when setGameTime ticks start at match enter.

@@ -539,6 +539,27 @@ def entity_method(eid, entity, name, args=b""):
     return client_call(entity, name, eid, args)
 
 
+# The client's BattleGroundAvatar exposed-method table is EXPOSED_SHIFT entries ahead of the raw .def
+# list from EXPOSED_SHIFT_FROM up. One rule for every decoder (battle/requests.py imports these).
+# Evidence (captured packets): the Jump button sends wire index 79 = raw 77 requestGetOffPlane
+# (client/frida/payloads/requests/request_get_off_plane.hex.txt; unshifted 79 would be markFloor);
+# onRecvClientFPS(30) arrives as 291 = raw 289; `fire` (52) decodes unshifted, so the shift starts
+# in 53..79. A 2026-11-21 note said 77 and 150 arrive unshifted (threshold 180), but no capture backs
+# it and it misreads the Jump capture above. Override with EXPOSED_SHIFT_FROM / EXPOSED_SHIFT.
+EXPOSED_SHIFT = int(os.environ.get("EXPOSED_SHIFT", "2"))
+EXPOSED_SHIFT_FROM = int(os.environ.get("EXPOSED_SHIFT_FROM", "60"))
+
+
+def avatar_raw_index(wire_k):
+    """Raw .def exposed index for a BattleGroundAvatar client (wire) index."""
+    return wire_k - EXPOSED_SHIFT if wire_k >= EXPOSED_SHIFT_FROM else wire_k
+
+
+def avatar_wire_index(raw_k):
+    """Client (wire) index for a raw BattleGroundAvatar exposed index (inverse of the above)."""
+    return raw_k + EXPOSED_SHIFT if raw_k >= EXPOSED_SHIFT_FROM else raw_k
+
+
 def decode_request(msgid, payload):
     """(eid, entity, method name, arg bytes) for a client cell-method call, or None."""
     if not (0x80 <= msgid <= 0xBF) or len(payload) < 4:
@@ -556,13 +577,8 @@ def decode_request(msgid, payload):
             return eid, entity, "exposed#%d+?" % j, args
         k = eff + ((j - eff) << 8) + args[0]
         args = args[1:]
-    # Measured: the client's BattleGroundAvatar exposed table is 2 entries ahead of the raw .def list at
-    # least from index 205 up (onRecvClientFPS(30) arrived as 291 = raw 289, setPerspectPlayers([]) as
-    # 207 = raw 205); `fire` (52) decoded right, so the shift starts between 53 and 205.
-    # 2026-11-21: requestGetOffPlane (77) and verifyClientValue (150) arrive unshifted, so the shift
-    # starts in 151..207; 180 until measured.
-    if entity == "BattleGroundAvatar" and k >= int(os.environ.get("EXPOSED_SHIFT_FROM", "180")):
-        k -= int(os.environ.get("EXPOSED_SHIFT", "2"))
+    if entity == "BattleGroundAvatar":
+        k = avatar_raw_index(k)
     if k >= len(tab):
         return eid, entity, "exposed#%d" % k, args
     return eid, entity, tab[k][0], args

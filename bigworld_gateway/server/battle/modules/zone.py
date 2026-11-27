@@ -16,7 +16,7 @@ import os
 from pathlib import Path
 
 import battle_flow as bf
-from battle.timeline import MatchTimeline, load_phase_durations
+from battle.timeline import MatchTimeline, load_phase_durations, shared_timeline
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DEFAULT_ZONE_PATH = DATA_DIR / "zone.json"
@@ -91,13 +91,7 @@ class ZoneModule:
             self.timeline = timeline
             self._owns_timeline = True if own_timeline is None else bool(own_timeline)
         else:
-            shared = None
-            for attr in ("space_module", "plane_module", "jump_module"):
-                mod = getattr(session, attr, None)
-                if mod is not None:
-                    shared = getattr(mod, "timeline", None)
-                if shared is not None:
-                    break
+            shared = shared_timeline(session, "space_module", "plane_module", "jump_module")
             if shared is not None:
                 self.timeline = shared
                 self._owns_timeline = False if own_timeline is None else bool(own_timeline)

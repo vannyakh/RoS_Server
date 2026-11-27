@@ -15,7 +15,7 @@ from __future__ import annotations
 import os
 
 import battle_flow as bf
-from battle.timeline import MatchTimeline, load_phase_durations
+from battle.timeline import MatchTimeline, load_phase_durations, shared_timeline
 
 # Client const.FlightStage (LOBBY_FINDINGS update 15). Gateway uses Launch/Fly only here.
 FLIGHT_STAGE_LAUNCH = 0
@@ -107,8 +107,7 @@ class PlaneModule:
             self.timeline = timeline
             self._owns_timeline = True if own_timeline is None else bool(own_timeline)
         else:
-            space = getattr(session, "space_module", None)
-            shared = getattr(space, "timeline", None) if space is not None else None
+            shared = shared_timeline(session, "space_module")
             if shared is not None:
                 self.timeline = shared
                 self._owns_timeline = False if own_timeline is None else bool(own_timeline)

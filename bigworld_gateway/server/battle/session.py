@@ -11,6 +11,7 @@ import asyncio
 import importlib.util
 import os
 import struct
+import sys
 import time
 import traceback
 from pathlib import Path
@@ -18,6 +19,8 @@ from pathlib import Path
 import account_link
 import athlete_requests
 from battle import player_entity
+from battle.flow import MatchFlow
+from battle.timeline import MatchTimeline, load_phase_durations
 
 HALL_TEAM_MAP_GROUP = 1   # const.DtsMapBaseType.MAP_4K (client default, map 700)
 
@@ -175,6 +178,11 @@ class MatchSession:
         self.closed = False
         self.player = player_entity.new_human_player()
         self.combatants = {self.player.player_id: self.player}
+        # One clock and one stage controller per match. Modules attach to these instead of
+        # building their own timelines; load_battle_modules starts the timeline once.
+        self.timeline = MatchTimeline(load_phase_durations())
+        self.flow = MatchFlow(self)
+        self.flow.attach_timeline(self.timeline)
 
     # ---- entity ids -----------------------------------------------------------------
 
@@ -295,7 +303,9 @@ class MatchSession:
                 self._log(f"      [BATTLE SESSION] inbound handler failed: {e!r}")
                 self._log(traceback.format_exc())
                 return b""
-            return b"" if result is None else result
+            if result is None:      # not handled: let the next matching handler try
+                continue
+            return result
         return None
 
     # ---- lifecycle ------------------------------------------------------------------
@@ -340,6 +350,9 @@ def load_battle_modules(session, modules_dir=None, *, log=print):
                 log(f"      [BATTLE SESSION] skip module {path.name}: no loader")
                 continue
             module = importlib.util.module_from_spec(spec)
+            # Register before executing: @dataclass (results.py) looks its module up in sys.modules,
+            # and without this the module failed to import, so results never loaded live.
+            sys.modules[mod_name] = module
             spec.loader.exec_module(module)
             register = getattr(module, "register", None)
             if register is None:
@@ -352,4 +365,7 @@ def load_battle_modules(session, modules_dir=None, *, log=print):
         except Exception as e:
             log(f"      [BATTLE SESSION] module {path.name} failed: {e!r}")
             log(traceback.format_exc())
+    timeline = getattr(session, "timeline", None)
+    if loaded and timeline is not None and not getattr(session, "closed", False):
+        timeline.start(session)       # idempotent: a module may already have started it
     return loaded

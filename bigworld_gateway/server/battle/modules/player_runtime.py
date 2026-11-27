@@ -43,20 +43,10 @@ class PlayerRuntimeModule:
         )
 
     def _shared_timeline(self):
-        for attr in (
-            "space_module",
-            "plane_module",
-            "jump_module",
-            "zone_module",
-            "props_module",
-        ):
-            mod = getattr(self.session, attr, None)
-            if mod is None:
-                continue
-            tl = getattr(mod, "timeline", None)
-            if tl is not None:
-                return tl
-        return None
+        from battle.timeline import shared_timeline
+
+        return shared_timeline(self.session, "space_module", "plane_module", "jump_module",
+                               "zone_module", "props_module")
 
     def _on_boarding(self, _phase):
         if self.session.closed:

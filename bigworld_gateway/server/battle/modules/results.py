@@ -146,6 +146,9 @@ def build_match_report(counters, *, placement, rank_score_delta=None):
 
 
 def _starting_alive(session):
+    flow = getattr(session, "flow", None)
+    if flow is not None and getattr(flow, "bots", 0):
+        return int(flow.slots)
     fill = getattr(session, "solo_fill", None)
     if fill is not None and hasattr(fill, "alive_num"):
         return int(fill.alive_num)
@@ -181,8 +184,11 @@ class ResultsModule:
         self.ended = False
         self._reported = False
         self._eliminated = 0
-        self._alive_start = _starting_alive(session)
         self.space_id = getattr(session, "space_id", bf.SPACE_ID)
+
+    @property
+    def _alive_start(self):
+        return _starting_alive(self.session)
 
     def _default_death_placement(self):
         remaining = max(0, self._alive_start - self._eliminated - 1)
@@ -208,6 +214,11 @@ class ResultsModule:
         if self.ended or self.session.closed:
             return
         self.ended = True
+        flow = getattr(self.session, "flow", None)
+        if flow is not None:
+            flow.placement, flow.victory = int(placement), bool(victory)
+            self.counters.kills = max(int(self.counters.kills), int(flow.kills))
+            flow.enter("results", reason)
 
         gid = _gid()
         nick = _nickname()
@@ -292,6 +303,9 @@ class ResultsModule:
     def _return_to_lobby(self):
         if self.session.closed:
             return
+        flow = getattr(self.session, "flow", None)
+        if flow is not None:
+            flow.enter("lobby", "results")
         cb = getattr(self.session, "return_to_lobby", None)
         if callable(cb):
             try:
@@ -335,10 +349,20 @@ def _inbound_handler(session, mod):
     return _handle
 
 
+LEAVE_REQUESTS = ("suicideFromClient", "requestLeaveSpaceBeforeWin")
+
+
+def _is_leave_request(msgid, payload):
+    """Only the BattleGroundAvatar requests that end the match; any other request is left to
+    the modules that own it (the old 0x80-0xBF catch-all hid Jump and every later request)."""
+    req = bf.decode_request(msgid, payload)
+    return req is not None and req[1] == "BattleGroundAvatar" and req[2] in LEAVE_REQUESTS
+
+
 def register(session):
     """MatchSession entry point."""
     mod = ResultsModule(session)
     session.results_module = mod
-    session.on_inbound(lambda mid, _pay: 0x80 <= mid <= 0xBF, _inbound_handler(session, mod))
+    session.on_inbound(_is_leave_request, _inbound_handler(session, mod))
     session._log("      [BATTLE] results module registered")
     return mod

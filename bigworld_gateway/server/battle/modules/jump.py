@@ -23,7 +23,7 @@ import struct
 
 import battle_flow as bf
 from battle import requests as reqs
-from battle.timeline import MatchTimeline, load_phase_durations
+from battle.timeline import MatchTimeline, load_phase_durations, shared_timeline
 
 # const.FlightStage / FallPhase / PlayerState / GlidePhase (LOBBY_FINDINGS update 15).
 FLIGHT_STAGE_FLY = 1
@@ -101,13 +101,7 @@ class JumpModule:
             self.timeline = timeline
             self._owns_timeline = True if own_timeline is None else bool(own_timeline)
         else:
-            space = getattr(session, "space_module", None)
-            plane = getattr(session, "plane_module", None)
-            shared = None
-            if space is not None:
-                shared = getattr(space, "timeline", None)
-            if shared is None and plane is not None:
-                shared = getattr(plane, "timeline", None)
+            shared = shared_timeline(session, "space_module", "plane_module")
             if shared is not None:
                 self.timeline = shared
                 self._owns_timeline = False if own_timeline is None else bool(own_timeline)
@@ -197,6 +191,9 @@ class JumpModule:
         if self.off_plane or self.session.closed:
             return
         self.off_plane = True
+        flow = getattr(self.session, "flow", None)
+        if flow is not None:
+            flow.enter("parachute", reason)
         x, y, z = self.drop_pos
         self.session.enqueue(
             bf.update_property("BattleGroundAvatar", "planeID", bf.i32(0))
@@ -297,6 +294,9 @@ class JumpModule:
         if self.landed or self.session.closed:
             return
         self.landed = True
+        flow = getattr(self.session, "flow", None)
+        if flow is not None:
+            flow.enter("ground", "landed")
         x, y, z = self.land_pos
         self.session.enqueue(forced_position(x, y, z, eid=self.avatar_id))
         self.session.enqueue(

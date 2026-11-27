@@ -218,6 +218,7 @@ def test_register_deferred_with_plane_timeline(sent, clock, jump_mod, plane_mod,
     monkeypatch.setenv("JUMP_LAND_DELAY", "100")
     session = MatchSession(ADDR, lambda body: sent.append(body), clock=clock)
     tl = MatchTimeline({"warmup": 0.0, "boarding": 1.0, "flight": 4.0, "play": 0.0})
+    session.timeline = tl          # the session owns the match's one timeline (battle/flow.py)
     plane = plane_mod.PlaneModule(session, timeline=tl, own_timeline=True)
     plane.start()
     jump = jump_mod.register(session)
