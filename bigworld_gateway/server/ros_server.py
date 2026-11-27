@@ -1723,6 +1723,10 @@ class GateUDP(asyncio.DatagramProtocol):
                                 print(f"      [BATTLE] position failed: {e!r}")
                             if reply:
                                 self._send_bundle(addr, reply, self._last_client_seq.get(addr), bytes(bf_key))
+                            # Legacy height-based landing also moves the match flow to "ground" (the flow
+                            # only moves forward, so the jump module's timed landing cannot repeat it).
+                            if session is not None and getattr(self._battle_match(addr), "landed", False):
+                                session.flow.enter("ground", "landed (position)")
                         # Match timeline (plane boarding, fall phases) driven by every client message,
                         # including position reports (msg 2); battle_flow.Match.on_message.
                         if hasattr(battle_flow.Match, "on_message"):
@@ -1738,6 +1742,10 @@ class GateUDP(asyncio.DatagramProtocol):
                             if handled is not None:
                                 if handled:
                                     session.enqueue(handled)
+                                continue
+                            # The modules own in-match requests (battle/modules); the legacy handler only
+                            # runs for comparison runs with LEGACY_MATCH=on.
+                            if session is not None and os.environ.get("LEGACY_MATCH", "off") != "on":
                                 continue
                             try:
                                 reply = battle_flow.Match.handle(self._battle_match(addr), m, p, log=print)
@@ -1760,6 +1768,10 @@ class GateUDP(asyncio.DatagramProtocol):
                     if match is not None and getattr(match, "leave", False):
                         # Quit Game: back to the lobby (Athlete), like the tutorial SKIP path
                         print("      [BATTLE] player left the match -> lobby")
+                        quit_session = self._match_session(addr)
+                        results = getattr(quit_session, "results_module", None) if quit_session else None
+                        if results is not None:
+                            results.record_quit()        # one result writer, also for Quit Game
                         import match_room; match_room.leave(self, addr)   # lane 6
                         self._matches.pop(addr, None)
                         self._end_match_session(addr)

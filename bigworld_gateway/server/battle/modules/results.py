@@ -214,6 +214,7 @@ class ResultsModule:
         if self.ended or self.session.closed:
             return
         self.ended = True
+        self._reason = reason
         flow = getattr(self.session, "flow", None)
         if flow is not None:
             flow.placement, flow.victory = int(placement), bool(victory)
@@ -271,6 +272,7 @@ class ResultsModule:
             profile = account_link.record_match(report)
             if profile is None:
                 self.session._log("      [BATTLE] results record_match skipped (not linked or refused)")
+                self._save_local(placement)
             else:
                 self.session._log(
                     "      [BATTLE] results record_match ok rank_score=%s"
@@ -279,6 +281,39 @@ class ResultsModule:
         except Exception as e:
             self.session._log(f"      [BATTLE] results record_match failed: {e!r}")
             self.session._log(traceback.format_exc())
+
+    def _save_local(self, placement):
+        """Not linked to RoS_Server: keep the result in match_results.jsonl (the only other writer)."""
+        import time
+        import types
+
+        import match_results
+
+        flow = getattr(self.session, "flow", None)
+        survived = flow.survival_seconds() if flow is not None else 0.0
+        shim = types.SimpleNamespace(
+            map_id=int(os.environ.get("BATTLE_MAP", "700")), kills=int(self.counters.kills), collected=0,
+            death_cause=getattr(self, "_reason", "end"), t_start=time.time() - survived)
+        total = flow.slots if flow is not None else self._alive_start
+        match_results.save(shim, _gid(), _nickname(), int(placement), int(total),
+                           won=bool(flow.victory) if flow is not None else int(placement) == 1,
+                           log=self.session._log)
+
+    def record_quit(self):
+        """Quit Game: record the result (placement = players still alive) without the result screens;
+        the gate already sends the player back to the lobby."""
+        if self.ended or self.session.closed:
+            return
+        self.ended = True
+        placement = self._default_death_placement()
+        self._reason = "quit"
+        flow = getattr(self.session, "flow", None)
+        if flow is not None:
+            flow.placement, flow.victory = placement, False
+            flow.enter("results", "quit")
+            flow.enter("lobby", "quit")
+        self._send_match_report(placement)
+        self.session._log("      [BATTLE] results quit placement=%s" % placement)
 
     def _teardown_session(self):
         plane = getattr(self.session, "plane_module", None)

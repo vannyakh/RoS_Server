@@ -396,7 +396,8 @@ def hp_messages(hp, max_hp=None):
         out += prop_update("BattleGroundAvatar", AVATAR_ID, "maxHp", i32(max_hp))
     return (out + prop_update("BattleGroundAvatar", AVATAR_ID, "hp", i32(hp))
             + prop_update("BattleGroundAvatar", AVATAR_ID, "actualHP", i32(hp)))
-ZONE_AUTO = os.environ.get("ZONE_AUTO", "on") != "off"               # start the zone after the landing
+# Legacy zone after the landing. Off: battle/modules/zone.py runs the same client stages (one zone).
+ZONE_AUTO = os.environ.get("ZONE_AUTO", "off") == "on"
 
 
 def _toward(center, target, limit):

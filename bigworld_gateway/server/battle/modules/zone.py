@@ -5,7 +5,12 @@ Updates BattleGroundSpace circle fields via RO-059 property updates, drives
 ``isInPoisonArea`` on the avatar, and applies poison DPS until ``hp`` hits zero
 (``session.results_module.apply_zone_fatal``).
 
-Stage radii, delays and damage live in battle/data/zone.json (gateway params).
+Stages (ZONE_SOURCE=client, the default) are the client's own CIRCLE_PARAM values in
+battle_flow (ZONE_INIT, ZONE_STAGES wait/shrink/radius, ZONE_DAMAGE amount/interval), the ones the
+legacy battle_flow zone used and that passed on LDPlayer (checklist 14.x). The zone starts when the
+player lands (flow stage "ground"); each stage announces a white circle toward the player, waits,
+then shrinks the blue circle onto it in 1 s steps. Surviving the last circle wins the match.
+ZONE_SOURCE=data keeps the older gateway-invented battle/data/zone.json stages (tests).
 """
 
 from __future__ import annotations
@@ -53,6 +58,25 @@ def _load_zone_config(path=None):
     return cfg
 
 
+def zone_source():
+    return os.environ.get("ZONE_SOURCE", "client")
+
+
+def client_stages(scale=None):
+    """Stage dicts from the client's circle parameters (battle_flow.ZONE_STAGES / ZONE_DAMAGE)."""
+    scale = bf.ZONE_TIME_SCALE if scale is None else float(scale)
+    stages, at = [], 0.0
+    for i, (wait, shrink, radius) in enumerate(bf.ZONE_STAGES):
+        amount, every = bf.ZONE_DAMAGE[min(i, len(bf.ZONE_DAMAGE) - 1)]
+        stages.append({
+            "delay": at, "rest_seconds": int(wait * scale), "shrink_seconds": float(shrink * scale),
+            "circle_stage": i + 1, "white_radius": int(radius), "toward_player": True,
+            "poison_amount": int(amount), "poison_every": float(every),
+        })
+        at += (wait + shrink) * scale
+    return stages
+
+
 def in_blue_circle(x, z, center, radius):
     """True when (x, z) is inside the blue safe circle (XZ plane)."""
     cx, cz = float(center[0]), float(center[1])
@@ -70,7 +94,8 @@ class ZoneModule:
     def __init__(self, session, *, zone_data_path=None, timeline=None, own_timeline=None):
         self.session = session
         self.cfg = _load_zone_config(zone_data_path)
-        self.stages = list(self.cfg.get("stages") or [])
+        self.client_mode = zone_data_path is None and zone_source() == "client"
+        self.stages = client_stages() if self.client_mode else list(self.cfg.get("stages") or [])
         self.avatar_id = AVATAR_ID
         self.space_id = getattr(session, "space_id", bf.SPACE_ID)
         self._player_hp = int(self.cfg["player_hp"])
@@ -86,6 +111,13 @@ class ZoneModule:
         self._in_poison = False
         self._play_started = False
         self._poison_job = None
+        self._poison_amount = 0
+        self._poison_every = 1.0
+        self._last_damage = None
+        self.closed_zone = False
+        if self.client_mode:
+            (cx, cz), r = bf.ZONE_INIT
+            self._blue_center, self._blue_radius = (float(cx), float(cz)), float(r)
         self._sync_player_hp_from_session()
         if timeline is not None:
             self.timeline = timeline
@@ -127,7 +159,11 @@ class ZoneModule:
     def start(self):
         if self.session.closed:
             return
-        self.timeline.on_phase("play", self._on_play)
+        flow = getattr(self.session, "flow", None)
+        if self.client_mode and flow is not None:
+            flow.on_enter("ground", self._on_ground)
+        else:
+            self.timeline.on_phase("play", self._on_play)
         if self._owns_timeline:
             self.timeline.start(self.session)
         self.session.zone_module = self
@@ -174,6 +210,23 @@ class ZoneModule:
         if self.poison_tick > 0.0:
             self.session.schedule(self.poison_tick, self._poison_tick_recurring)
 
+    def _on_ground(self, _stage):
+        """Client-data zone: the fight starts when the player lands (legacy ZONE_AUTO behaviour)."""
+        if self.session.closed or self._play_started:
+            return
+        sid = self.space_id
+        self.session.enqueue(bf.update_property("BattleGroundSpace", "gameStatus", bf.i32(bf.GS_FIGHT), eid=sid))
+        bx, bz = self._blue_center
+        self.session.enqueue(bf.update_property("BattleGroundSpace", "blueCircleCenter", bf.vec2(bx, bz), eid=sid))
+        self.session.enqueue(bf.update_property("BattleGroundSpace", "blueCircleRadius",
+                                                bf.i32(int(self._blue_radius)), eid=sid))
+        space = getattr(self.session, "space_module", None)
+        if space is not None and getattr(space, "defaults", None) is not None:
+            space.defaults["gameStatus"] = bf.GS_FIGHT
+        self.session._log("      [BATTLE] zone start (client stages, %d, time scale %.2f)"
+                          % (len(self.stages), bf.ZONE_TIME_SCALE))
+        self._on_play("ground")
+
     def _sync_position_from_jump(self):
         jump = getattr(self.session, "jump_module", None)
         if jump is None:
@@ -190,12 +243,19 @@ class ZoneModule:
             return
         self._stage_idx += 1
         self._rest_seconds = int(stage.get("rest_seconds", 0))
-        self._blue_center = tuple(stage.get("blue_center", [0.0, 0.0]))
-        self._blue_radius = float(stage.get("blue_radius", 0.0))
+        if not stage.get("toward_player"):
+            self._blue_center = tuple(stage.get("blue_center", [0.0, 0.0]))
+            self._blue_radius = float(stage.get("blue_radius", 0.0))
         self._poison_dps = int(stage.get("poison_dps", 0))
+        self._poison_amount = int(stage.get("poison_amount", 0))
+        self._poison_every = float(stage.get("poison_every", 1.0))
         circle_stage = int(stage.get("circle_stage", self._stage_idx + 1))
-        wc = stage.get("white_center", list(self._blue_center))
         wr = int(stage.get("white_radius", 0))
+        if stage.get("toward_player"):
+            target = (self.pos_x, self.pos_z) if self._position_set else self._blue_center
+            wc = list(bf._toward(self._blue_center, target, max(self._blue_radius - wr, 0)))
+        else:
+            wc = stage.get("white_center", list(self._blue_center))
         bx, bz = self._blue_center
         wx, wz = float(wc[0]), float(wc[1])
         sid = self.space_id
@@ -269,6 +329,10 @@ class ZoneModule:
             d["blueCircleCenter"] = [float(bx), float(bz)]
             d["blueCircleRadius"] = int(self._blue_radius)
         self._refresh_poison_flag()
+        if stage.get("shrink_seconds"):
+            last = self._stage_idx >= len(self.stages) - 1
+            self.session.schedule(self._rest_seconds, self._shrink_start, (wx, wz), wr,
+                                  float(stage["shrink_seconds"]), last)
         self.session._log(
             "      [BATTLE] zone stage %s circle=%s blue_r=%.0f rest=%ss dps=%s"
             % (
@@ -279,6 +343,42 @@ class ZoneModule:
                 self._poison_dps,
             )
         )
+
+    # ---- shrink (client stages) ------------------------------------------------------
+
+    def _shrink_start(self, white_center, white_radius, seconds, last):
+        if self.session.closed:
+            return
+        sid = self.space_id
+        start_c, start_r = self._blue_center, self._blue_radius
+        self.session.enqueue(bf.update_property("BattleGroundSpace", "blueCircleStartCenter", bf.vec2(*start_c), eid=sid))
+        self.session.enqueue(bf.update_property("BattleGroundSpace", "blueCircleStartRadius", bf.i32(int(start_r)), eid=sid))
+        self.session.enqueue(bf.entity_method(sid, "BattleGroundSpace", "updateCircleRestTime", bf.i32(int(seconds))))
+        steps = max(1, int(math.ceil(seconds)))
+        for n in range(1, steps + 1):
+            self.session.schedule(seconds * n / steps, self._shrink_step, start_c, start_r,
+                                  white_center, white_radius, n / steps, last and n == steps)
+
+    def _shrink_step(self, start_c, start_r, white_c, white_r, k, final):
+        if self.session.closed:
+            return
+        sid = self.space_id
+        self._blue_center = (start_c[0] + (white_c[0] - start_c[0]) * k, start_c[1] + (white_c[1] - start_c[1]) * k)
+        self._blue_radius = start_r + (white_r - start_r) * k
+        self.session.enqueue(bf.update_property("BattleGroundSpace", "blueCircleCenter", bf.vec2(*self._blue_center), eid=sid))
+        self.session.enqueue(bf.update_property("BattleGroundSpace", "blueCircleRadius",
+                                                bf.i32(int(self._blue_radius)), eid=sid))
+        space = getattr(self.session, "space_module", None)
+        if space is not None and getattr(space, "defaults", None) is not None:
+            space.defaults["blueCircleCenter"] = list(self._blue_center)
+            space.defaults["blueCircleRadius"] = int(self._blue_radius)
+        self._refresh_poison_flag()
+        if final:
+            self.closed_zone = True
+            self.session._log("      [BATTLE] zone closed")
+            results = getattr(self.session, "results_module", None)
+            if self.player_hp > 0 and results is not None and hasattr(results, "declare_victory"):
+                results.declare_victory(placement=1)      # survived the last circle
 
     # ---- poison ---------------------------------------------------------------------
 
@@ -291,6 +391,8 @@ class ZoneModule:
             self.session.schedule(self.poison_tick, self._poison_tick_recurring)
 
     def _poison_tick_once(self):
+        if self.client_mode:
+            return self._client_poison_tick()
         if self._poison_dps <= 0:
             self._refresh_poison_flag()
             return
@@ -303,6 +405,31 @@ class ZoneModule:
         )
         self._refresh_poison_flag(force_poison=True)
         if self.player_hp <= 0:
+            results = getattr(self.session, "results_module", None)
+            if results is not None and hasattr(results, "apply_zone_fatal"):
+                results.apply_zone_fatal()
+            self.session._log("      [BATTLE] zone poison fatal")
+
+    def _client_poison_tick(self):
+        """ZONE_DAMAGE: `amount` hp every `every` seconds outside the blue circle, with the hit effect."""
+        if self._poison_amount <= 0 or not self.is_in_poison_area():
+            self._refresh_poison_flag()
+            self._last_damage = None
+            return
+        now = self.session._now()
+        if self._last_damage is not None and now - self._last_damage < self._poison_every - 1e-6:
+            self._refresh_poison_flag()
+            return
+        self._last_damage = now
+        self.player_hp = max(0, self.player_hp - self._poison_amount)
+        flow = getattr(self.session, "flow", None)
+        if flow is not None:
+            flow.add_damage(taken=self._poison_amount)
+        self.session.enqueue(bf.hp_messages(self.player_hp))
+        self.session.enqueue(bf.client_call("BattleGroundAvatar", "showPoisonEffect", self.avatar_id))
+        self._refresh_poison_flag(force_poison=True)
+        if self.player_hp <= 0:
+            self.session.enqueue(bf.update_property("BattleGroundAvatar", "battleState", bf.i8(bf.STATE_DIED)))
             results = getattr(self.session, "results_module", None)
             if results is not None and hasattr(results, "apply_zone_fatal"):
                 results.apply_zone_fatal()
