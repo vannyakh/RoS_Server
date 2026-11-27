@@ -1,0 +1,7 @@
+{
+  "_comment": "Gateway match phase durations in seconds. Not original RoS values. Reference only: app/game/rules.py countdown=3, drop_time=8.",
+  "warmup": 3.0,
+  "boarding": 2.0,
+  "flight": 8.0,
+  "play": 0.0
+}

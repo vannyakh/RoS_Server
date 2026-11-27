@@ -1,0 +1,20 @@
+# DtsProp.tryPickUp(INT32, BOOL)
+# Source: bigworld_gateway/logs/server.prev5.log (gateway cleartext client msgs)
+# UI: tap an item in the Nearby pick-up list
+#
+# Framing: msgid 0x81 = 0x80 | exposed_index 1, length var16 (LE), payload = eid u32 + args
+# Entity: DtsProp id 30023 (0x00007547)
+# Args: INT32=1, BOOL=1 (TRUE). Meaning of the INT32 is not in the .def (often 1 in captures).
+
+full_message_hex=
+810900477500000100000001
+
+breakdown=
+81          msgid 0x81 (tryPickUp)
+0900        length 9 (var16 LE)
+47750000    entity id 30023
+01000000    INT32 1
+01          BOOL true
+
+decoded_log=
+[BATTLE] <- DtsProp(30023).tryPickUp args=0100000001

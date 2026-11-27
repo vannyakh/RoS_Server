@@ -10,11 +10,17 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.admin_access import require
 from app.game.original_data import prop_stats
+from app.infrastructure.database import get_db
 from app.services.operator_service import OperatorActor
+from app.services.store_listing_service import StoreListingService
 
 router = APIRouter(prefix="/admin/original", tags=["Original client"])
 
@@ -116,3 +122,66 @@ async def list_supply_boxes(
     names = {r["id"]: r["name"] for r in _lobby()["items"]}
     rows = [b for b in _lobby()["supply"] if (not kind or b["kind"] == kind) and (on_sale is None or b["on_sale"] == on_sale)]
     return [{**b, "item_count": len(b["items"]), "preview": [{"id": i, "name": names.get(i, "")} for i in b["items"][:12]]} for b in rows]
+
+
+# ---- Lobby theme store listings: game default + operator override, honoured by the gateway -----
+class LobbyThemeListingChange(BaseModel):
+    on_sale: bool
+    currency: Literal["diamond", "coin"]
+    price: int = Field(ge=0, le=1_000_000)
+    reason: str = Field(min_length=1, max_length=200)
+
+
+def _listing_matches(row: dict, filters: dict) -> bool:
+    q = filters["q"]
+    if q:
+        needle = q.strip().lower()
+        if needle not in row["name"].lower() and needle not in row["description"].lower() and needle != str(row["id"]) and needle != str(row["goods_id"]):
+            return False
+    for field in ("on_sale", "currency", "overridden", "quality"):
+        if filters[field] is not None and row[field] != filters[field]:
+            return False
+    if filters["in_store"] is not None and (row["goods_id"] is not None) != filters["in_store"]:
+        return False
+    if filters["has_background"] is not None and bool(row["background_url"]) != filters["has_background"]:
+        return False
+    return True
+
+
+@router.get("/lobby-themes")
+async def list_lobby_theme_listings(
+    q: str | None = Query(default=None, max_length=64, description="Name, description, theme id or goods id"),
+    on_sale: bool | None = Query(default=None),
+    currency: Literal["diamond", "coin"] | None = Query(default=None),
+    overridden: bool | None = Query(default=None),
+    in_store: bool | None = Query(default=None, description="true: the client has a mall good for it (goods_id set)"),
+    has_background: bool | None = Query(default=None),
+    quality: int | None = Query(default=None, ge=0, le=10),
+    actor: OperatorActor = Depends(require("store.read")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Every lobby theme with its effective store listing; each filter matches one column."""
+    filters = {"q": q, "on_sale": on_sale, "currency": currency, "overridden": overridden, "in_store": in_store,
+               "has_background": has_background, "quality": quality}
+    rows = [row for row in await StoreListingService(db).listings(actor) if _listing_matches(row, filters)]
+    return {"items": rows, "total": len(rows)}
+
+
+@router.put("/lobby-themes/{theme_id}/listing")
+async def set_lobby_theme_listing(
+    theme_id: int,
+    body: LobbyThemeListingChange,
+    actor: OperatorActor = Depends(require("store.manage")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    return await StoreListingService(db).set_listing(actor, theme_id, body.on_sale, body.currency, body.price, body.reason)
+
+
+@router.delete("/lobby-themes/{theme_id}/listing")
+async def clear_lobby_theme_listing(
+    theme_id: int,
+    reason: str = Query(min_length=1, max_length=200),
+    actor: OperatorActor = Depends(require("store.manage")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    return await StoreListingService(db).clear_listing(actor, theme_id, reason)

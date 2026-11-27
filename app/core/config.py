@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     game_asset_dir: str = ""
     # Diamonds (original-client "yuanbao") a new gateway player starts with.
     gateway_starting_yuanbao: int = 100000
+    # Gold coins (original-client currency id 1) a gateway player starts with (GATEWAY_START_GOLD).
+    gateway_start_gold: int = 10000
     # Season the original client is in; its Stats page "Season" tab reads this season's records.
     gateway_current_season: int = 1
 

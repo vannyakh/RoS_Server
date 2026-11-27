@@ -248,22 +248,33 @@ async def test_admin_player_list_filters_by_client_and_created_date(client, gate
 async def test_items_diamonds_and_outfit_survive_the_next_login(client, gateway_key):
     await client.post("/api/v1/gateway/accounts/resolve", json={"external_uid": "666"}, headers=gateway_key)
 
+    from app.core.config import settings
+
     start = await client.get("/api/v1/gateway/accounts/666/state", headers=gateway_key)
     assert start.status_code == 200
-    assert start.json() == {"yuanbao": 100000, "items": [], "outfit": {"body": [], "wear": [], "theme": 0}, "head_frame": 0}
+    assert start.json() == {
+        "yuanbao": 100000,
+        "items": [],
+        "outfit": {
+            "body": [], "wear": [], "weapon": [], "vehicle": [], "hall_vehicle": [],
+            "show_weapon": [], "show_vehicle": [], "theme": 0, "recent_got": [],
+        },
+        "head_frame": 0,
+        "recent_got": [], "currencies": {"1": settings.gateway_start_gold},
+    }
 
     bought = await client.post(
         "/api/v1/gateway/accounts/666/purchase",
         json={"price": 100, "props": [2007], "reason": "buy:2007"},
         headers=gateway_key,
     )
-    assert bought.json() == {"yuanbao": 99900, "added": [2007]}
+    assert bought.json() == {"yuanbao": 99900, "added": [2007], "recent_got": [2007]}
     drawn = await client.post(
         "/api/v1/gateway/accounts/666/purchase",
         json={"price": 0, "props": [2007, 111897], "reason": "draw:105"},
         headers=gateway_key,
     )
-    assert drawn.json() == {"yuanbao": 99900, "added": [111897]}
+    assert drawn.json() == {"yuanbao": 99900, "added": [111897], "recent_got": [2007, 111897]}
 
     worn = await client.put(
         "/api/v1/gateway/accounts/666/outfit", json={"body": [], "wear": [2007]}, headers=gateway_key
@@ -273,7 +284,26 @@ async def test_items_diamonds_and_outfit_survive_the_next_login(client, gateway_
     again = (await client.get("/api/v1/gateway/accounts/666/state", headers=gateway_key)).json()
     assert again["yuanbao"] == 99900
     assert again["items"] == [{"prop_id": 2007, "number": 2}, {"prop_id": 111897, "number": 1}]
-    assert again["outfit"] == {"body": [], "wear": [2007], "theme": 0}
+    assert again["outfit"]["wear"] == [2007]
+    assert again["outfit"]["theme"] == 0
+    assert again["recent_got"] == [2007, 111897]
+
+
+async def test_gateway_topup_credits_yuanbao_once_per_reference(client, gateway_key):
+    await client.post("/api/v1/gateway/accounts/resolve", json={"external_uid": "808"}, headers=gateway_key)
+    before = (await client.get("/api/v1/gateway/accounts/808/state", headers=gateway_key)).json()["yuanbao"]
+    first = await client.post(
+        "/api/v1/gateway/accounts/808/topup",
+        json={"amount": 90, "reference": "iap.test.6000", "reason": "gateway:topup"},
+        headers=gateway_key,
+    )
+    assert first.status_code == 200 and first.json() == {"yuanbao": before + 90, "replayed": False}
+    repeat = await client.post(
+        "/api/v1/gateway/accounts/808/topup",
+        json={"amount": 90, "reference": "iap.test.6000", "reason": "gateway:topup"},
+        headers=gateway_key,
+    )
+    assert repeat.json() == {"yuanbao": before + 90, "replayed": True}
 
 
 async def test_a_purchase_above_the_balance_changes_nothing(client, gateway_key):
@@ -323,3 +353,26 @@ async def test_profile_and_admin_detail_carry_rank_logo_and_lobby_background(cli
     profile = (await client.get("/api/v1/gateway/accounts/446/profile", headers=gateway_key)).json()
     assert profile["rank_tier"] == "bronze"
     assert profile["rank_logo_url"] == "" and profile["lobby_background_url"] == "" and profile["lobby_theme"] == 0
+
+
+async def test_lobby_theme_buy_and_use_survive_the_next_login(client, gateway_key):
+    await client.post("/api/v1/gateway/accounts/resolve", json={"external_uid": "888"}, headers=gateway_key)
+
+    bought = await client.post(
+        "/api/v1/gateway/accounts/888/purchase",
+        json={"price": 280, "props": [270002], "reason": "mall-multi:10002"},
+        headers=gateway_key,
+    )
+    assert bought.json() == {"yuanbao": 99720, "added": [270002], "recent_got": [270002]}
+
+    used = await client.put(
+        "/api/v1/gateway/accounts/888/outfit",
+        json={"body": [], "wear": [], "theme": 270002},
+        headers=gateway_key,
+    )
+    assert used.status_code == 200
+
+    again = (await client.get("/api/v1/gateway/accounts/888/state", headers=gateway_key)).json()
+    assert again["yuanbao"] == 99720
+    assert {"prop_id": 270002, "number": 1} in again["items"]
+    assert again["outfit"]["theme"] == 270002

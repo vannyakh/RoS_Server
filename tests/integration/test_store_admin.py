@@ -36,6 +36,10 @@ async def test_ledger_summary_catalog_topup_and_refund(client):
     assert summary["top_items"][0]["item"] == "skin field_jacket"
     assert summary["daily"][-1]["coin"] == 200
 
+    currencies = (await client.get("/api/v1/admin/store/currencies", headers=headers)).json()
+    assert {"coin", "diamond", "gold", "yuanbao", "colour_diamond"} <= {row["code"] for row in currencies}
+    assert (await client.get("/api/v1/admin/store/currencies")).status_code == 401
+
     catalog = (await client.get("/api/v1/admin/store/catalog", headers=headers)).json()
     assert next(row for row in catalog if row["code"] == "field_jacket")["sold"] == 1
 

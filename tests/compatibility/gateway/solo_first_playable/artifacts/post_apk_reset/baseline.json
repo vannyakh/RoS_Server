@@ -1,0 +1,12 @@
+{
+    "enterHall":  4,
+    "createBasePlayer(Athlete)":  0,
+    "matchBattleGround":  0,
+    "Account.handshake":  0,
+    "createHallTeam":  0,
+    "getAwardFromMail":  0,
+    "Error handling Athlete":  0,
+    "athleteEnterHall":  1,
+    "queryAvailableActivity":  0,
+    "-\u003e battle: resetEntities":  0
+}

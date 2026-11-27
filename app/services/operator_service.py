@@ -29,6 +29,7 @@ CATALOG: tuple[tuple[str, str], ...] = (
     ("players.economy", "Adjust a player's currency, items, rank and credit"),
     ("assets.manage", "Upload and remove display images in the asset library"),
     ("store.read", "Read store spend, the currency ledger and the skin catalog"),
+    ("store.manage", "Set the price and on-sale state of in-game store listings"),
     ("weapons.read", "Read weapon balance values"),
     ("weapons.manage", "Change weapon damage, fire rate, range and hit-zone multipliers"),
     ("support.read", "Read support cases"),

@@ -1,0 +1,20 @@
+# BattleGroundSpace.openElement(INT32 elemID, INT8 state)
+# Source: bigworld_gateway/logs/server.prev5.log (gateway cleartext client msgs)
+# UI: OPEN button on a door / element (also reproducible via payloads/call_open_element.py)
+#
+# Framing: msgid 0x88 = 0x80 | exposed_index 8, length var16 (LE), payload = eid u32 + args
+# Entity: BattleGroundSpace id 20001 (0x00004e21)
+# Args: elemID=832 (0x00000340), state=1
+
+full_message_hex=
+880900214e00004003000001
+
+breakdown=
+88          msgid 0x88 (openElement)
+0900        length 9 (var16 LE)
+214e0000    entity id 20001
+40030000    INT32 elemID 832
+01          INT8 state 1
+
+decoded_log=
+[BATTLE] <- BattleGroundSpace(20001).openElement args=4003000001

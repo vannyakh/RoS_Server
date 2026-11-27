@@ -1,0 +1,41 @@
+{
+  "_schema": "RO-065 starter loot layout (data only)",
+  "_map_id": 700,
+  "_position_source": "gateway-authored",
+  "_anchor": {
+    "name": "evidenced_default_land_point",
+    "reference": "bigworld_gateway/server/battle/modules/jump.py DEFAULT_LAND_POS",
+    "x": 698.0,
+    "y": -677.0,
+    "z": -373.0,
+    "note": "Not original RoS spawn data. Replace when client map element or spawn tables are extracted."
+  },
+  "_spawn_rule": {
+    "entity_type": "DtsProp",
+    "client_type": 140,
+    "entity_id_base": 30000,
+    "required_create_fields": ["mapID", "propID", "amount"],
+    "optional_create_fields": [
+      "socketHint",
+      "groupID",
+      "campType",
+      "info",
+      "randomRotate",
+      "trainID",
+      "trainPosition"
+    ],
+    "layout": "ring radius 3.0 m around anchor at anchor.y"
+  },
+  "entries": [
+    {"prop_id": 1001, "amount": 1, "x": 701.0, "y": -677.0, "z": -373.0},
+    {"prop_id": 1002, "amount": 1, "x": 700.43, "y": -677.0, "z": -371.24},
+    {"prop_id": 1101, "amount": 1, "x": 698.93, "y": -677.0, "z": -370.15},
+    {"prop_id": 1102, "amount": 1, "x": 697.07, "y": -677.0, "z": -370.15},
+    {"prop_id": 1, "amount": 1, "x": 695.57, "y": -677.0, "z": -371.24},
+    {"prop_id": 5, "amount": 1, "x": 695.0, "y": -677.0, "z": -373.0},
+    {"prop_id": 101, "amount": 1, "x": 695.57, "y": -677.0, "z": -374.76},
+    {"prop_id": 102, "amount": 1, "x": 697.07, "y": -677.0, "z": -375.85},
+    {"prop_id": 1401, "amount": 1, "x": 698.93, "y": -677.0, "z": -375.85},
+    {"prop_id": 1302, "amount": 1, "x": 700.43, "y": -677.0, "z": -374.76}
+  ]
+}

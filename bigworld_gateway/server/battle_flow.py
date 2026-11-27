@@ -4,14 +4,25 @@ countdown -> plane -> jump -> zone timeline.
 ClientInterface wire ids are extract/message_map.txt seq - 21 (id 0 = authenticate):
   7 spaceData (var16), 9 createEntity (var16), 10 updateEntity (var16), 11 enterAoI (fixed 5),
   15 leaveAoI (var16), 0x58 detailedPosition (fixed 30), 0x59 forcedPosition (fixed 36).
-Entity messages: 0x80 | index = client method (see ros_server.client_method_ex),
-0xC0 | index = property update (BigWorld 2.x layout, unverified on this client).
+Entity messages: 0x80 | index = client method (ros_server.client_method_ex),
+0xC0 | index = property update (docs/ENTITY_PROPERTY_UPDATE_FORMAT.md; avatar verified live).
+
+Verified createEntity layout (RO-056 / docs/CREATE_ENTITY_FRAMING.md): u32 id, u16 type,
+3xf32 pos, 3xint8 packed yaw/pitch/roll, u8 flag=0, u8 compression=0, u8 mask_flag=1,
+ceil(N/8) mask bytes, then OTHER/ALL_CLIENTS property values in list order.
+
+Legacy experiment env switches (removed; do not reintroduce):
+  CE_PROPS, CE_PREFIX — early property-stream experiments before the mask layout.
+  CE_INDEX — toggled createEntity vs update property index lists.
+  CE_DIR — alternate float32 direction packing (verified path is packed int8).
+  CE_MASK / CE_ENTER_AOI — always-on verified defaults (mask + enterAoI).
 
 The client reads the zone from Globals.spaceEntity, a BattleGroundSpace entity
 (circleStage, whiteCircleCenter/Radius, blueCircle*), and the plane from the entity whose id is
 the player's planeID (Plane: movePath, moveSpeed, inJumpArea).
 """
 import json
+import math
 import os
 import struct
 
@@ -66,11 +77,12 @@ def other_client_props(entity):
 
 
 def prop_index(entity, name):
-    props = client_props(entity) if os.environ.get("CE_INDEX", "other") == "all" else other_client_props(entity)
-    for i, p in enumerate(props):
+    """Index in the createEntity OTHER/ALL_CLIENTS list (desc+0x88). For 0xC0 updates use
+    update_prop_list instead (desc+0x70)."""
+    for i, p in enumerate(other_client_props(entity)):
         if p[0] == name:
             return i
-    raise KeyError(f"{entity}.{name} is not a client property")
+    raise KeyError(f"{entity}.{name} is not an ALL_CLIENTS/OTHER_CLIENTS property")
 
 
 def _var16(msgid, payload):
@@ -86,47 +98,34 @@ def leave_aoi(eid):
 
 
 def _direction(yaw, pitch, roll):
-    if os.environ.get("CE_DIR", "b3") == "f3":
-        return struct.pack("<3f", yaw, pitch, roll)
-    # PackedYawPitchRoll<false>: angle / pi * 128 as int8
-    import math
+    # PackedYawPitchRoll<false>: angle / pi * 128 as int8 (RO-056 verified).
     q = lambda a: max(-128, min(127, int(round(a / math.pi * 128))))
     return struct.pack("<3b", q(yaw), q(pitch), q(roll))
 
 
 def prop_data(entity, values):
-    """Bytes after the 3 direction bytes of createEntity: [flag u8 = 0][compression u8 = 0][mask flag u8]...
-    CE_MASK=on (default): mask flag 1 + bitmask of ceil(N/8) bytes (bit i set = property i is NOT on the
-    stream, client default) + only the given values in list order.
-    CE_MASK=off: mask flag 0 and every property in list order (defaults where not given)."""
+    """Bytes after the 3 direction bytes of createEntity (verified RO-056 layout):
+    [flag u8 = 0][compression u8 = 0][mask flag u8 = 1][ceil(N/8) mask][selected values].
+    Mask bit i set = property i uses the .def default (not on the stream)."""
     props = other_client_props(entity)
     names = [p[0] for p in props]
     for n in values:
         if n not in names:
             raise KeyError(f"{entity}.{n} is not an ALL_CLIENTS/OTHER_CLIENTS property")
-    head = bytes([0, 0])
-    if os.environ.get("CE_MASK", "on") == "on":
-        mask, body = bytearray((len(props) + 7) // 8), b""
-        for i, (name, typ, flags) in enumerate(props):
-            if name in values:
-                body += values[name]
-            else:
-                mask[i >> 3] |= 1 << (i & 7)
-        return head + b"\x01" + bytes(mask) + body
-    D = defs()
-    body = b"".join(values[n] if n in values else bwdefs.encode_default(D.resolve(t), None)
-                    for n, t, _ in props)
-    return head + b"\x00" + body
+    mask, body = bytearray((len(props) + 7) // 8), b""
+    for i, (name, typ, flags) in enumerate(props):
+        if name in values:
+            body += values[name]
+        else:
+            mask[i >> 3] |= 1 << (i & 7)
+    return bytes([0, 0, 1]) + bytes(mask) + body
 
 
 def create_entity(eid, entity, pos=(0.0, 0.0, 0.0), direction=(0.0, 0.0, 0.0), values=None):
-    """enterAoI + createEntity for a non-player entity."""
+    """enterAoI + createEntity for a non-player entity (verified RO-056 framing)."""
     payload = (struct.pack("<IH", eid, client_type(entity)) + struct.pack("<3f", *pos)
                + _direction(*direction) + prop_data(entity, values or {}))
-    out = b""
-    if os.environ.get("CE_ENTER_AOI", "on") == "on":
-        out += enter_aoi(eid)
-    return out + _var16(MSG_CREATE_ENTITY, payload)
+    return enter_aoi(eid) + _var16(MSG_CREATE_ENTITY, payload)
 
 
 # ---- value encoders -------------------------------------------------------------------------
@@ -307,6 +306,12 @@ def client_call(entity, name, eid, args=b""):
         return _var16(0x80 | i, struct.pack("<I", eid) + args)
     k = i - eff
     return _var16(0x80 | (eff + (k >> 8)), struct.pack("<I", eid) + bytes([k & 0xFF]) + args)
+
+
+def entity_method(eid, entity, name, args=b""):
+    """RO-059 encoder: server -> client method on a non-player (or any) entity.
+    Layout: 0x80|idx var16 + eid u32 + args (extended index when needed)."""
+    return client_call(entity, name, eid, args)
 
 
 def decode_request(msgid, payload):
@@ -502,6 +507,22 @@ def prop_update(entity, eid, name, value):
     nbits = (len(lst) - 1).bit_length()
     path = ((idx << 1) << (16 - nbits - 1)).to_bytes(2, "big")
     return _var16(0xFD, struct.pack("<I", eid) + path + value)
+
+
+def update_property(entity, name, value, eid=None):
+    """RO-059 encoder: property update for entity type ``entity``.
+    ``value`` is the already-encoded property bytes. ``eid`` defaults to AVATAR_ID for
+    BattleGroundAvatar and SPACE_ID for BattleGroundSpace; pass eid for Plane/DtsProp/Robot."""
+    if eid is None:
+        if entity == "BattleGroundAvatar":
+            eid = AVATAR_ID
+        elif entity == "BattleGroundSpace":
+            eid = SPACE_ID
+        elif entity == "Plane":
+            eid = PLANE_ID
+        else:
+            raise TypeError("update_property requires eid for entity type %r" % entity)
+    return prop_update(entity, eid, name, value)
 
 
 def weapon_item(weapon_id):

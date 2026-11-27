@@ -1,6 +1,6 @@
 {
   "version": "1.2.0",
-  "updated_at": "2026-11-19T22:00:00+07:00",
+  "updated_at": "2026-11-27T01:30:00+07:00",
   "assignment_authority": "cto",
   "agents": [
     {
@@ -41,7 +41,17 @@
         ".cursor/rules/**",
         ".cursor/skills/**",
         "tests/management/**",
-        "scripts/validate_agent_registry.py"
+        "scripts/validate_agent_registry.py",
+        "docs/RESTORATION_STATUS.md",
+        "docs/GAME_FUNCTIONS.md",
+        "docs/PROTOCOL_MAPPING.md",
+        "docs/RESOURCE_MAPPING.md",
+        "docs/KNOWN_ISSUES.md",
+        "docs/TEST_REPORT.md",
+        "docs/GAMEPLAY_FUNCTION_AUDIT.md",
+        "docs/PERFORMANCE_AUDIT.md",
+        "docs/PERFORMANCE_BENCHMARK.md",
+        "docs/SOLO_GAMEPLAY_STATUS.md"
       ],
       "restricted_paths": [
         ".env",
@@ -74,7 +84,20 @@
         "bigworld_gateway/server/ros_server.py",
         "bigworld_gateway/server/battle/__init__.py",
         "bigworld_gateway/server/battle/session.py",
-        "tests/compatibility/gateway/session/**"
+        "tests/compatibility/gateway/session/**",
+        "bigworld_gateway/server/athlete_requests.py",
+        "tests/compatibility/gateway/workshop/**",
+        "bigworld_gateway/server/battle/modules/**",
+        "bigworld_gateway/server/battle/data/**",
+        "tests/compatibility/gateway/solo_fill/**",
+        "bigworld_gateway/server/bwdefs.py",
+        "tests/compatibility/gateway/supply/**",
+        "tests/compatibility/gateway/convert/**",
+        "tests/compatibility/gateway/startup/**",
+        "tests/compatibility/gateway/mail/**",
+        "bigworld_gateway/server/account_link.py",
+        "tests/compatibility/gateway/store/**",
+        "tests/unit/test_gateway_store_listings.py"
       ],
       "restricted_paths": [
         ".env",
@@ -101,7 +124,9 @@
       "rule": "12-database-models.mdc",
       "allowed_paths": [
         "app/models/**",
-        "app/infrastructure/database.py"
+        "app/infrastructure/database.py",
+        "app/models/gateway.py",
+        "app/models/__init__.py"
       ],
       "restricted_paths": [
         ".env",
@@ -132,7 +157,8 @@
         "migrations/**",
         "alembic.ini",
         "app/database/**",
-        "data/**"
+        "data/**",
+        "migrations/versions/*_gateway_mails.py"
       ],
       "restricted_paths": [
         ".env",
@@ -164,7 +190,17 @@
         "app/repositories/**",
         "bigworld_gateway/server/account_link.py",
         "docs/API_CONTRACT.md",
-        "tests/integration/test_gateway_match_report.py"
+        "tests/integration/test_gateway_match_report.py",
+        "tests/integration/test_gateway_workshop.py",
+        "scripts/dev_grant.py",
+        "app/api/v1/gateway.py",
+        "app/api/v1/admin_mail.py",
+        "app/api/router.py",
+        "app/schemas/gateway.py",
+        "app/services/gateway_mail_service.py",
+        "tests/integration/test_gateway_mail.py",
+        "app/services/gateway_service.py",
+        "tests/integration/test_gateway_purchase_idempotency.py"
       ],
       "restricted_paths": [
         ".env",
@@ -196,7 +232,10 @@
         "tools/player_simulator/**",
         "tools/test_runner/**",
         "tools/report_generator/**",
-        "docs/testing/**"
+        "docs/testing/**",
+        "docs/SOLO_GAMEPLAY_STATUS.md",
+        "tests/compatibility/gateway/solo_first_playable/**",
+        "tests/compatibility/gateway/store/**"
       ],
       "restricted_paths": [
         ".env",
@@ -290,7 +329,9 @@
         "testdata/reference/**",
         "bigworld_gateway/docs/**",
         "bigworld_gateway/client/frida/**",
-        "bigworld_gateway/server/extract/**"
+        "bigworld_gateway/server/extract/**",
+        "bigworld_gateway/docs/MAIL_FINDINGS.md",
+        "bigworld_gateway/client/frida/payloads/mail_*.py"
       ],
       "restricted_paths": [
         ".env",
@@ -323,7 +364,8 @@
         "docs/reverse-engineering/DATA_FORMATS.md",
         "docs/reverse-engineering/NETWORK_INTERFACE.md",
         "bigworld_gateway/server/battle_flow.py",
-        "bigworld_gateway/server/battle/requests.py"
+        "bigworld_gateway/server/battle/requests.py",
+        "tests/compatibility/gateway/supply/**"
       ],
       "restricted_paths": [
         ".env",
@@ -357,7 +399,10 @@
         "docs/reverse-engineering/UNKNOWN_BEHAVIOR.md",
         "bigworld_gateway/server/battle/timeline.py",
         "bigworld_gateway/server/battle/modules/**",
-        "bigworld_gateway/server/battle/data/**"
+        "bigworld_gateway/server/battle/data/**",
+        "docs/testing/workshop_thunder.md",
+        "docs/testing/hall_start_match.md",
+        "docs/TEST_REPORT.md"
       ],
       "restricted_paths": [
         ".env",
@@ -386,7 +431,15 @@
         "tests/performance/**",
         "tools/load_generator/**",
         "reports/performance/**",
-        "docs/performance/**"
+        "docs/performance/**",
+        "bigworld_gateway/server/supply_cache.py",
+        "bigworld_gateway/server/perf_monitor.py",
+        "bigworld_gateway/tools/bench_gateway.py",
+        "tests/compatibility/gateway/perf/**",
+        "reports/performance/gateway_supply_bench.json",
+        "bigworld_gateway/server/local_store.py",
+        "tests/compatibility/gateway/local_store/**",
+        "reports/performance/gateway_local_store_bench.json"
       ],
       "restricted_paths": [
         ".env",
@@ -415,7 +468,14 @@
         "app/observability/**",
         "tools/function_tracker/**",
         "monitoring/**",
-        "docs/observability/**"
+        "docs/observability/**",
+        "docs/STARTUP_FLOW.md",
+        "docs/SUPPLY_RESTORATION.md",
+        "docs/RESOURCE_LOADING.md",
+        "bigworld_gateway/tools/startup_trace.py",
+        "bigworld_gateway/server/api_client.py",
+        "tests/compatibility/gateway/api_client/**",
+        "reports/performance/gateway_api_client_bench.json"
       ],
       "restricted_paths": [
         ".env",

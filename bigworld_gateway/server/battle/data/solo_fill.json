@@ -1,0 +1,15 @@
+{
+  "_comment": "Gateway-local Solo BR fill for first playable (RO-110). Proposed defaults only — unverified against original matchmaking. Not original Rules of Survival rules.",
+  "human_count": 1,
+  "bot_count": 9,
+  "warmup_seconds": 30,
+  "bot_scale_targets": [29, 59, 119],
+  "map_id": null,
+  "mode_id": null,
+  "remaining_issues": [
+    "map_id for Solo BR selection is unknown until researched (space.json mapID 700 is a separate gateway default)",
+    "mode_id / lobby teamType for Solo matchmaking is unknown until researched",
+    "warmup_seconds (~30) is a proposed gateway value; original mapData.PREPARE_TIME is not traced here",
+    "aliveNum = human_count + bot_count is a gateway convention for RO-069; not claimed as original fill logic"
+  ]
+}

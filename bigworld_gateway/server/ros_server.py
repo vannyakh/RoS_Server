@@ -12,6 +12,15 @@ import account_link  # RoS_Server account link (/api/v1/gateway); off when GATEW
 import bwdefs   # BigWorld .def parser (server/bwdefs.py)
 import profile_screens  # My Page / Stats / Credit replies (server/profile_screens.py)
 import hero_rules  # normal male/female hero only (server/hero_rules.py)
+import perf_monitor  # in-memory per-request latency/bytes (server/perf_monitor.py)
+import supply_cache  # pre-pickled Supply catalogue (server/supply_cache.py)
+import local_store  # cached, atomic saved_accounts.json store (server/local_store.py)
+import pay_goods  # private IAP bid -> diamond amounts (server/pay_goods.py)
+import training_event  # Special Distinction / Brave Book + Spec Train (server/training_event.py)
+
+# Store prices / on-sale state set by operators on RoS_Server (cached; client prices when down).
+athlete_requests.set_listing_source(account_link.store_listings)
+supply_cache.warm()
 
 CERT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "certs")
 HTTPS_PORT = 443
@@ -22,6 +31,10 @@ HTTP_PORT = 80
 GATE_TCP_PORT = 20001
 CURRENT_BF_KEY = None
 CURRENT_SESSION_U32 = None
+
+
+def _env_on(name):
+    return os.environ.get(name, "").strip().lower() in ("1", "on", "yes", "true")
 
 # --- Per-player sessions ---------------------------------------------------------------
 # The login (Mercury) socket and the BaseApp socket of one client use different UDP ports, and
@@ -351,6 +364,10 @@ class RoSHTTPHandler(BaseHTTPRequestHandler):
         print(f"[HTTP POST] Host: {self.headers.get('Host')} | Path: {self.path} | Body: {post_body[:200]}")
 
         # UniSDK Token / Login Verification
+        _pay_products = [
+            {"id": f"com.netease.h45na.{n}", "goods_id": f"com.netease.h45na.{n}", "name": f"{n}0 Diamonds", "price": str(p), "currency": "USD"}
+            for n, p in ((6, "0.99"), (12, "1.99"), (18, "2.99"), (30, "4.99"), (60, "9.99"), (128, "19.99"), (328, "49.99"), (648, "99.99"))
+        ]
         auth_response = {
             "code": 200,
             "status": 1,
@@ -359,7 +376,7 @@ class RoSHTTPHandler(BaseHTTPRequestHandler):
             "username": "LocalPlayer",
             "msg": "ok",
             "data": {},
-            "product_list": [],
+            "product_list": _pay_products,
         }
         body = json.dumps(auth_response).encode("utf-8")
         self.send_response(200)
@@ -394,6 +411,25 @@ async def handle_gate_client(reader, writer):
     finally:
         print(f"[TCP GATE:{port}] closed {addr}")
         writer.close()
+
+def _int_array(ids):
+    """BigWorld ARRAY <of> INT32: u32 count + int32 items."""
+    return struct.pack("<I", len(ids)) + b"".join(struct.pack("<i", int(i)) for i in ids)
+
+
+def _string_array(items):
+    """BigWorld ARRAY <of> STRING: u32 count + each STRING blob."""
+    parts = [struct.pack("<I", len(items))]
+    for item in items:
+        text = item if isinstance(item, bytes) else str(item).encode()
+        parts.append(_bw_blob(text))
+    return b"".join(parts)
+
+
+def _private_topup_on():
+    """When on, Top-up IAP completes on the gateway without a real payment SDK."""
+    return os.environ.get("GATEWAY_PRIVATE_TOPUP", "on").strip().lower() in ("1", "on", "yes", "true")
+
 
 def _bw_blob(b):
     """BigWorld STRING/BLOB: packed length (u8, or 0xFF + u24 LE) + bytes."""
@@ -478,7 +514,7 @@ def athlete_method(name, args, quiet=False):
     = the client's own 'client method count')."""
     global _ATHLETE_METHODS
     if _ATHLETE_METHODS is None:
-        tab = bwdefs.Defs().methods("Athlete", "ClientMethods")
+        tab = bwdefs.shared().methods("Athlete", "ClientMethods")
         _ATHLETE_METHODS = ({m[0]: i for i, m in reversed(list(enumerate(tab)))}, len(tab))
     idx, n = _ATHLETE_METHODS
     eid = int(os.environ.get("ATHLETE_ID", "10002"))
@@ -617,19 +653,37 @@ def _all_action_ids():
     try:
         d = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "extract", "hall_props.json")))
         by_type = d.get("by_type", {})
-        return list(by_type.get("InGameActionAppearanceType", [])), list(by_type.get("InGameActionSuitAppearanceType", []))
+        suit_ids = list(by_type.get("InGameActionSuitAppearanceType", [])) if _env_on("UNLOCK_ACTION_SUITS") else []
+        return list(by_type.get("InGameActionAppearanceType", [])), suit_ids
     except Exception:
         return [], []
 
 
 def _encode_appearance_pkg(bwdefs, ids, capacity):
-    """DTS_APPEARANCE_PACKAGE3: itemList, itemsList(PYTHON array), layoutInfo, _packageCapacity."""
+    """DTS_APPEARANCE_PACKAGE3: itemList, itemsList(PYTHON array), layoutInfo, _packageCapacity.
+    itemList elements are ITEM_DATA3 {uuid BLOB, itemID INT32, number INT32, info PY_DICT}
+    (extract/entities_out/640_ea6b2959.bin). `ids` holds prop ids (count 1) or (prop id, count)
+    pairs; an item with count <= 0 is not sent."""
     import pickle as _pk
+    pairs = [(int(i[0]), int(i[1])) if isinstance(i, (tuple, list)) else (int(i), 1) for i in ids]
+    pairs = [(i, n) for i, n in pairs if n > 0]
     items = b"".join(
-        bwdefs.blob(os.urandom(16)) + struct.pack("<ii", int(i), 1) + bwdefs.blob(_pk.dumps({"ex_tm": 0}, protocol=2))
-        for i in ids)
-    return (struct.pack("<I", len(ids)) + items + struct.pack("<I", 0)
+        bwdefs.blob(os.urandom(16)) + struct.pack("<ii", i, n) + bwdefs.blob(_pk.dumps({"ex_tm": 0}, protocol=2))
+        for i, n in pairs)
+    return (struct.pack("<I", len(pairs)) + items + struct.pack("<I", 0)
             + bwdefs.blob(_pk.dumps({}, protocol=2)) + struct.pack("<I", int(capacity)))
+
+
+def _item_counts(items):
+    """{prop id: count} from state items [{"prop_id", "number"?}]; a missing number is 1
+    (this server's local state keeps ids only), rows of the same prop add up, 0 is dropped."""
+    counts = {}
+    for it in items or []:
+        n = it.get("number", 1)
+        n = 1 if n is None else int(n)
+        pid = int(it["prop_id"])
+        counts[pid] = counts.get(pid, 0) + n
+    return {pid: n for pid, n in counts.items() if n > 0}
 
 
 def _parse_seed_items(env_key):
@@ -652,26 +706,22 @@ def _parse_seed_items(env_key):
 
 ACCOUNTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "saved_accounts.json")
 
+# Store buy count per good (buyMallGood num, buyMultipleMallGood nums[i]): anything outside
+# 1..MALL_MAX_NUM is refused before a prop list is built (the client's quantity picker stays
+# well below it; a crafted num could otherwise build a huge list or a free/negative charge).
+MALL_MAX_NUM = 99
+
 
 def load_accounts():
-    if os.path.exists(ACCOUNTS_FILE):
-        try:
-            with open(ACCOUNTS_FILE, "r", encoding="utf-8-sig") as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"[ACC] load_accounts error: {e}")
-            return {}
-    return {}
+    """saved_accounts.json as a dict (a fresh copy; {} when missing or unreadable). Cached by
+    local_store and re-read when the file changes. ACCOUNTS_FILE is read per call, so tests and
+    tools/startup_trace.py can point it elsewhere or replace this function."""
+    return local_store.load(ACCOUNTS_FILE)
 
 
 def save_account(key, data):
-    accs = load_accounts()
-    accs[str(key)] = data
-    try:
-        with open(ACCOUNTS_FILE, "w", encoding="utf-8") as f:
-            json.dump(accs, f, indent=2)
-    except Exception as e:
-        print(f"[ACC] save_account error: {e}")
+    """Set one key in saved_accounts.json (locked read-modify-write, atomic replace)."""
+    local_store.save(ACCOUNTS_FILE, key, data)
 
 
 def is_new_account():
@@ -706,18 +756,60 @@ def _inventory_key():
     return "inventory:" + str(account_link.current_gid())
 
 
+RECENT_GOT_LIMIT = 20
+
+
+def _merge_recent_got(existing, props):
+    seen, merged = set(), []
+    for prop_id in list(props) + list(existing or []):
+        pid = int(prop_id)
+        if pid in seen:
+            continue
+        seen.add(pid)
+        merged.append(pid)
+        if len(merged) >= RECENT_GOT_LIMIT:
+            break
+    return merged
+
+
+def _resolve_recent_got(state):
+    """recentGotPropIDList for Depot > Recent: saved list, else newest owned appearance items."""
+    if not state:
+        return []
+    appearance = set(_all_appearance_ids())
+    recent = [int(x) for x in (state.get("recent_got") or []) if int(x) in appearance]
+    if not recent:
+        outfit = state.get("outfit") or {}
+        if isinstance(outfit, dict):
+            recent = [int(x) for x in (outfit.get("recent_got") or []) if int(x) in appearance]
+    if recent:
+        return recent[:RECENT_GOT_LIMIT]
+    seen, out = set(), []
+    for row in reversed(state.get("items") or []):
+        pid = int(row["prop_id"] if isinstance(row, dict) else row)
+        if pid in seen or pid not in appearance:
+            continue
+        seen.add(pid)
+        out.append(pid)
+        if len(out) >= RECENT_GOT_LIMIT:
+            break
+    return out
+
+
 def local_state():
     """Owned appearance items, equipped outfit (all lists + lobby theme) and diamonds saved on
     this server (saved_accounts.json), same shape as account_link.get_state():
-    {"yuanbao", "items": [{"prop_id"}], "outfit": {body, wear, weapon, vehicle, theme}}."""
+    {"yuanbao", "items": [{"prop_id"}], "outfit": {body, wear, weapon, vehicle, theme},
+    "recent_got": [prop_id, ...]}."""
     v = load_accounts().get(_inventory_key()) or {}
     return {"yuanbao": int(v.get("yuanbao", int(os.environ.get("ATHLETE_FREE_YUANBAO", "50000"))
                                      + int(os.environ.get("ATHLETE_PAY_YUANBAO", "50000")))),
             "items": [{"prop_id": int(i)} for i in v.get("items", [])],
-            "outfit": dict(v.get("outfit") or {})}
+            "outfit": dict(v.get("outfit") or {}),
+            "recent_got": [int(x) for x in v.get("recent_got", [])[:RECENT_GOT_LIMIT]]}
 
 
-def save_local_state(yuanbao=None, add_items=(), outfit=None):
+def save_local_state(yuanbao=None, add_items=(), outfit=None, recent_got=None):
     v = load_accounts().get(_inventory_key()) or {}
     if yuanbao is not None:
         v["yuanbao"] = int(yuanbao)
@@ -729,6 +821,8 @@ def save_local_state(yuanbao=None, add_items=(), outfit=None):
         v["items"] = owned
     if outfit is not None:
         v["outfit"] = outfit
+    if recent_got is not None:
+        v["recent_got"] = list(recent_got)[:RECENT_GOT_LIMIT]
     save_account(_inventory_key(), v)
 
 
@@ -884,10 +978,37 @@ HALL_TEAM_MAP_GROUP = 1   # const.DtsMapBaseType.MAP_4K (client default, map 700
 LOGIN_STATE = None   # RoS_Server gateway state of the account logging in (account_link.get_state)
 
 
+def hall_theme_id(saved=None):
+    """Lobby theme (hall background) prop id for the player logging in: the saved one, else
+    const.DEFAULT_HALL_THEME_ID 270000 (env HALL_THEME_ID). 0 must never be sent (no theme data)."""
+    if saved is None:
+        saved = ((LOGIN_STATE or {}).get("outfit") or {}).get("theme")
+    return int(saved or 0) or int(os.environ.get("HALL_THEME_ID", "270000"))
+
+
 def login_yuanbao():
     if LOGIN_STATE is not None:
         return int(LOGIN_STATE.get("yuanbao", 0))
     return int(os.environ.get("ATHLETE_FREE_YUANBAO", "50000")) + int(os.environ.get("ATHLETE_PAY_YUANBAO", "50000"))
+
+
+def _seed_currencies():
+    """ATHLETE_SEED_CURRENCY ("1:10000,2:1000") -> [(currency id, amount)]."""
+    out = []
+    for part in os.environ.get("ATHLETE_SEED_CURRENCY", "1:10000,2:1000").strip().split(","):
+        if ":" in part:
+            cid, n = part.split(":", 1)
+            out.append((int(cid), int(n)))
+    return out
+
+
+def login_gold():
+    """Coins (currency 1): RoS_Server balance ("currencies": {"1": n}) when the login state
+    carries it, else the ATHLETE_SEED_CURRENCY value (0 if not seeded)."""
+    cur = (LOGIN_STATE or {}).get("currencies") or {}
+    if str(athlete_requests.GP) in cur or athlete_requests.GP in cur:
+        return int(cur.get(str(athlete_requests.GP), cur.get(athlete_requests.GP)) or 0)
+    return dict(_seed_currencies()).get(athlete_requests.GP, 0)
 
 
 # Outfit list -> (equipped, shown) Athlete properties, and the client methods updating them.
@@ -905,13 +1026,18 @@ def athlete_create_message():
     """createBasePlayer for the hall player: Athlete (client type 56), all 720 BASE_AND_CLIENT
     props in .def parse order (bwdefs.py), defaults + identity overrides."""
     global LOGIN_STATE
-    D = bwdefs.Defs()
+    D = bwdefs.shared()    # .def parse + default encodings once per process; overrides are per call
     LOGIN_STATE = account_link.get_state() if account_link.current() else None
     local = local_state()
     if LOGIN_STATE is None:                        # not linked: this server's own saved state
         LOGIN_STATE = local
-    elif local["outfit"]:                          # RoS_Server keeps body/wear only
+        LOGIN_STATE["head_frame"] = get_local_head_frame()
+    elif local["outfit"]:                        # RoS_Server keeps body/wear only
         LOGIN_STATE["outfit"] = {**local["outfit"], **{k: v for k, v in (LOGIN_STATE.get("outfit") or {}).items() if v}}
+    if LOGIN_STATE is not None:
+        if local.get("recent_got") and not LOGIN_STATE.get("recent_got"):
+            LOGIN_STATE["recent_got"] = local["recent_got"]
+        LOGIN_STATE["recent_got"] = _resolve_recent_got(LOGIN_STATE)
     new_user = is_new_account()
     raw_name = "" if new_user else get_account_name()
     name = raw_name.encode() if raw_name else b""
@@ -943,19 +1069,35 @@ def athlete_create_message():
         "dtsRos2DfdBattleItemPackage": _encode_pkg_items(bwdefs, [], cap, with_weight=True),
     }
     if LOGIN_STATE is not None:                    # owned items and worn outfit from RoS_Server
-        owned = [int(i["prop_id"]) for i in LOGIN_STATE.get("items", [])]
+        owned = list(_item_counts(LOGIN_STATE.get("items", [])).items())    # real counts (Workshop "Own N")
         if owned:
             ov["dtsAppearancePackage"] = _encode_appearance_pkg(bwdefs, owned, 20000)
         arr = lambda ids: struct.pack("<I", len(ids)) + b"".join(struct.pack("<i", int(i)) for i in ids)
-        outfit = LOGIN_STATE.get("outfit") or {}
+        saved = athlete_requests.Outfit.from_dict(LOGIN_STATE.get("outfit") or {})
         for kind, (equipped, shown) in LIST_PROPS.items():
-            if outfit.get(kind):
-                ov[equipped] = ov[shown] = arr(outfit[kind])
+            ids = getattr(saved, kind)
+            if ids:
+                ov[equipped] = arr(ids)
+                ov[shown] = arr(saved.shown(kind))
         if int(LOGIN_STATE.get("head_frame") or 0) > 0:    # worn avatar frame (HeadFrameAppearanceType prop id)
             ov["headFrameTag"] = struct.pack("<i", int(LOGIN_STATE["head_frame"]))
-        if outfit.get("theme"):
-            ov["dtsHallThemeID"] = struct.pack("<i", int(outfit["theme"]))
-        print(f"[*] account state: {LOGIN_STATE.get('yuanbao')} diamonds, {len(owned)} items, outfit={outfit}")
+        if saved.theme:
+            ov["dtsHallThemeID"] = struct.pack("<i", int(saved.theme))
+        if saved.hall_vehicle:             # Depot > Vehicles > Display
+            ov["dtsHallVehicleAppearanceList"] = arr(saved.hall_vehicle)
+        for g, suffix in ((1, "Male"), (2, "Female")):     # Depot > Firearms > Display Firearm
+            weapon, pose = saved.get_out_weapon(g)
+            if weapon:
+                ov["dtsOutGameWeapon" + suffix] = struct.pack("<i", weapon)
+                ov["dtsOutGameWeaponPos" + suffix] = struct.pack("<b", pose)
+        weapon, pose = saved.get_out_weapon(current_gender())
+        if weapon:
+            ov["dtsOutGameWeapon"] = struct.pack("<i", weapon)
+            ov["dtsOutGameWeaponPos"] = struct.pack("<b", pose)
+        recent = _resolve_recent_got(LOGIN_STATE)
+        LOGIN_STATE["recent_got"] = recent
+        ov["recentGotPropIDList"] = _int_array(recent)
+        print(f"[*] account state: {LOGIN_STATE.get('yuanbao')} diamonds, {len(owned)} items, outfit={saved.to_dict()}")
     # Sent only with a portrait: a full element currently misaligns the client's stream by
     # 2 bytes within its first ~70 bytes (SequenceDataType "Invalid size" -> EOFError on the
     # following PYTHON props -> login fails). The default (empty array) works.
@@ -966,11 +1108,17 @@ def athlete_create_message():
     cur_raw = os.environ.get("ATHLETE_SEED_CURRENCY", "1:10000,2:1000").strip()
     if cur_raw:
         curs = []
-        for part in cur_raw.split(","):
-            if ":" not in part:
-                continue
-            cid, n = part.split(":", 1)
+        for cid, n in _seed_currencies():
+            if cid == athlete_requests.GP:         # coins: RoS_Server balance when linked
+                n = login_gold()
+            elif cid == athlete_requests.YUANBAO and LOGIN_STATE is not None:
+                n = login_yuanbao()
             curs.append(struct.pack("<iq", int(cid), int(n)))
+        if athlete_requests.GP not in dict(_seed_currencies()) and \
+                str(athlete_requests.GP) in ((LOGIN_STATE or {}).get("currencies") or {}):
+            curs.append(struct.pack("<iq", athlete_requests.GP, login_gold()))
+        if LOGIN_STATE is not None and athlete_requests.YUANBAO not in {c for c, _ in _seed_currencies()}:
+            curs.append(struct.pack("<iq", athlete_requests.YUANBAO, login_yuanbao()))
         # Supply boxes can be paid in tickets (e.g. Looks Supply: currency 91, Supreme: 214/202).
         # The client checks its own currencyList before it sends a draw, so a missing ticket
         # balance (shown as 0) blocks every ticket draw. Seed each box currency (not diamonds).
@@ -997,6 +1145,60 @@ def athlete_create_message():
     return b"\x05" + struct.pack("<H", len(payload)) + payload
 
 
+# System mail (Athlete iMail; bigworld_gateway/docs/MAIL_FINDINGS.md). RoS_Server owns the mail
+# rows (account_link.list_mails / mail_detail / claim_mail / delete_mail); this side only builds
+# the PYTHON arguments the client unpickles. Text values are str, which pickle protocol 2 writes
+# as unicode, like every other pickled string this gateway sends (mall NAME, lobby data).
+MAIL_PROPS_MAX = 6   # UISystemMail.onLoadMailDetail reads prop_1..prop_6 (xrange(1, 7))
+HEAD_FRAME_TYPE = "HeadFrameAppearanceType"   # avatar frames (extract/hall_props.json by_type)
+
+
+def _mail_text(v):
+    return str(v or "")
+
+
+def mail_list_entry(m):
+    """account_link mail dict -> the dict iChat.onMailUpdate / UISystemMail.refreshMailList read."""
+    return {"mailID": int(m["mail_id"]), "type": int(m.get("type") or 0), "unread": bool(m.get("unread")),
+            "title": _mail_text(m.get("title")), "when": int(m.get("sent_at") or 0),
+            "deadline": int(m.get("deadline") or 0), "mail_abstract": _mail_text(m.get("abstract")),
+            "sender": _mail_text(m.get("sender"))}
+
+
+def mail_props(attachments):
+    """extraInfo["props"]. UNVERIFIED shape: a list of [propID, cnt] pairs (the client's locals
+    are propID, cnt; it reads at most 6). Change only this function after the in-game check."""
+    return [[int(a["prop_id"]), int(a.get("number") or 1)] for a in attachments or []][:MAIL_PROPS_MAX]
+
+
+def mail_extra_info(detail):
+    """extraInfo for onLoadMailDetail. Claimed mails list no props (nothing left to take)."""
+    return {"props": [] if detail.get("claimed") else mail_props(detail.get("attachments")), "unread": False}
+
+
+def mail_content(detail):
+    """Mail body; coins are a currency, not a prop, so an unclaimed gold attachment is named here."""
+    content = _mail_text(detail.get("content"))
+    gold = int(detail.get("gold") or 0)
+    if gold > 0 and not detail.get("claimed"):
+        content += ("\n\n" if content else "") + f"Gold x{gold}"
+    return content
+
+
+def mail_award_ids(props):
+    """onGetAwardFromMail list: each prop id repeated once per copy."""
+    return [int(p["prop_id"]) for p in props or [] for _ in range(max(0, int(p.get("number") or 0)))]
+
+
+def _local_head_frame_key():
+    return "head_frame:" + str(account_link.current_gid())
+
+
+def get_local_head_frame():
+    v = load_accounts().get(_local_head_frame_key())
+    return int(v) if isinstance(v, int) else 0
+
+
 class GateUDP(asyncio.DatagramProtocol):
     def __init__(self, port):
         self.port = port
@@ -1014,11 +1216,23 @@ class GateUDP(asyncio.DatagramProtocol):
         self._ka_gens = {}          # addr -> bumped per BaseApp login; stale keepalive timers stop
         self._supply = {}           # addr -> athlete_requests.SupplyState
         self._wallet = {}           # addr -> athlete_requests.Wallet
+        self._supply_wallet_synced = set()  # addrs that already lifted YB/GP from LOGIN_STATE (guest)
         self._outfit = {}           # addr -> athlete_requests.Outfit
         self._owned_items = {}      # addr -> set of owned appearance prop ids
+        self._owned_counts = {}     # addr -> {prop id: count} (Workshop "Own N")
+        self._recent_got = {}       # addr -> recentGotPropIDList (Depot > Recent), newest first
+        self._cultivate_busy = set()  # addrs with a Workshop compound in flight
+        self._item_convert_times = {}   # addr -> {convertItemID: times already converted this session}
+        self._item_convert_remind = {}  # addr -> {convertItemID: bool} for updateItemConvertRemind
         self._team = {}             # addr -> hall team mode (createHallTeam)
+        self._handoff_bf = {}       # addr -> BF key pinned at matchBattleGround (delayed _enter_battle)
+        from battle.session import HallMatchSession
+        self._hall_match = HallMatchSession(self)
+        self._match_sessions = {}   # addr -> battle.session.MatchSession (in-match seam; RO-058)
         self._in_battle = {}        # addr -> handed to the battle Avatar (Athlete decoding off)
         self._last_bf = {}          # addr -> BF key of the latest packet (for delayed sends)
+        self._pay_history = {}      # addr -> lifetime diamonds credited via private IAP
+        self._training = {}         # addr -> training_event.TrainingState
     def connection_made(self, transport):
         self.transport = transport
     def datagram_received(self, data, addr):
@@ -1229,9 +1443,11 @@ class GateUDP(asyncio.DatagramProtocol):
                     self._hall_entered.pop(addr, None)
                     self._send_enter_hall_calls(addr, bytes(bf_key))
 
-                # In-battle client requests (door open/close, loot pickup): answered by battle_flow.Match
+                # In-battle client requests (door open/close, loot pickup): MatchSession modules
+                # first (RO-058 seam); when no module handles the message, battle_flow.Match runs.
                 if self._in_battle.get(addr):
                     import battle_flow, importlib
+                    from battle.position_sync import try_sync_xyz
                     if os.environ.get("BATTLE_RELOAD", "on") == "on":
                         _mt = os.path.getmtime(battle_flow.__file__)
                         if _mt != getattr(self, "_bf_mtime", _mt):
@@ -1242,8 +1458,16 @@ class GateUDP(asyncio.DatagramProtocol):
                                 _new = self._battle_match(addr)
                                 _new.__dict__.update(_old.__dict__)
                         self._bf_mtime = _mt
+                    session = self._match_session(addr)
                     for m, p in msgs:
+                        if m == 3 and session is not None:
+                            try_sync_xyz(session, p)
                         if m == 3 and hasattr(battle_flow.Match, "on_position"):
+                            handled = session.dispatch_inbound(m, p) if session is not None else None
+                            if handled is not None:
+                                if handled:
+                                    session.enqueue(handled)
+                                continue
                             try:
                                 reply = self._battle_match(addr).on_position(p, time.time(), log=print)
                             except Exception as e:
@@ -1252,6 +1476,11 @@ class GateUDP(asyncio.DatagramProtocol):
                             if reply:
                                 self._send_bundle(addr, reply, self._last_client_seq.get(addr), bytes(bf_key))
                         if 0x80 <= m <= 0xBF:
+                            handled = session.dispatch_inbound(m, p) if session is not None else None
+                            if handled is not None:
+                                if handled:
+                                    session.enqueue(handled)
+                                continue
                             try:
                                 reply = battle_flow.Match.handle(self._battle_match(addr), m, p, log=print)
                             except Exception as e:
@@ -1270,6 +1499,7 @@ class GateUDP(asyncio.DatagramProtocol):
                         # Quit Game: back to the lobby (Athlete), like the tutorial SKIP path
                         print("      [BATTLE] player left the match -> lobby")
                         self._matches.pop(addr, None)
+                        self._end_match_session(addr)
                         self._in_battle[addr] = False
                         self._athlete_sent.pop(addr, None)
                         self._hall_entered.pop(addr, None)
@@ -1324,7 +1554,7 @@ class GateUDP(asyncio.DatagramProtocol):
                     for m, p in msgs:
                         call = athlete_requests.decode(m, p)
                         if call:
-                            body += self._athlete_request(addr, call[0], call[1])
+                            body += self._dispatch_athlete(addr, call[0], call[1])
 
                 # Account.handshake = exposed base method 5 -> msg 0xC5 (confirmed). Answer with
                 # Account client methods (parse order: iProxy 0-10, iQueue 11-12, iActivation 13,
@@ -1620,6 +1850,14 @@ class GateUDP(asyncio.DatagramProtocol):
             for t in [float(x) for x in os.environ.get("APPEARANCE_PUSH", "").split(",") if x.strip()]:
                 asyncio.get_event_loop().call_later(t, self._push_appearance, addr, bytes(bf_key))
 
+    def _dispatch_athlete(self, addr, name, args):
+        """_athlete_request with its latency and reply size recorded in perf_monitor.MONITOR
+        under "Athlete.<name>" (in memory only; no I/O on this path)."""
+        with perf_monitor.MONITOR.measure("Athlete." + name) as m:
+            reply = self._athlete_request(addr, name, args)
+            m.bytes = len(reply or b"")
+        return reply
+
     def _athlete_request(self, addr, name, args):
         """Reply to one decoded Athlete base call. Unknown names are only logged."""
         import time as _t
@@ -1659,34 +1897,79 @@ class GateUDP(asyncio.DatagramProtocol):
             # Supply boxes (draws). Free: no currency check or deduction on this private server.
             supply = self._supply.setdefault(addr, athlete_requests.SupplyState())
             if name == "queryAvailableSupplement":
-                return (athlete_method("onQueryAvailableSupplement", py(athlete_requests.supplement_info())) +
+                # Static catalogue, pickled once per process (supply_cache; same bytes as py()).
+                self._refresh_session_currencies(addr)
+                return (athlete_method("onQueryAvailableSupplement", supply_cache.supplement_info_blob()) +
                         athlete_method("onUpdateFreeLotteryTimeStampDict", py(supply.free_ts) + py(supply.free_times)))
             if name == "openSupplyBoxFree":
                 sid = rd.i32()
+                # Athlete.def has no free-draw failure client method, so a refused free draw
+                # (unknown box, or RoS_Server refuses the grant) sends nothing and records no
+                # free-draw timestamp.
+                if sid not in athlete_requests.supplement_info():
+                    print(f"      [BASEAPP] free draw box {sid}: unknown box, refused")
+                    return b""
                 prizes = athlete_requests.draw(sid, 1)
+                if not self._settle(addr, 0, prizes, f"free:{sid}"):
+                    print(f"      [BASEAPP] free draw box {sid}: refused by RoS_Server, nothing granted")
+                    return b""
                 supply.note_free(sid)
-                self._settle(addr, 0, prizes, f"free:{sid}")
                 print(f"      [BASEAPP] free draw box {sid} -> {prizes}")
                 return (athlete_method("onUpdateFreeLotteryTimeStampDict", py(supply.free_ts) + py(supply.free_times)) +
-                        self._grant_props(prizes) +
+                        self._grant_props(prizes, addr=addr) +
                         athlete_method("onOpenFreeSupplyBox", struct.pack("<i", sid) + py(prizes)))
             if name in ("openSupplyBox", "openMultipleSupplyBox"):
                 multi = name == "openMultipleSupplyBox"
+                self._refresh_session_currencies(addr)
                 sid, currency = rd.i32(), rd.i32()           # 2nd arg: chosen currency id
                 rd.i32_array()                                # cash coupons (ignored)
                 watch_ad = rd.i8() if not multi and rd.i < len(rd.b) else 0
                 price = athlete_requests.draw_price(sid, currency, multi)
-                diamonds = price if currency == athlete_requests.YUANBAO else 0
+                failed = lambda: self._supply_draw_failed(addr, sid, currency, price, multi=multi)
+                # Unknown box, or a currency the box does not list in CURRENCY_ID: refused
+                # (draw_price would price it 0 and hand out a free prize).
+                if currency not in athlete_requests.box_currencies(sid):
+                    print(f"      [BASEAPP] {name} box {sid} currency={currency}: unknown box or currency not accepted")
+                    return failed()
+                YB, GP = athlete_requests.YUANBAO, athlete_requests.GP
+                diamonds = price if currency == YB else 0
+                gold = price if currency == GP else 0
+                ticket = currency not in (YB, GP)
+                wallet = self._session_wallet(addr)
+                if ticket and not wallet.pay(currency, price):
+                    print(f"      [BASEAPP] {name} box {sid}: not enough currency {currency} ({price})")
+                    return failed()
+                if not ticket and wallet.balances.get(currency, 0) < price:
+                    print(f"      [BASEAPP] {name} box {sid}: not enough currency {currency} ({price})")
+                    return failed()
                 prizes = athlete_requests.draw(sid, athlete_requests.multi_count(sid) if multi else 1)
-                if not self._settle(addr, diamonds, prizes, f"draw:{sid}"):
-                    return athlete_method(
-                        "onMultiOpenSupplyBoxFailed" if multi else "onOpenSupplyBoxFailed",
-                        struct.pack("<i", sid) + _bw_blob(b"") + struct.pack("<ii", currency, price) + struct.pack("<I", 0))
+                if not self._settle(addr, diamonds, prizes, f"draw:{sid}", gold=gold):
+                    self._refresh_session_currencies(addr)
+                    if ticket:
+                        wallet.balances[currency] = wallet.balances.get(currency, 0) + price
+                    return failed()
                 print(f"      [BASEAPP] {'multi ' if multi else ''}draw box {sid} currency={currency} price={price} -> {prizes}")
-                calls = (self._diamond_props(addr) if diamonds else b"") + self._grant_props(prizes)
+                # Reply order: balance, then the won items (onAddDtsAppearanceItem +
+                # onUpdateRecentGotPropIDList), then the result screen (onOpen*SupplyBox) last, so
+                # the items are in the package when the result screen shows them.
                 if multi:
-                    return calls + athlete_method("onMultiOpenSupplyBox", struct.pack("<i", sid) + py(prizes))
-                return calls + athlete_method("onOpenSupplyBox", struct.pack("<i", sid) + py(prizes) + bytes([1 if watch_ad else 0]))
+                    final = lambda: athlete_method("onMultiOpenSupplyBox", struct.pack("<i", sid) + py(prizes))
+                else:
+                    final = lambda: athlete_method("onOpenSupplyBox", struct.pack("<i", sid) + py(prizes) +
+                                                   bytes([1 if watch_ad else 0]))
+
+                def _draw_extras():
+                    parts = []
+                    if diamonds:
+                        parts.append(self._diamond_props(addr))
+                    if gold:
+                        parts.append(self._currency_props(addr, 0, gold))
+                    if ticket:
+                        parts.append(self._currency_updated(addr, currency))
+                    parts.append(self._grant_props(prizes, addr=addr))
+                    return b"".join(parts)
+
+                return self._reply_after_settle(f"{name} box {sid}", _draw_extras, final)
 
             # Store (UIMall & co.): the client only enables BUY for goods listed in its
             # availableMallGoodsDict, which these replies fill (extract/mall_goods.json).
@@ -1702,63 +1985,108 @@ class GateUDP(asyncio.DatagramProtocol):
                                       py(athlete_requests.appearance_mall_goods()))
             if name in ("buyMallGood", "buyMallGoodInAppearanceMall"):
                 good, num = rd.i32(), rd.i32()
+                mall_failed = lambda cur=0, amount=0: athlete_method(
+                    "onBuyMallGoodFailed", _bw_blob(b"") + struct.pack("<iiii", good, num, cur, amount)
+                    + struct.pack("<I", 0) + _bw_blob(b""))
+                if not 1 <= num <= MALL_MAX_NUM:
+                    print(f"      [BASEAPP] {name} {good}: num {num} outside 1..{MALL_MAX_NUM}, refused")
+                    return mall_failed()
                 price = athlete_requests.mall_good_price(good, num)
                 prop = athlete_requests.mall_good_prop(good)
                 if price is None or prop is None:
                     print(f"      [BASEAPP] {name} {good}: not a buyable mall good")
-                    return athlete_method("onBuyMallGoodFailed", _bw_blob(b"") + struct.pack("<iiii", good, num, 0, 0)
-                                          + struct.pack("<I", 0) + _bw_blob(b""))
+                    return mall_failed()
                 cur, amount = price
+                # The good's own currency: diamonds or coins (GP). Any other currency (event
+                # coins, tickets...) has no balance on this gateway and is refused.
+                if cur not in (athlete_requests.YUANBAO, athlete_requests.GP):
+                    print(f"      [BASEAPP] {name} {good}: currency {cur} not held by this gateway, refused")
+                    return mall_failed(cur, amount)
                 diamonds = amount if cur == athlete_requests.YUANBAO else 0
-                props = [prop] * max(num, 1)
-                if not self._settle(addr, diamonds, props, f"mall:{good}x{num}"):
-                    print(f"      [BASEAPP] {name} {good}: not enough currency {cur} ({amount})")
-                    return athlete_method("onBuyMallGoodFailed", _bw_blob(b"") + struct.pack("<iiii", good, num, cur, amount)
-                                          + struct.pack("<I", 0) + _bw_blob(b""))
+                gold = amount if cur == athlete_requests.GP else 0
+                props = [prop] * num
+                if not self._settle(addr, diamonds, props, f"mall:{good}x{num}", gold=gold):
+                    print(f"      [BASEAPP] {name} {good}: not enough currency {cur} ({amount}) or refused")
+                    return mall_failed(cur, amount)
                 print(f"      [BASEAPP] {name} {good} x{num} -> prop {prop}, paid {amount} (currency {cur})")
-                return ((self._diamond_props(addr) if diamonds else b"") + self._grant_props(props, force=True) +
-                        athlete_method("onBuyMallGood", struct.pack("<I", len(props)) +
-                                       b"".join(struct.pack("<i", p) for p in props)))
+                final = lambda: athlete_method("onBuyMallGood", struct.pack("<I", len(props)) +
+                                               b"".join(struct.pack("<i", p) for p in props))
+                return self._reply_after_settle(
+                    f"{name} {good}", lambda: self._currency_props(addr, diamonds, gold) +
+                    self._grant_props(props, force=True, addr=addr), final)
 
             # Store multi-buy (e.g. Lobby Theme "Selected n/4" -> BUY): goods[], nums[], coupons[],
             # logStr. One charge for the total; reply like buyMallGood with every granted prop.
             if name == "buyMultipleMallGood":
                 goods, nums, _coupons = rd.i32_array(), rd.i32_array(), rd.i32_array()
                 nums += [1] * (len(goods) - len(nums))
-                total, props, bad = 0, [], []
+                # Each good is charged in its own currency, as single buys are: diamonds and coins
+                # (GP) are totalled separately and settled once; any other currency, a num outside
+                # 1..MALL_MAX_NUM or an unbuyable good fails the whole buy.
+                total, gold, props, bad = 0, 0, [], []
                 for good, num in zip(goods, nums):
-                    price, prop = athlete_requests.mall_good_price(good, num), athlete_requests.mall_good_prop(good)
-                    if price is None or prop is None or price[0] != athlete_requests.YUANBAO:
+                    if not 1 <= num <= MALL_MAX_NUM:
                         bad.append(good)
                         continue
-                    total += price[1]
-                    props += [prop] * max(num, 1)
-                if bad or not props or not self._settle(addr, total, props, f"mall-multi:{goods}"):
-                    print(f"      [BASEAPP] buyMultipleMallGood {goods}: failed (unbuyable {bad}, total {total})")
+                    price, prop = athlete_requests.mall_good_price(good, num), athlete_requests.mall_good_prop(good)
+                    if price is None or prop is None or price[0] not in (athlete_requests.YUANBAO, athlete_requests.GP):
+                        bad.append(good)
+                        continue
+                    if price[0] == athlete_requests.YUANBAO:
+                        total += price[1]
+                    else:
+                        gold += price[1]
+                    props += [prop] * num
+                if bad or not props or not self._settle(addr, total, props, "mall-multi:" + "-".join(str(g) for g in goods),
+                                                        gold=gold):
+                    print(f"      [BASEAPP] buyMultipleMallGood {goods}: failed (unbuyable {bad}, total {total}, coins {gold})")
                     g0 = goods[0] if goods else 0
                     return athlete_method("onBuyMallGoodFailed", _bw_blob(b"") + struct.pack("<iiii", g0, 1, athlete_requests.YUANBAO, total)
                                           + struct.pack("<I", 0) + _bw_blob(b""))
-                print(f"      [BASEAPP] buyMultipleMallGood {goods} -> props {props}, paid {total}")
-                return (self._diamond_props(addr) + self._grant_props(props, force=True) +
-                        athlete_method("onBuyMallGood", struct.pack("<I", len(props)) +
-                                       b"".join(struct.pack("<i", p) for p in props)))
+                print(f"      [BASEAPP] buyMultipleMallGood {goods} -> props {props}, paid {total}, coins {gold}")
+                final = lambda: athlete_method("onBuyMallGood", struct.pack("<I", len(props)) +
+                                               b"".join(struct.pack("<i", p) for p in props))
+                return self._reply_after_settle(
+                    "buyMultipleMallGood", lambda: self._diamond_props(addr) +
+                    self._currency_props(addr, 0, gold) + self._grant_props(props, force=True, addr=addr), final)
 
             # Wardrobe hall-prop buys, paid in the client's own listed currency and price
             # (extract/hallprop_prices.json); the won item is added for the session.
             if name == "buyDtsHallProp":
                 good = rd.i32()
-                price = athlete_requests.hallprop_price(good) if name == "buyDtsHallProp" else None
-                cur, amount = price or (athlete_requests.YUANBAO, 0)
+                if athlete_requests.item_off_sale(good):
+                    print(f"      [BASEAPP] {name} {good}: taken off sale by an operator")
+                    return athlete_method("onBuyMallGoodFailed", _bw_blob(b"") + struct.pack("<iiii", good, 1, 0, 0)
+                                          + struct.pack("<I", 0) + _bw_blob(b""))
+                price = athlete_requests.hallprop_price(good)
+                if price is None:                  # no client price and no listing: not for sale
+                    print(f"      [BASEAPP] {name} {good}: no price, refused")
+                    return athlete_method("onBuyMallGoodFailed", _bw_blob(b"") + struct.pack("<iiii", good, 1, 0, 0)
+                                          + struct.pack("<I", 0) + _bw_blob(b""))
+                cur, amount = price
                 diamonds = amount if cur == athlete_requests.YUANBAO else 0
-                if not self._settle(addr, diamonds, [good], f"buy:{good}"):
-                    print(f"      [BASEAPP] {name} {good}: not enough currency {cur} ({amount})")
+                gold = amount if cur == athlete_requests.GP else 0
+                if cur not in (athlete_requests.YUANBAO, athlete_requests.GP) or not self._settle(
+                        addr, diamonds, [good], f"buy:{good}", gold=gold):
+                    print(f"      [BASEAPP] {name} {good}: not enough currency {cur} ({amount}) or refused")
                     return athlete_method("onBuyMallGoodFailed", _bw_blob(b"") + struct.pack("<iiii", good, 1, cur, amount)
                                           + struct.pack("<I", 0) + _bw_blob(b""))
                 print(f"      [BASEAPP] {name} {good} price={price}")
-                return (self._diamond_props(addr) if diamonds else b"") + self._grant_props([good], force=True) + athlete_method("onBuyMallGood", struct.pack("<Ii", 1, good))
+                return self._reply_after_settle(
+                    f"{name} {good}", lambda: self._currency_props(addr, diamonds, gold) +
+                    self._grant_props([good], force=True, addr=addr),
+                    lambda: athlete_method("onBuyMallGood", struct.pack("<Ii", 1, good)))
 
             # Daily sign-in popup (UIDtsSign) "Claim": the popup stays as a dim mask until this
             # answer arrives. Award per day = client legacyProperties.iterDtsSigninData awardID.
+            pay = self._pay_request(addr, name, rd, py)
+            if pay is not None:
+                return pay
+
+            train = self._training_request(addr, name, rd)
+            if train is not None:
+                return train
+
             if name == "requestDtsSigninAward":
                 import time as _tm
                 day = _tm.strftime("%Y-%m-%d", _tm.gmtime(athlete_requests.game_now()))
@@ -1771,45 +2099,65 @@ class GateUDP(asyncio.DatagramProtocol):
                                       struct.pack("<Ii", 1, award) + struct.pack("<i", level))
 
             if name == "setHasAlreadyShowSupplyID":
-                sid = rd.i32()
+                # Athlete.def declares no arguments, so the server picks the id: this week's box
+                # from the supplement data (athlete_requests.this_week_supply_id: IS_THIS_WEEK,
+                # on sale, lowest id). Any payload bytes are ignored, never read as an id.
+                if args:
+                    print(f"      [BASEAPP] setHasAlreadyShowSupplyID: ignoring {len(args)} unexpected arg bytes")
+                sid = athlete_requests.this_week_supply_id()
                 save_account("supply_push", {"id": sid})
                 print(f"      [BASEAPP] weekly supply push shown: box {sid}")
                 return athlete_method("onUpdateAlreadyShowSupplyID", struct.pack("<i", sid))
 
-            if name == "getOpenMaintenanceFightTipFlag":     # START button asks this first
-                return athlete_method("onGetOpenMaintenanceFightTipFlag", b"\x00" + struct.pack("<i", 0))
+            if name == "setHasAlreadyShowMonthSupply":
+                # No arguments in Athlete.def and no client method that answers it, so it is
+                # only recorded. hasAlreadyShowMonthSupply (childClientPropertyList2) is still
+                # sent with its .def default at login.
+                save_account("supply_month_push", {"shown": True})
+                print("      [BASEAPP] monthly supply push acknowledged")
+                return b""
 
-            # START, then: createHallTeam(mode) -> a one-player team; getReadyForBattleGround ->
-            # ready + matching timer (client iHallTeam.py; BattleMatchState NONE 0 / MATCHING 1 /
-            # ENTERING 2 / PRE_ENTERING 3). Entering the battle itself is not implemented yet.
-            if name == "createHallTeam":
-                mode = rd.i32()
-                self._team[addr] = mode
-                gid = account_link.current_gid()
-                members = struct.pack("<I", 1) + self._hall_team_member(addr)
-                print(f"      [BASEAPP] createHallTeam mode={mode} -> onEnterHallTeam (solo, leader {gid})")
-                return athlete_method("onEnterHallTeam", struct.pack("<iQb", mode, gid, 1) + members +
-                                      struct.pack("<i", HALL_TEAM_MAP_GROUP) + b"\x00\x00")
-            if name == "getReadyForBattleGround":
-                gid = account_link.current_gid()
-                print(f"      [BASEAPP] getReadyForBattleGround -> ready + MATCHING")
-                return (athlete_method("syncReadyState", struct.pack("<QBB", gid, 1, 0)) +
-                        athlete_method("syncMatchState", struct.pack("<hqB", 1, int(athlete_requests.game_now()), 0) + py(None)) +
-                        athlete_method("syncMatchingProgress", struct.pack("<iif", 1, 100, 0.0)))
-            # matchBattleGround(1): "match found" at once -> ENTERING, then hand the client to a
-            # battle Avatar (like BaseEntity.giveClientTo): resetEntities + createBasePlayer +
-            # createCellPlayer; PlayerAvatar.onBecomePlayer loads currentMapID itself.
-            if name == "matchBattleGround":
-                print(f"      [BASEAPP] matchBattleGround -> ENTERING")
-                if os.environ.get("BATTLE_ENTER", "on") == "on":
-                    asyncio.get_event_loop().call_later(float(os.environ.get("BATTLE_DELAY", "3")),
-                                                        self._enter_battle, addr)
-                return athlete_method("syncMatchState", struct.pack("<hqB", 2, int(athlete_requests.game_now()), 0) + py(None))
-            if name in ("notReadyForBattleGround", "cancelMatchBattleGround"):   # timer X sends cancel
-                gid = account_link.current_gid()
-                print(f"      [BASEAPP] {name} -> not ready + NONE")
-                return (athlete_method("syncReadyState", struct.pack("<QBB", gid, 0, 0)) +
-                        athlete_method("syncMatchState", struct.pack("<hqB", 0, 0, 0) + py(None)))
+            # Event / Activity panel (UILimitWelfareController). Opening Season Bounty / Event
+            # sends these queries; with no reply the panel stays blurred and Back never binds.
+            # Empty catalogues: show the shell (tabs) without inventing 2022 event payloads.
+            if name == "queryAvailableActivity":
+                print("      [BASEAPP] queryAvailableActivity -> empty")
+                return (athlete_method("onQueryAvailableActivity", py({})) +
+                        athlete_method("onUpdateActivityRedPointInfo", py({})))
+            if name == "selectActivity":
+                if rd.i + 4 <= len(rd.b):
+                    rd.i32()
+                if rd.i < len(rd.b):
+                    rd.i8()
+                return b""
+            if name == "queryAssistantRedPoint":
+                return athlete_method("onQueryAssistantRedPoint", struct.pack("<i", 0))
+            if name == "selectAssistant":
+                aid = rd.i32() if rd.i + 4 <= len(rd.b) else 0
+                return athlete_method("onSelectAssistant", struct.pack("<i", aid))
+            if name == "queryAvailableAdvertisement":
+                return athlete_method("onQueryAvailableAdvertisement", py({}))
+            if name == "queryAvailableLimitPackage":
+                print("      [BASEAPP] queryAvailableLimitPackage -> empty")
+                return athlete_method("onQueryAvailableLimitPackage", py({}) + py({}) + py({}))
+            if name == "queryAvailableBattleGift":
+                gift_type = rd.i32() if rd.i + 4 <= len(rd.b) else 0
+                return athlete_method(
+                    "onQueryAvailableBattleGift",
+                    struct.pack("<i", gift_type) + py({}) + py({}) + py({}) + py({}))
+            if name == "getBattleGift":
+                return athlete_method("onGetBattleGiftFailed", _bw_blob(b"I_NOT_AVAILABLE"))
+            if name == "buyLimitPackageWithCurrency":
+                currency = rd.i32() if rd.i + 4 <= len(rd.b) else 0
+                pkg = rd.i32() if rd.i + 4 <= len(rd.b) else 0
+                return athlete_method(
+                    "onBuyLimitPackageFailed",
+                    _bw_blob(b"I_NOT_AVAILABLE") + struct.pack("<iiii", currency, pkg, 0, 0))
+
+            hall = self._hall_match.handle(
+                name, rd, addr, athlete_method=athlete_method, py=py, hall_team_member=self._hall_team_member)
+            if hall is not None:
+                return hall
 
             # Equip (clothes, face/hair/decorations, weapon & vehicle skins, lobby theme, emojis), as the
             # client's DtsAppearance.<type>.equipAppearanceRequestServer does it.
@@ -1822,6 +2170,9 @@ class GateUDP(asyncio.DatagramProtocol):
                 kind = outfit.equip(pid)
                 if not kind:
                     app_type = athlete_requests.appearance_type(pid)
+                    if app_type == HEAD_FRAME_TYPE:     # avatar frame: Athlete.headFrameTag
+                        return (self._set_head_frame(addr, pid, "equipAppearance") +
+                                athlete_method("onNotifyEquipedAppearance", struct.pack("<i", pid)))
                     print(f"      [BASEAPP] equipAppearance {pid}: type not tracked ({app_type})")
                     if app_type == "EmojiType":
                         return (athlete_method("onUpdateDtsEmojiID", struct.pack("<i", pid)) +
@@ -1831,6 +2182,57 @@ class GateUDP(asyncio.DatagramProtocol):
                 print(f"      [BASEAPP] equipAppearance {pid} ({kind}) -> {outfit.to_dict()}")
                 return self._outfit_calls(outfit, kind) + athlete_method("onNotifyEquipedAppearance", struct.pack("<i", pid))
 
+            # Depot > Workshop vehicle skin upgrade: (INT32 cultivateID, INT32 cultivateRuleID,
+            # INT32 compoundType), e.g. 1b230200 19230200 00000000 = (140059, 140057, 0).
+            if name == "appearanceCultivateCompound":
+                cultivate_id, rule_id, compound_type = rd.i32(), rd.i32(), rd.i32()
+                return self._cultivate_compound(addr, cultivate_id, rule_id, compound_type)
+
+            # Depot > Convert repeats (iItemConvert): duplicate appearance items -> shard currencies.
+            if name == "queryAvailableConvertItem":
+                return self._item_convert_query(addr, rd.i32())
+            if name == "convertItem":
+                convert_id, times = rd.i32(), rd.i32()
+                return self._item_convert_do(addr, convert_id, times)
+            if name == "updateItemConvertRemind":
+                convert_id, flag = rd.i32(), rd.i8()
+                self._item_convert_remind.setdefault(addr, {})[int(convert_id)] = bool(flag)
+                return athlete_method("onUpdateItemConvertRemind",
+                                      py(dict(self._item_convert_remind[addr])))
+
+            # System mail (iMail): list, detail, claim attachments, delete.
+            if name in ("requestMails", "requestMailDetail", "getAwardFromMail", "deleteMail"):
+                return self._mail_request(addr, name, rd)
+
+            # Depot > Vehicles > Display: the vehicle skin shown beside the player in the lobby.
+            # Depot > Firearms > Display Firearm: setOutGameWeapon(charType, weapon skin, pose);
+            # (0, 0, 0) clears it. The lobby hero holds dtsOutGameWeapon (one per gender).
+            if name == "setOutGameWeapon":
+                char, weapon, pose = rd.i32(), rd.i32(), rd.i8()
+                gender = hero_rules.hero_gender(char) if char else current_gender()
+                outfit = self._session_outfit(addr)
+                if not outfit.set_out_weapon(gender, weapon, pose):
+                    print(f"      [BASEAPP] setOutGameWeapon {weapon}: not a weapon skin")
+                    return b""
+                self._save_outfit(outfit)
+                print(f"      [BASEAPP] setOutGameWeapon char={char} weapon={weapon} pose={pose} -> {outfit.out_weapon}")
+                return athlete_method("onUpdateOutGameWeapon", struct.pack("<ib", weapon, pose))
+
+            if name in ("setDtsHallVehicleAppearance", "cancelDtsHallVehicleAppearance"):
+                pid = rd.i32()
+                outfit = self._session_outfit(addr)
+                if name == "setDtsHallVehicleAppearance":
+                    if not outfit.set_hall_vehicle(pid):
+                        print(f"      [BASEAPP] {name} {pid}: not a vehicle skin")
+                        return b""
+                else:
+                    outfit.cancel_hall_vehicle(pid)
+                outfit.sync_hall_vehicle_show()
+                self._save_outfit(outfit)
+                print(f"      [BASEAPP] {name} {pid} -> hall vehicles {outfit.hall_vehicle}")
+                return (athlete_method("onUpdateHallVehicleAppearanceList", _int_array(outfit.hall_vehicle)) +
+                        self._show_list_calls("vehicle", outfit.shown("vehicle")))
+
             if name == "unloadAppearance":
                 pid = rd.i32()
                 app_type = athlete_requests.appearance_type(pid)
@@ -1838,6 +2240,8 @@ class GateUDP(asyncio.DatagramProtocol):
                 calls = athlete_method("onNotifyUnloadAppearance", struct.pack("<i", pid))
                 if app_type == "EmojiType":
                     calls += athlete_method("onUpdateDtsEmojiID", struct.pack("<i", 0))
+                if app_type == HEAD_FRAME_TYPE and int((LOGIN_STATE or {}).get("head_frame") or 0) in (0, pid):
+                    calls = self._set_head_frame(addr, 0, "unloadAppearance") + calls
                 return calls
 
             # Clothes suits (Depot > SET): put on = show every piece; the pieces you own are worn.
@@ -1913,6 +2317,8 @@ class GateUDP(asyncio.DatagramProtocol):
                     return b""
                 shown = outfit.shown(kind)
                 print(f"      [BASEAPP] tryOnAppearance {pid} ({kind}) -> shown {shown}")
+                if kind in ("weapon", "vehicle"):
+                    self._save_outfit(outfit)
                 return self._show_list_calls(kind, shown)
             if name == "tryOffAppearance":
                 pid = rd.i32()
@@ -1924,8 +2330,11 @@ class GateUDP(asyncio.DatagramProtocol):
                 return self._show_list_calls(kind, outfit.shown(kind))
             if name == "cancelTryOnAllRequest":
                 outfit = self._session_outfit(addr)
-                outfit.cancel_try_on()
-                return b"".join(self._show_list_calls(k, outfit.shown(k)) for k in outfit.LISTS)
+                # Leaving Depot drops clothes preview only; lobby firearm/vehicle display stays.
+                outfit.show_body = None
+                outfit.show_wear = None
+                return (self._show_list_calls("body", outfit.shown("body")) +
+                        self._show_list_calls("wear", outfit.shown("wear")))
 
             # My Page / Stats / Credit screens (server/profile_screens.py), from RoS_Server's profile.
             if name in PROFILE_REQUESTS:
@@ -1976,8 +2385,9 @@ class GateUDP(asyncio.DatagramProtocol):
 
     @staticmethod
     def _save_outfit(outfit):
-        save_local_state(outfit=outfit.to_dict())
-        if account_link.current() and not account_link.set_outfit(outfit.body, outfit.wear):
+        blob = outfit.to_dict()
+        save_local_state(outfit=blob)
+        if account_link.current() and not account_link.set_outfit(blob):
             print("      [ACC-LINK] outfit not saved to RoS_Server")
 
     def _owned(self, addr):
@@ -1985,6 +2395,17 @@ class GateUDP(asyncio.DatagramProtocol):
         if addr not in self._owned_items:
             self._owned_items[addr] = {int(i["prop_id"]) for i in (LOGIN_STATE or {}).get("items", [])}
         return self._owned_items[addr]
+
+    def _counts(self, addr):
+        """{prop id: count} this account owns (login state counts + bought/won/crafted since)."""
+        if addr not in self._owned_counts:
+            self._owned_counts[addr] = _item_counts((LOGIN_STATE or {}).get("items", []))
+        return self._owned_counts[addr]
+
+    def _add_counts(self, addr, props):
+        counts = self._counts(addr)
+        for p in props:
+            counts[int(p)] = counts.get(int(p), 0) + 1
 
     @staticmethod
     def _mall_py(goods):
@@ -2036,7 +2457,7 @@ class GateUDP(asyncio.DatagramProtocol):
             print(f"      [BASEAPP] requireCreditReward -> {awards}")
             after = {"credit": claimed.get("credit") or (profile or {}).get("credit")}
             _score, status, weeks, gifts, _rows = profile_screens.credit(after)
-            return (self._grant_props(awards) + athlete_method("requireCreditRewardCB", py(awards)) +
+            return (self._grant_props(awards, addr=addr) + athlete_method("requireCreditRewardCB", py(awards)) +
                     athlete_method("syncCreditStatus", struct.pack("<ii", status, weeks) + py(gifts)))
         return b""
 
@@ -2046,36 +2467,513 @@ class GateUDP(asyncio.DatagramProtocol):
         total = self._session_wallet(addr).balances.get(athlete_requests.YUANBAO, 0)
         return athlete_method("onYBUpdated", struct.pack("<qqi", total, 0, 0))
 
+    def _credit_yuanbao(self, addr, amount, reference, reason):
+        """Add diamonds locally or on RoS_Server. Returns False when linked and the API refuses."""
+        wallet = self._session_wallet(addr)
+        yb = athlete_requests.YUANBAO
+        amount = int(amount)
+        if account_link.current():
+            result = account_link.topup(amount, reference, reason)
+            if not result:
+                print(f"      [ACC-LINK] topup {reference}: RoS_Server unreachable")
+                return False
+            if "_error" in result:
+                print(f"      [ACC-LINK] topup {reference}: refused ({result.get('_error')})")
+                return False
+            balance = int(result["yuanbao"])
+            wallet.balances[yb] = balance
+            global LOGIN_STATE
+            if LOGIN_STATE is not None:
+                LOGIN_STATE["yuanbao"] = balance
+            return True
+        wallet.balances[yb] = wallet.balances.get(yb, 0) + amount
+        save_local_state(yuanbao=wallet.balances[yb])
+        return True
+
+    def _complete_private_pay(self, addr, bid):
+        """Simulate a successful IAP: onRequirePayOrder then onConfirmPayOrder + balance updates."""
+        import uuid as _uuid
+        ingot, bonus = pay_goods.diamonds_for_bid(bid)
+        total = ingot + bonus
+        sn = _uuid.uuid4().hex
+        ref = f"iap.{account_link.ledger_reason(bid)[:24]}.{sn[:12]}"
+        if not self._credit_yuanbao(addr, total, ref, f"topup:{bid}"):
+            return athlete_method(
+                "onConfirmPayOrder",
+                b"\x00" + _bw_blob(sn.encode()) + struct.pack("<ii", 0, 0) + _string_array([bid]),
+            )
+        self._pay_history[addr] = self._pay_history.get(addr, 0) + total
+        print(f"      [BASEAPP] private IAP bid={bid!r} +{total} (ingot={ingot} bonus={bonus})")
+        return (
+            athlete_method("onRequirePayOrder", _bw_blob(bid.encode()) + _bw_blob(sn.encode()) + _bw_blob(b""))
+            + athlete_method(
+                "onConfirmPayOrder",
+                b"\x01" + _bw_blob(sn.encode()) + struct.pack("<ii", ingot, bonus) + _string_array([bid]),
+            )
+            + self._diamond_props(addr)
+            + athlete_method("onAddHistoryPayGoodsIDs", _bw_blob(bid.encode()))
+            + athlete_method("onHistoryPayedYuanbaoUpdated", struct.pack("<i", self._pay_history[addr]))
+        )
+
+    def _pay_request(self, addr, name, rd, py):
+        """iPay Top-up handlers (General, Special Offer, Lucky Club, Bargain, Timed Offers)."""
+        if name == "checkPurchaseLimitAndTime":
+            bid = rd.string()
+            return athlete_method("onCheckPurchaseLimitAndTime", _bw_blob(bid.encode()))
+        if name == "requestRealNameAuthenCheckBeforeRequsetingPayGoods":
+            goods_id = rd.string()
+            reply = athlete_method(
+                "onRequestRealNameAuthenCheckBeforeRequsetingPayGoods",
+                _bw_blob(goods_id.encode()) + b"\x00",
+            )
+            if _private_topup_on():
+                reply += self._complete_private_pay(addr, goods_id)
+            return reply
+        if name == "queryPayExtDayFirstFlags":
+            return athlete_method("onPayExtDayFirstFlags", py({}))
+        if name == "querySumCash":
+            return athlete_method("onQuerySumCash", struct.pack("<i", 0))
+        if name == "queryAvailblePayRebateAwards":
+            return athlete_method("onQueryAvailblePayRebateAwards", py({}) + py({}) + struct.pack("<i", 0))
+        if name == "queryAvailbleMonthPayRebateAwards":
+            return athlete_method("onQueryAvailbleMonthPayRebateAwards", py({}) + py({}) + struct.pack("<i", 0))
+        if name == "getPayRebateAward":
+            rd.i32()
+            return athlete_method("onGetPayRebateAward", _int_array([]))
+        if name == "getMonthPayRebateAward":
+            rd.i32()
+            return athlete_method("onGetMonthPayRebateAward", _int_array([]))
+        if name in ("getFirstPayedAwards", "getNewFirstPayedAwards", "getNewFirstPayedAccumulateAwards"):
+            return athlete_method("onGetPayRebateAward", _int_array([]))
+        return None
+
+    def _training_request(self, addr, name, rd):
+        """Brave Book + Spec Train (Special Distinction)."""
+        if name not in training_event.TRAINING_METHODS:
+            return None
+
+        def log(msg):
+            print(f"      [BASEAPP] {msg}")
+
+        state = self._training.setdefault(addr, training_event.TrainingState())
+
+        def settle(diamonds, props, reason):
+            return self._settle(addr, int(diamonds), props, reason)
+
+        reply = training_event.handle_training(
+            name,
+            rd,
+            state=state,
+            athlete_method=athlete_method,
+            settle=settle,
+            int_array=_int_array,
+            log=log,
+        )
+        if (
+            name == "requestBuyingBraveBookPass"
+            and reply
+            and not training_event.free_brave_book_pass()
+            and training_event.brave_book_pass_diamonds()
+        ):
+            reply = self._diamond_props(addr) + reply
+        return reply
+
+    def _refresh_session_currencies(self, addr):
+        """Re-read yuanbao/coins from LOGIN_STATE before Supply draws.
+
+        The client shows currencyList from createBasePlayer; the session Wallet is created lazily
+        and can lag behind RoS_Server after IAP/top-up or a flaky first API touch. Stale local
+        balances made the first Supreme Supply draw fail while retry succeeded.
+        """
+        global LOGIN_STATE
+        linked = account_link.current()
+        if linked:
+            fresh = account_link.get_state()
+            if fresh:
+                LOGIN_STATE = fresh
+        wallet = self._session_wallet(addr)
+        YB, GP = athlete_requests.YUANBAO, athlete_requests.GP
+        if linked:
+            wallet.balances[YB] = login_yuanbao()
+            wallet.balances[GP] = login_gold()
+        elif addr not in self._supply_wallet_synced:
+            wallet.balances[YB] = max(int(wallet.balances.get(YB, 0)), login_yuanbao())
+            wallet.balances[GP] = max(int(wallet.balances.get(GP, 0)), login_gold())
+            self._supply_wallet_synced.add(addr)
+        n_tickets = int(os.environ.get("ATHLETE_SEED_TICKETS", "999"))
+        if n_tickets > 0:
+            for cid in athlete_requests.supply_ticket_currencies():
+                wallet.balances[cid] = max(int(wallet.balances.get(cid, 0)), n_tickets)
+
+    def _supply_draw_failed(self, addr, sid, currency, price, *, multi=False):
+        """onOpen*SupplyBoxFailed plus a balance resync so the client does not show have/need drift."""
+        failed_call = athlete_method(
+            "onMultiOpenSupplyBoxFailed" if multi else "onOpenSupplyBoxFailed",
+            struct.pack("<i", sid) + _bw_blob(b"") + struct.pack("<ii", currency, price) + struct.pack("<I", 0),
+        )
+        YB, GP = athlete_requests.YUANBAO, athlete_requests.GP
+        sync = b""
+        if currency == YB:
+            sync = self._diamond_props(addr)
+        elif currency == GP:
+            sync = athlete_method(
+                "onCurrencyUpdated",
+                struct.pack("<iqi", GP, self._session_wallet(addr).balances.get(GP, 0), 0),
+            )
+        else:
+            sync = self._currency_updated(addr, currency)
+        return failed_call + sync
+
     def _session_wallet(self, addr):
-        """Diamonds: RoS_Server balance loaded at login, else the ATHLETE_*_YUANBAO defaults."""
+        """Diamonds and coins (currency 1): RoS_Server balances loaded at login, else the
+        ATHLETE_*_YUANBAO / ATHLETE_SEED_CURRENCY defaults."""
         if addr not in self._wallet:
-            self._wallet[addr] = athlete_requests.Wallet({athlete_requests.YUANBAO: login_yuanbao()})
+            bal = dict(_seed_currencies())
+            bal[athlete_requests.YUANBAO] = login_yuanbao()
+            bal[athlete_requests.GP] = login_gold()
+            n_tickets = int(os.environ.get("ATHLETE_SEED_TICKETS", "999"))
+            if n_tickets > 0:
+                for cid in athlete_requests.supply_ticket_currencies():
+                    bal.setdefault(cid, n_tickets)
+            self._wallet[addr] = athlete_requests.Wallet(bal)
+        else:
+            n_tickets = int(os.environ.get("ATHLETE_SEED_TICKETS", "999"))
+            if n_tickets > 0:
+                bal = self._wallet[addr].balances
+                for cid in athlete_requests.supply_ticket_currencies():
+                    bal.setdefault(cid, n_tickets)
         return self._wallet[addr]
+
+    def _currency_updated(self, addr, currency):
+        wallet = self._session_wallet(addr)
+        return athlete_method(
+            "onCurrencyUpdated",
+            struct.pack("<iqi", int(currency), int(wallet.balances.get(int(currency), 0)), 0))
+
+    def _item_convert_query(self, addr, classify):
+        """Athlete.queryAvailableConvertItem -> onQueryAvailableConvertItem."""
+        py = athlete_requests.py
+        counts = self._counts(addr)
+        catalog = athlete_requests.build_classified_convert_catalog(counts, classify)
+        times = dict(self._item_convert_times.setdefault(addr, {}))
+        remind = dict(self._item_convert_remind.setdefault(addr, {}))
+        n = sum(len(v) for v in catalog.values())
+        print(f"      [BASEAPP] queryAvailableConvertItem classify={classify} -> {n} convert rows")
+        return athlete_method(
+            "onQueryAvailableConvertItem",
+            struct.pack("<i", int(classify)) + py(catalog) + py(times) + py(remind))
+
+    def _item_convert_do(self, addr, convert_id, times):
+        """Athlete.convertItem -> onConvertItem or onConvertItemFailed."""
+        py = athlete_requests.py
+        counts = self._counts(addr)
+        used = self._item_convert_times.setdefault(addr, {}).get(int(convert_id), 0)
+        plan = athlete_requests.plan_item_convert(convert_id, times, counts, used)
+        if not plan["ok"]:
+            print(f"      [BASEAPP] convertItem {convert_id} x{times} refused ({plan['reason']})")
+            return athlete_method("onConvertItemFailed", _bw_blob(b"convert refused"))
+        pid, n = plan["consume"]
+        counts[pid] = counts.get(pid, 0) - n
+        if counts[pid] <= 0:
+            del counts[pid]
+            self._owned(addr).discard(pid)
+        wallet = self._session_wallet(addr)
+        calls = athlete_method("onDelDtsAppearanceFoldedItem", struct.pack("<ii", pid, n))
+        for cid, amount in plan["grants"]:
+            wallet.balances[cid] = wallet.balances.get(cid, 0) + amount
+            calls += athlete_method("onCurrencyUpdated", struct.pack("<iqi", cid, wallet.balances[cid], 0))
+        self._item_convert_times[addr][int(convert_id)] = plan["used_times"]
+        times_blob = dict(self._item_convert_times[addr])
+        print(f"      [BASEAPP] convertItem {convert_id} x{n} -> grants {plan['grants']}")
+        # onConvertItem(INT32 convertItemID, ARRAY<INT32> propIDs) — one array entry per stack
+        # converted (client .def); UINT32 count + one id was wrong and left CONVERT hung.
+        return (calls + athlete_method("onUpdateConvertTimes", py(times_blob)) +
+                athlete_method("onConvertItem", struct.pack("<i", int(convert_id)) + _int_array([pid] * n)))
 
     def _session_outfit(self, addr):
         if addr not in self._outfit:
             self._outfit[addr] = athlete_requests.Outfit.from_dict((LOGIN_STATE or {}).get("outfit"))
         return self._outfit[addr]
 
-    def _settle(self, addr, diamonds, props, reason):
-        """Charge `diamonds` and record `props` as owned. RoS_Server is the source of truth when
-        linked (one transaction; refuses when the balance is too low); otherwise session only."""
+    def _settle(self, addr, diamonds, props, reason, gold=0):
+        """Charge `diamonds` (currency 2) and `gold` coins (currency 1, GP) and record `props` as
+        owned. Returns True when charged and granted, False when nothing changed.
+
+        Linked: RoS_Server is the source of truth and applies each request in one transaction.
+        Diamonds go through POST .../purchase with a fresh request_id (a retried request is
+        replayed, not charged twice). Coins go through POST .../workshop/compound (the only
+        RoS_Server path that spends gold; idempotent on request_id) with nothing consumed and
+        `props` added. A buy that needs both currencies, an unreachable RoS_Server, or a refusal
+        returns False: nothing is granted locally, so the account cannot diverge.
+        Not linked: the session wallet pays; diamonds and items are saved to saved_accounts.json
+        ("inventory:<gid>"). The saved diamond balance is re-read first, so one account on two
+        addresses cannot spend the same diamonds twice. Coins are not saved locally (session
+        only), as for the Workshop."""
+        import uuid as _uuid
         wallet = self._session_wallet(addr)
+        YB, GP = athlete_requests.YUANBAO, athlete_requests.GP
+        diamonds, gold = int(diamonds or 0), int(gold or 0)
         if account_link.current():
-            result = account_link.purchase(diamonds, props, reason)
-            if result and "_error" in result:
+            request_id = _uuid.uuid4().hex
+            if diamonds and gold:
+                print(f"      [ACC-LINK] {reason}: diamonds and coins in one buy are not supported when linked, refused")
                 return False
-            if result:
-                wallet.balances[athlete_requests.YUANBAO] = int(result["yuanbao"])
-                self._owned(addr).update(int(p) for p in props)
-                return True
-            print(f"      [ACC-LINK] {reason}: RoS_Server unreachable, not saved")
-        if diamonds and not wallet.pay(athlete_requests.YUANBAO, diamonds):
+            if gold:
+                result = account_link.workshop_compound(request_id, [], [], [(GP, gold)],
+                                                        _item_counts([{"prop_id": int(p)} for p in props]).items(),
+                                                        reason)
+            else:
+                result = account_link.purchase(diamonds, props, reason, request_id=request_id)
+            if not result:
+                print(f"      [ACC-LINK] {reason}: RoS_Server unreachable, refused (request_id={request_id})")
+                return False
+            if "_error" in result:
+                print(f"      [ACC-LINK] {reason}: refused by RoS_Server ({result.get('_error')})")
+                return False
+            self._owned(addr).update(int(p) for p in props)
+            self._add_counts(addr, props)
+            if gold:
+                counts = self._counts(addr)
+                for it in result.get("items") or []:          # RoS_Server's counts win
+                    counts[int(it["prop_id"])] = int(it.get("number") or 0)
+                for cid, amount in (result.get("currencies") or {}).items():
+                    wallet.balances[int(cid)] = int(amount)
+            else:
+                wallet.balances[YB] = int(result["yuanbao"])
+                if result.get("recent_got") is not None:
+                    self._recent_got[addr] = [int(x) for x in result["recent_got"]]
+            if result.get("replayed"):
+                print(f"      [ACC-LINK] {reason}: replayed by RoS_Server (request_id={request_id})")
+            return True
+        saved = load_accounts().get(_inventory_key()) or {}
+        if isinstance(saved, dict) and "yuanbao" in saved:
+            wallet.balances[YB] = int(saved["yuanbao"])
+        if wallet.balances.get(YB, 0) < diamonds or wallet.balances.get(GP, 0) < gold:
             return False
+        if diamonds:
+            wallet.pay(YB, diamonds)
+        if gold:
+            wallet.pay(GP, gold)
         # Not linked: keep the purchase on this server (saved_accounts.json "inventory:<gid>").
         self._owned(addr).update(int(p) for p in props)
-        save_local_state(yuanbao=wallet.balances.get(athlete_requests.YUANBAO, 0), add_items=props)
+        self._add_counts(addr, props)
+        save_local_state(yuanbao=wallet.balances.get(YB, 0), add_items=props)
         return True
+
+    def _reply_after_settle(self, tag, build, final):
+        """Reply bytes after a successful _settle: build() (balance / item / recent-got updates)
+        followed by final() (the client's result method). The player has been charged, so an
+        error while building the extras is logged and the result method is still sent."""
+        try:
+            extras = build()
+        except Exception as e:
+            print(f"      [BASEAPP] {tag}: reply extras failed after settle ({type(e).__name__}: {e}); sending result only")
+            extras = b""
+        return extras + final()
+
+    def _currency_props(self, addr, diamonds, gold):
+        """Balance updates for a settled buy: onYBUpdated for diamonds, onCurrencyUpdated for coins."""
+        calls = self._diamond_props(addr) if diamonds else b""
+        if gold:
+            calls += athlete_method("onCurrencyUpdated", struct.pack(
+                "<iqi", athlete_requests.GP, self._session_wallet(addr).balances.get(athlete_requests.GP, 0), 0))
+        return calls
+
+    def _cultivate_compound(self, addr, cultivate_id, rule_id, compound_type):
+        """Depot > Workshop upgrade (Athlete.appearanceCultivateCompound). Checks the rule
+        against this session's counts and coins (athlete_requests.plan_cultivate_compound), then:
+        linked -> account_link.workshop_compound (RoS_Server re-checks and applies it in one
+        transaction, idempotent on request_id); not linked -> session state plus
+        save_local_state(add_items=[target]). Local-mode limits: saved_accounts.json keeps item
+        ids only, so consumed copies and spent coins last for the session only.
+        Replies: onDelDtsAppearanceFoldedItem per consumed prop, onAddDtsAppearanceItem for the
+        target, onCurrencyUpdated per spent currency, then onAppearanceCultivateCompound(target);
+        or onAppearanceCultivateCompoundFailed(tips, cultivateID, ruleID, compoundType,
+        currencyType, price)."""
+        import uuid as _uuid
+        request_id = _uuid.uuid4().hex
+        tag = f"cultivate={cultivate_id} rule={rule_id} type={compound_type} request_id={request_id}"
+
+        def failed(key, currency_type=0, price=0, tips=None):
+            print(f"      [BASEAPP] appearanceCultivateCompound {tag} result=failed reason={key}")
+            return athlete_method("onAppearanceCultivateCompoundFailed",
+                                  _bw_blob((tips or athlete_requests.CULTIVATE_TIPS[key]).encode())
+                                  + struct.pack("<iiiii", cultivate_id, rule_id, compound_type,
+                                                int(currency_type), int(price)))
+
+        if addr in self._cultivate_busy:           # double tap while the first one is running
+            return failed("busy")
+        self._cultivate_busy.add(addr)
+        try:
+            counts = self._counts(addr)
+            wallet = self._session_wallet(addr)
+            plan = athlete_requests.plan_cultivate_compound(
+                cultivate_id, rule_id, compound_type, counts, wallet.balances.get(athlete_requests.GP, 0))
+            if not plan["ok"]:
+                return failed(plan["reason"], plan["currency_type"], plan["price"], plan["tips"])
+            target = plan["target"]
+            linked = bool(account_link.current())
+            result = None
+            if linked:
+                compound = getattr(account_link, "workshop_compound", None)
+                result = compound(request_id, plan["require"], plan["consume"], plan["consume_currency"],
+                                  plan["add"], f"workshop:{cultivate_id}:{rule_id}") if compound else None
+                if result and "_error" in result:
+                    print(f"      [ACC-LINK] workshop compound refused by RoS_Server ({result.get('_error')})")
+                    return failed("props")
+                if not result:
+                    print(f"      [ACC-LINK] workshop compound: RoS_Server unreachable or not supported, nothing changed")
+                    return failed("server")
+            for pid, n in plan["consume"]:
+                counts[pid] = counts.get(pid, 0) - n
+            for cid, amount in plan["consume_currency"]:
+                wallet.balances[cid] = wallet.balances.get(cid, 0) - amount
+            for pid, n in plan["add"]:
+                counts[pid] = counts.get(pid, 0) + n
+            if linked:                                 # RoS_Server's numbers win over the local deltas
+                for it in result.get("items") or []:   # current counts of the touched props
+                    counts[int(it["prop_id"])] = int(it.get("number") or 0)
+                for cid, amount in (result.get("currencies") or {}).items():
+                    wallet.balances[int(cid)] = int(amount)
+                replayed = bool(result.get("replayed"))
+            else:
+                save_local_state(add_items=[pid for pid, _n in plan["add"]])
+                replayed = False
+            for pid in [p for p, n in counts.items() if n <= 0]:
+                del counts[pid]
+            self._owned(addr).add(target)
+            for pid, _n in plan["consume"]:
+                if pid not in counts:
+                    self._owned(addr).discard(pid)
+            calls = b""
+            for pid, n in plan["consume"]:             # ITEM_ID, ITEM_CNT (folded/stacked copies)
+                calls += athlete_method("onDelDtsAppearanceFoldedItem", struct.pack("<ii", pid, n))
+            calls += self._grant_props([target], force=True, addr=addr)
+            for cid, _amount in plan["consume_currency"]:   # iCurrency.onCurrencyUpdated(id, new balance, src)
+                calls += athlete_method("onCurrencyUpdated",
+                                        struct.pack("<iqi", cid, wallet.balances.get(cid, 0), 0))
+            print(f"      [BASEAPP] appearanceCultivateCompound {tag} result=ok target={target} "
+                  f"consume={plan['consume']} currency={plan['consume_currency']} replayed={replayed} "
+                  f"linked={linked}")
+            return calls + athlete_method("onAppearanceCultivateCompound", struct.pack("<i", target))
+        finally:
+            self._cultivate_busy.discard(addr)
+
+    @staticmethod
+    def _link_call(fn_name, *args):
+        """account_link.<fn_name>(*args) when linked and the function exists; None = not linked,
+        not supported, or RoS_Server down."""
+        fn = getattr(account_link, fn_name, None)
+        if not account_link.current() or fn is None:
+            return None
+        try:
+            return fn(*args)
+        except Exception as e:
+            print(f"      [ACC-LINK] {fn_name} failed: {e!r}")
+            return None
+
+    MAIL_LIST_MAX = 100   # newest mails sent; keeps onMailUpdate well under the var16 message limit
+
+    def _mail_update_calls(self, reason):
+        """onMailUpdate(PYTHON mails, PYTHON topMails=[]). The client reverses `mails` before
+        caching, so they go oldest first (newest ends up on top)."""
+        py = athlete_requests.py
+        mails = self._link_call("list_mails")
+        if mails is None:
+            print(f"      [BASEAPP] {reason}: mail list unavailable (not linked or RoS_Server down) -> 0 mails")
+            mails = []
+        entries = sorted((mail_list_entry(m) for m in mails), key=lambda e: (e["when"], e["mailID"]))
+        entries = entries[-self.MAIL_LIST_MAX:]
+        print(f"      [BASEAPP] {reason} -> onMailUpdate {len(entries)} mails "
+              f"({sum(1 for e in entries if e['unread'])} unread)")
+        return athlete_method("onMailUpdate", py(entries) + py([]))
+
+    def _mail_request(self, addr, name, rd):
+        py = athlete_requests.py
+        if name == "requestMails":
+            return self._mail_update_calls("requestMails")
+        mail_id = rd.i32()
+        if name == "requestMailDetail":
+            detail = self._link_call("mail_detail", mail_id)
+            if not detail or "_error" in detail:
+                why = (detail or {}).get("_error", "unavailable")
+                print(f"      [BASEAPP] requestMailDetail mail={mail_id} result=failed reason={why}")
+                return athlete_method("onLoadMailDetailFailed", struct.pack("<i", mail_id))
+            extra = mail_extra_info(detail)
+            print(f"      [BASEAPP] requestMailDetail mail={mail_id} result=ok props={extra['props']} "
+                  f"gold={int(detail.get('gold') or 0)} claimed={bool(detail.get('claimed'))}")
+            return athlete_method("onLoadMailDetail", struct.pack("<i", mail_id)
+                                  + _bw_blob(mail_content(detail).encode()) + py(extra))
+        if name == "getAwardFromMail":
+            return self._mail_claim(addr, mail_id)
+        ok = bool(self._link_call("delete_mail", mail_id))       # deleteMail
+        print(f"      [BASEAPP] deleteMail mail={mail_id} result={'deleted' if ok else 'not deleted'}")
+        return self._mail_update_calls("deleteMail")
+
+    def _mail_claim(self, addr, mail_id):
+        """getAwardFromMail: RoS_Server claims the attachments in one transaction (claim_mail);
+        the returned counts and coin balance are applied to this session, the new copies are
+        added to the client package, then onGetAwardFromMail(prop ids, one per copy). Refused,
+        replayed, busy or down: onGetAwardFromMail([]) and nothing changes here."""
+        py = athlete_requests.py
+        empty = athlete_method("onGetAwardFromMail", py([]))
+        busy = self.__dict__.setdefault("_mail_busy", set())
+        if addr in busy:                           # double tap while the first claim is running
+            print(f"      [BASEAPP] getAwardFromMail mail={mail_id} result=busy")
+            return empty
+        busy.add(addr)
+        try:
+            result = self._link_call("claim_mail", mail_id)
+            if not result:
+                print(f"      [BASEAPP] getAwardFromMail mail={mail_id} result=failed reason=unavailable")
+                return empty
+            if "_error" in result:
+                print(f"      [BASEAPP] getAwardFromMail mail={mail_id} result=refused reason={result['_error']}")
+                return empty
+            if result.get("replayed"):
+                print(f"      [BASEAPP] getAwardFromMail mail={mail_id} result=replayed (already claimed)")
+                return empty
+            copies = mail_award_ids(result.get("props"))
+            counts = self._counts(addr)
+            self._add_counts(addr, copies)
+            for it in result.get("items") or []:   # RoS_Server's current counts win
+                counts[int(it["prop_id"])] = int(it.get("number") or 0)
+            for pid in [p for p, n in counts.items() if n <= 0]:
+                del counts[pid]
+            self._owned(addr).update(copies)
+            wallet = self._session_wallet(addr)
+            gp = athlete_requests.GP
+            before = int(wallet.balances.get(gp, 0))
+            currencies = result.get("currencies") or {}
+            if str(gp) in currencies or gp in currencies:
+                after = int(currencies.get(str(gp), currencies.get(gp)))
+            else:
+                after = before + int(result.get("gold") or 0)
+            calls = self._grant_props(copies, force=True, addr=addr)
+            if after != before:                    # iCurrency.onCurrencyUpdated(id, new balance, src)
+                wallet.balances[gp] = after
+                calls += athlete_method("onCurrencyUpdated", struct.pack("<iqi", gp, after, 0))
+            print(f"      [BASEAPP] getAwardFromMail mail={mail_id} result=ok props={copies} "
+                  f"gold={int(result.get('gold') or 0)} balance={before}->{after}")
+            return calls + athlete_method("onGetAwardFromMail", py(copies))
+        finally:
+            busy.discard(addr)
+
+    def _set_head_frame(self, addr, frame_id, source):
+        """Wear avatar frame `frame_id` (0 = none): RoS_Server (account_link.set_head_frame) when
+        linked, a local copy in saved_accounts.json always, and LOGIN_STATE["head_frame"] so a
+        relog in this process keeps it. Reply: onUpdateHeadFrameTag(frame_id)."""
+        frame_id = int(frame_id)
+        saved = None
+        if account_link.current():
+            saved = self._link_call("set_head_frame", frame_id)
+            if not saved:
+                print("      [ACC-LINK] head frame not saved to RoS_Server")
+        save_account(_local_head_frame_key(), frame_id)
+        if LOGIN_STATE is not None:
+            LOGIN_STATE["head_frame"] = frame_id
+        print(f"      [BASEAPP] {source} head frame -> {frame_id} (RoS_Server: {'saved' if saved else 'not saved'})")
+        return athlete_method("onUpdateHeadFrameTag", struct.pack("<i", frame_id))
 
     def _battle_match(self, addr):
         import battle_flow
@@ -2084,8 +2982,37 @@ class GateUDP(asyncio.DatagramProtocol):
             m[addr] = battle_flow.Match()
         return m[addr]
 
+    def _match_session(self, addr):
+        return self._match_sessions.get(addr)
+
+    def _start_match_session(self, addr):
+        """Create the in-match MatchSession seam and auto-load battle/modules (RO-058)."""
+        from battle.session import MatchSession, load_battle_modules
+        self._end_match_session(addr)
+
+        def _send(body, _addr=addr):
+            bf = self._last_bf.get(_addr)
+            if bf is None:
+                return
+            self._send_bundle(_addr, body, self._last_client_seq.get(_addr), bytes(bf))
+
+        session = MatchSession(addr, _send)
+        session.gate = self
+        bf_key = self._last_bf.get(addr)
+        session.bf_key = bytes(bf_key) if bf_key is not None else None
+        load_battle_modules(session)
+        self._match_sessions[addr] = session
+        return session
+
+    def _end_match_session(self, addr):
+        session = self._match_sessions.pop(addr, None)
+        if session is not None:
+            session.close()
+
     def _enter_battle(self, addr):
         self._enter_addr(addr)
+        if addr not in self._last_bf and addr in self._handoff_bf:
+            self._last_bf[addr] = self._handoff_bf[addr]
         if self._in_battle.get(addr) or addr not in self._last_bf:
             return
         self._in_battle[addr] = True
@@ -2102,10 +3029,12 @@ class GateUDP(asyncio.DatagramProtocol):
         cbp_msg, ccp_msg = avatar_create_messages(map_id, char, get_account_name(), ent)
         print(f"      [BASEAPP] -> battle: resetEntities + {ent} (map {map_id}, char {char})")
         self._send_bundle(addr, b"\x04\x00" + cbp_msg + ccp_msg, self._last_client_seq.get(addr), self._last_bf[addr])
+        # In-match seam: empty modules/ keeps trigger_battle.txt + battle_flow behaviour unchanged.
+        self._start_match_session(addr)
 
     def _hall_team_member(self, addr):
         """HALL_TEAM_MEMBER_CLIENT for our own player: .def defaults plus identity and outfit."""
-        D = bwdefs.Defs()
+        D = bwdefs.shared()
         outfit = self._session_outfit(addr)
         arr = lambda ids: struct.pack("<I", len(ids)) + b"".join(struct.pack("<i", i) for i in ids)
         ov = {"entID": struct.pack("<i", int(os.environ.get("ATHLETE_ID", "10002"))),
@@ -2115,22 +3044,45 @@ class GateUDP(asyncio.DatagramProtocol):
               "characterType": struct.pack("<i", get_account_char()),
               "inWorld": b"\x01",
               # 0 is not a theme prop (iHallTeam.onEnterHallTeam -> getHallThemeScore(0) -> None.PROP_TYPE)
-              "hallThemeID": struct.pack("<i", outfit.theme or int(os.environ.get("HALL_THEME_ID", "270000"))),
+              "hallThemeID": struct.pack("<i", outfit.theme or hall_theme_id(0)),
               "dtsBodyAppearanceList": arr(outfit.body),
               "dtsWearableAppearanceList": arr(outfit.wear)}
         return b"".join(ov.get(n) or bwdefs.encode_default(t, fd) for n, t, fd in D.resolve("HALL_TEAM_MEMBER_CLIENT")[1])
 
-    def _grant_props(self, prop_ids, force=False):
+    def _recent_list(self, addr):
+        if addr not in self._recent_got:
+            state = LOGIN_STATE if LOGIN_STATE is not None else local_state()
+            self._recent_got[addr] = _resolve_recent_got(state)
+        return self._recent_got[addr]
+
+    def _recent_update_calls(self, addr, prop_ids):
+        """Athlete.recentGotPropIDList for the Depot > Recent tab."""
+        if not prop_ids or addr is None:
+            return b""
+        recent = _merge_recent_got(self._recent_list(addr), prop_ids)
+        self._recent_got[addr] = recent
+        if LOGIN_STATE is not None:
+            LOGIN_STATE["recent_got"] = recent
+        if account_link.current():
+            if not account_link.persist_recent_got(recent):
+                print("      [ACC-LINK] recent_got not saved to RoS_Server")
+        else:
+            save_local_state(recent_got=recent)
+        return athlete_method("onUpdateRecentGotPropIDList", _int_array(recent), quiet=True)
+
+    def _grant_props(self, prop_ids, force=False, addr=None):
         """Add won appearance items to the client's package (other prop kinds: display only)."""
         appearance = set(_all_appearance_ids())
         info = _bw_blob(__import__("pickle").dumps({"ex_tm": 0}, protocol=2))
         calls = b""
+        granted = []
         for iid in prop_ids:
             if force or iid in appearance:
+                granted.append(int(iid))
                 item = _bw_blob(os.urandom(16)) + struct.pack("<i", 1) + info + struct.pack("<i", 0)
                 calls += athlete_method("onAddDtsAppearanceItem",
                                         struct.pack("<iI", iid, 1) + item + struct.pack("<ii", 0, 0), quiet=True)
-        return calls
+        return calls + self._recent_update_calls(addr, granted)
 
     def _lobby_data_calls(self):
         """Client-side Athlete attributes the real server fills at login (lobby UI reads them in
@@ -2166,15 +3118,26 @@ class GateUDP(asyncio.DatagramProtocol):
             calls += athlete_method("onSetSwitches", _bw_blob(sw.encode()) + b"\x00", quiet=True)
         # Weekly supply push (UIMgr.gotoThisWeekSupplyPackage) opens Supply at every login
         # until hasAlreadyShowSupplyID equals this week's box; the client reports it with
-        # setHasAlreadyShowSupplyID.
+        # setHasAlreadyShowSupplyID. SUPPLY_PREACK_WEEKLY_PUSH stores Supreme box 9778 and can
+        # pin Helios art on first open; leave it off unless you are debugging the weekly push.
         shown = (load_accounts().get("supply_push") or {}).get("id", 0)
+        if not shown and _env_on("SUPPLY_PREACK_WEEKLY_PUSH"):
+            sid = athlete_requests.this_week_supply_id()
+            if sid:
+                save_account("supply_push", {"id": sid})
+                shown = sid
         calls += athlete_method("onUpdateAlreadyShowSupplyID", struct.pack("<i", int(shown)))
         # Hall theme: dtsHallThemeID defaults to 0, which has no theme data. Leaving the outfit
         # screen restores the theme (HallTheme.onShowOriTheme -> onThemeChange -> onUIChange),
         # hits currentThemeData None ('DEFAULT_LIGHT'), aborts leave_ui and leaves every UI
         # hidden. 270000 = const.DEFAULT_HALL_THEME_ID.
-        calls += athlete_method("onUpdateDtsHallThemeID",
-                                struct.pack("<i", int(os.environ.get("HALL_THEME_ID", "270000"))))
+        # The saved theme (Store -> Lobby Theme -> Use) wins over the default.
+        calls += athlete_method("onUpdateDtsHallThemeID", struct.pack("<i", hall_theme_id()))
+        try:
+            recent = _resolve_recent_got(LOGIN_STATE or local_state())
+            calls += athlete_method("onUpdateRecentGotPropIDList", _int_array(recent), quiet=True)
+        except Exception as e:
+            print(f"      [BASEAPP] Warning: onUpdateRecentGotPropIDList skipped: {e}")
         try:
             calls += athlete_method("onUpdateLuckyCarnivalData", py(lucky))
         except Exception as e:
@@ -2189,8 +3152,10 @@ class GateUDP(asyncio.DatagramProtocol):
         except Exception as e:
             print(f"      [BASEAPP] Warning: onAccumulateChargeUpdate skipped: {e}")
         try:
-            # Minimal stub for enterHall; full supplement info is sent on demand when opening Supply screen.
-            calls += athlete_method("onQueryAvailableSupplement", py({}))
+            # Default: empty stub at login (fast enterHall). SUPPLY_CATALOG_AT_LOGIN sends the same
+            # cached blob as queryAvailableSupplement so tab switches do not wait on a late catalogue.
+            sup_arg = supply_cache.supplement_info_blob() if _env_on("SUPPLY_CATALOG_AT_LOGIN") else py({})
+            calls += athlete_method("onQueryAvailableSupplement", sup_arg)
             calls += athlete_method("onUpdateBuySupplementCntDict", py({}) + py({}) + py({}))
         except Exception as e:
             print(f"      [BASEAPP] Warning: onQueryAvailableSupplement stub skipped: {e}")
@@ -2211,6 +3176,10 @@ class GateUDP(asyncio.DatagramProtocol):
         except Exception as e:
             print(f"      [BASEAPP] Warning: onPersonalRecommendStateUpdated skipped: {e}")
         try:
+            calls += training_event.lobby_sync_calls(athlete_method)
+        except Exception as e:
+            print(f"      [BASEAPP] Warning: training event lobby sync skipped: {e}")
+        try:
             action_ids, suit_action_ids = _all_action_ids()
             emoji_ids = _all_emoji_ids()
             calls += athlete_method("onSyncSwitches", _bw_blob(b"SysEnableInGameAction") + b"\x01", quiet=True)
@@ -2219,8 +3188,7 @@ class GateUDP(asyncio.DatagramProtocol):
             calls += athlete_method("onSetSwitches", _bw_blob(b"SysEnableEmoji") + b"\x01", quiet=True)
             if action_ids:
                 calls += athlete_method("syncDtsInGameActionAppearanceIDs", py(action_ids))
-            if suit_action_ids:
-                calls += athlete_method("syncDtsInGameActionSuitAppearanceIDs", py(suit_action_ids))
+            calls += athlete_method("syncDtsInGameActionSuitAppearanceIDs", py(suit_action_ids))
             if emoji_ids:
                 arr_fn = lambda ids: struct.pack("<I", len(ids)) + b"".join(struct.pack("<i", int(i)) for i in ids)
                 calls += athlete_method("onUpdateDtsEmojiList", arr_fn(emoji_ids))
@@ -2265,8 +3233,7 @@ class GateUDP(asyncio.DatagramProtocol):
             calls += athlete_method("onSetSwitches", _bw_blob(b"SysEnableEmoji") + b"\x01", quiet=True)
             if action_ids:
                 calls += athlete_method("syncDtsInGameActionAppearanceIDs", py(action_ids))
-            if suit_action_ids:
-                calls += athlete_method("syncDtsInGameActionSuitAppearanceIDs", py(suit_action_ids))
+            calls += athlete_method("syncDtsInGameActionSuitAppearanceIDs", py(suit_action_ids))
             if emoji_ids:
                 calls += athlete_method("onUpdateDtsEmojiList", arr(emoji_ids))
         except Exception as e:

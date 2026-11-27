@@ -1,7 +1,477 @@
 {
   "version": "1.0.0",
-  "updated_at": "2026-11-19T23:00:00+07:00",
+  "updated_at": "2026-11-27T12:54:00+07:00",
   "entries": [
+    {
+      "change_id": "CH-0034",
+      "date": "2026-11-27",
+      "version": "unreleased",
+      "category": "Compatibility",
+      "title": "RO-075 door table → testing (partial AC4)",
+      "description": "RO-075 promoted to testing: doors.json + doors_coverage pytest 5 passed; BATTLE_SPACE=off default in config.cmd. AC4 LDPlayer open. RO-074 remains testing — building matrix/AC4 not completed.",
+      "task_id": "RO-075",
+      "agent": "cto",
+      "files_changed": [
+        ".cursor/management/tasks.json",
+        ".cursor/management/changelog.json",
+        ".cursor/management/milestones.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/doors_coverage -q",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0033",
+      "date": "2026-11-27",
+      "version": "unreleased",
+      "category": "Documentation",
+      "title": "Close RO-065 and RO-112; RO-074 stays testing",
+      "description": "RO-065 completed (protocol-test APPROVE). RO-112 completed (N=9 solo bot gate measured; 29/59/119 NOT measured). RO-074 remains testing — AC4 building matrix/LDPlayer open; wire APPROVE only. RO-075 backlog, dependency RO-074 only; promote when RO-074 completes.",
+      "task_id": null,
+      "agent": "cto",
+      "files_changed": [
+        ".cursor/management/tasks.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/performance/test_solo_bot_scale.py -q --tb=line",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0032",
+      "date": "2026-11-27",
+      "version": "unreleased",
+      "category": "Documentation",
+      "title": "Phase 09: loot/doors testing, props testing, bot scale assign",
+      "description": "RO-074 and RO-065 → testing with doc+JSON evidence; RO-066 → testing (props pytest 4 passed, AC4 open); RO-075 stays backlog (deps); RO-112 assigned to performance-engineer; Phase 09 milestone refreshed.",
+      "task_id": null,
+      "agent": "cto",
+      "files_changed": [
+        ".cursor/management/tasks.json",
+        ".cursor/management/milestones.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py",
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/zone tests/compatibility/gateway/props -q --tb=line"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0031",
+      "date": "2026-11-27",
+      "version": "unreleased",
+      "category": "Documentation",
+      "title": "Phase 09 pipeline: doors assigned, loot ready",
+      "description": "RO-074 assigned to game-compatibility-engineer; RO-065 ready (queued, max_parallel_tasks 1). Phase 09 milestone summary updated (RO-064 zone testing). RO-064 stays testing until LDPlayer AC4.",
+      "task_id": null,
+      "agent": "cto",
+      "files_changed": [
+        ".cursor/management/tasks.json",
+        ".cursor/management/milestones.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "python scripts/validate_project_management.py",
+        "python scripts/validate_agent_registry.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0030",
+      "date": "2026-11-27",
+      "version": "unreleased",
+      "category": "Compatibility",
+      "title": "Solo first-playable LDPlayer accept blocked on network",
+      "description": "RO-113 review FAIL: Network Error(15) before Solo Start; checklist and SOLO_GAMEPLAY_STATUS set BROKEN. Schema tests 5 passed. Re-run after emulator DNS/proxy aligns with gateway.",
+      "task_id": "RO-113",
+      "agent": "qa-engineer",
+      "files_changed": [
+        "docs/testing/solo_first_playable.md",
+        "docs/SOLO_GAMEPLAY_STATUS.md",
+        "tests/compatibility/gateway/solo_first_playable/",
+        ".cursor/management/tasks.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/solo_first_playable -q --tb=line",
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0029",
+      "date": "2026-11-26",
+      "version": "unreleased",
+      "category": "Documentation",
+      "title": "Bot AI engine HFSM design (fair, non-LLM)",
+      "description": "RO-111 completed after gameplay-test-engineer PASS. Hierarchical FSM with fair perception; walk/engage gated on capture and nav. Not original-compatible.",
+      "task_id": "RO-111",
+      "agent": "backend-architect",
+      "files_changed": [
+        "docs/engineering/BOT_AI_ENGINE.md",
+        "bigworld_gateway/server/battle/data/bot_ai_notes.json",
+        ".cursor/management/tasks.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "python scripts/validate_project_management.py",
+        "python -c \"import json;json.load(open('bigworld_gateway/server/battle/data/bot_ai_notes.json',encoding='utf-8'))\""
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0028",
+      "date": "2026-11-26",
+      "version": "unreleased",
+      "category": "Documentation",
+      "title": "Solo BR first-playable status tracker",
+      "description": "RO-109 completed. SOLO_GAMEPLAY_STATUS.md tracks gates through static 9 bots; RO-113 owns LDPlayer VERIFIED. Proposed params remain NOT_CHECKED.",
+      "task_id": "RO-109",
+      "agent": "cto",
+      "files_changed": [
+        "docs/SOLO_GAMEPLAY_STATUS.md",
+        "docs/project/MASTER_ROADMAP.md",
+        ".cursor/management/tasks.json",
+        ".cursor/management/milestones.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "python scripts/validate_project_management.py",
+        "python scripts/validate_agent_registry.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0027",
+      "date": "2026-11-26",
+      "version": "unreleased",
+      "category": "Added",
+      "title": "Spawn nine static Robot-58 bots in MatchSession",
+      "description": "RO-069 completed after QA pass-with-AC4-open. N from solo_fill; aliveNum set; no invented walk opcodes. Live LDPlayer visibility open (RO-113). Not original-compatible.",
+      "task_id": "RO-069",
+      "agent": "gameplay-test-engineer",
+      "files_changed": [
+        "bigworld_gateway/server/battle/modules/bots.py",
+        "bigworld_gateway/server/battle/data/bots.json",
+        "tests/compatibility/gateway/bots/",
+        ".cursor/management/tasks.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/bots -q --tb=line",
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0026",
+      "date": "2026-11-26",
+      "version": "unreleased",
+      "category": "Added",
+      "title": "Add Solo BR fill config (1 human + N bots)",
+      "description": "RO-110 completed after QA pass. MatchSession solo_fill attaches unverified 1+9 defaults. Unblocks RO-069. Not original-compatible.",
+      "task_id": "RO-110",
+      "agent": "backend-architect",
+      "files_changed": [
+        "docs/engineering/SOLO_MATCH_FILL.md",
+        "bigworld_gateway/server/battle/data/solo_fill.json",
+        "bigworld_gateway/server/battle/modules/solo_fill.py",
+        "tests/compatibility/gateway/solo_fill/",
+        ".cursor/management/tasks.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/solo_fill -q --tb=line",
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0025",
+      "date": "2026-11-27",
+      "version": "unreleased",
+      "category": "Fixed",
+      "title": "Registry: RO-124 review, RO-126 convert, RO-110 assign",
+      "description": "RO-124 supply ticket draw -> review with pytest evidence. Registered RO-126 onConvertItem ARRAY fix in review. Assigned RO-110 Solo fill to backend-architect.",
+      "task_id": "RO-124",
+      "agent": "cto",
+      "files_changed": [
+        ".cursor/management/tasks.json",
+        ".cursor/management/milestones.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0024",
+      "date": "2026-11-26",
+      "version": "unreleased",
+      "category": "Compatibility",
+      "title": "Assign supply ticket draw settlement (RO-124)",
+      "description": "Split from RO-123: charge Adv. Ticket and other supply currencies on openSupplyBox, sync onCurrencyUpdated, seed ticket balances in _session_wallet.",
+      "task_id": "RO-124",
+      "agent": "backend-architect",
+      "files_changed": [
+        ".cursor/management/tasks.json",
+        ".cursor/management/milestones.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0023",
+      "date": "2026-11-26",
+      "version": "unreleased",
+      "category": "Gameplay",
+      "title": "Add Plane boarding and flight jump-window module",
+      "description": "RO-062 completed after QA pass-with-AC4-open. Plane type 147 + player plane props + inJumpArea. Live AC4 open. Unblocks RO-063. Not original-compatible.",
+      "task_id": "RO-062",
+      "agent": "gameplay-test-engineer",
+      "files_changed": [
+        "bigworld_gateway/server/battle/modules/plane.py",
+        "tests/compatibility/gateway/plane/",
+        ".cursor/management/tasks.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/plane -q --tb=line",
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0022",
+      "date": "2026-11-26",
+      "version": "unreleased",
+      "category": "Gameplay",
+      "title": "Add BattleGroundSpace module and pre-start timeline",
+      "description": "RO-061 completed after QA pass-with-AC4-open. Space entity + FakeClock phases. Live aliveNum=100 verified; countdown photo and BATTLE_SPACE=off remain open. Unblocks RO-062. Not original-compatible.",
+      "task_id": "RO-061",
+      "agent": "gameplay-test-engineer",
+      "files_changed": [
+        "bigworld_gateway/server/battle/modules/space.py",
+        "bigworld_gateway/server/battle/timeline.py",
+        "bigworld_gateway/server/battle/data/",
+        "tests/compatibility/gateway/space/",
+        ".cursor/management/tasks.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/space -q --tb=line",
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0021",
+      "date": "2026-11-26",
+      "version": "unreleased",
+      "category": "Networking",
+      "title": "Add in-battle C2S request decoder from RO-057 captures",
+      "description": "RO-060 completed after QA and security pass. Named cell-method decode; 0xBC/0xBD are Avatar methods not position. Not wired to ros_server yet. Not original-compatible.",
+      "task_id": "RO-060",
+      "agent": "protocol-test-engineer",
+      "files_changed": [
+        "bigworld_gateway/server/battle/requests.py",
+        "tests/compatibility/gateway/requests/",
+        "docs/engineering/reviews/RO-060-security.md",
+        ".cursor/management/tasks.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/requests -q --tb=line",
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0020",
+      "date": "2026-11-26",
+      "version": "unreleased",
+      "category": "Compatibility",
+      "title": "Map in-match C2S cell request ids (OPEN/pickup)",
+      "description": "RO-057 completed after protocol-test pass. OPEN 0x88 and tryPickUp 0x81 captured. 0xBC/0xBD are Avatar methods not position. RO-060 ready. Not original-compatible.",
+      "task_id": "RO-057",
+      "agent": "game-compatibility-engineer",
+      "files_changed": [
+        "bigworld_gateway/docs/BATTLE_CLIENT_REQUESTS.md",
+        "bigworld_gateway/server/extract/battle_cell_exposed.json",
+        "bigworld_gateway/client/frida/payloads/requests/",
+        ".cursor/management/tasks.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0019",
+      "date": "2026-11-26",
+      "version": "unreleased",
+      "category": "Networking",
+      "title": "Lock verified createEntity encoders in battle_flow",
+      "description": "RO-059 completed after QA pass. Wire suite 12 passed. Unblocks RO-061 space/countdown for Solo BR first playable. No original-compatible claim.",
+      "task_id": "RO-059",
+      "agent": "protocol-test-engineer",
+      "files_changed": [
+        "bigworld_gateway/server/battle_flow.py",
+        "tests/compatibility/gateway/wire/",
+        ".cursor/management/tasks.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/wire -q --tb=line",
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0018",
+      "date": "2026-11-26",
+      "version": "unreleased",
+      "category": "Documentation",
+      "title": "Adopt Solo BR + AI bots as Phase 09 first-playable goal",
+      "description": "Checkpoint CP-0008. Phase 09 goal is Solo Start → 9 bots → plane → parachute → land on LDPlayer. Added RO-109..RO-113 gap tasks, docs/SOLO_GAMEPLAY_STATUS.md, assigned RO-059 and RO-057. Proposed match params remain unverified. No original-compatible claim.",
+      "task_id": "RO-109",
+      "agent": "cto",
+      "files_changed": [
+        ".cursor/management/tasks.json",
+        ".cursor/management/milestones.json",
+        ".cursor/management/team.json",
+        ".cursor/management/changelog.json",
+        ".cursor/management/checkpoints.json",
+        "docs/SOLO_GAMEPLAY_STATUS.md",
+        "docs/project/MASTER_ROADMAP.md",
+        "docs/RESTORATION_STATUS.md"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0017",
+      "date": "2026-11-26",
+      "version": "unreleased",
+      "category": "Added",
+      "title": "Add gateway MatchSession seam for in-match modules",
+      "description": "RO-058 adds MatchSession (entity ids, ordered send, timeline, inbound dispatch) and module auto-load so later battle features avoid editing ros_server.py. Design note GATEWAY_BATTLE_SESSION.md. CTO verified 24 session tests; task is in review for qa-engineer. No original-protocol claim.",
+      "task_id": "RO-058",
+      "agent": "backend-architect",
+      "files_changed": [
+        "docs/engineering/GATEWAY_BATTLE_SESSION.md",
+        "bigworld_gateway/server/battle/session.py",
+        "bigworld_gateway/server/battle/__init__.py",
+        "bigworld_gateway/server/ros_server.py",
+        "tests/compatibility/gateway/session/test_match_session.py",
+        "tests/compatibility/gateway/session/conftest.py",
+        ".cursor/management/tasks.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        ".\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/session -q --tb=line",
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
+    {
+      "change_id": "CH-0016",
+      "date": "2026-11-26",
+      "version": "unreleased",
+      "category": "Documentation",
+      "title": "Add mobile restoration status tracker",
+      "description": "CTO audit produced docs/RESTORATION_STATUS.md and companion indexes. 0/132 mobile-verified. RO-056 assigned. Workshop remains a separate track (RO-095..RO-099).",
+      "task_id": "RO-100",
+      "agent": "cto",
+      "files_changed": [
+        "docs/RESTORATION_STATUS.md",
+        "docs/GAME_FUNCTIONS.md",
+        "docs/PROTOCOL_MAPPING.md",
+        "docs/RESOURCE_MAPPING.md",
+        "docs/KNOWN_ISSUES.md",
+        "docs/TEST_REPORT.md",
+        ".cursor/management/tasks.json",
+        ".cursor/management/milestones.json",
+        ".cursor/management/team.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": null
+    },
     {
       "change_id": "CH-0001",
       "date": "2026-11-10",

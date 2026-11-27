@@ -1,0 +1,22 @@
+ENT 10003 PlayerBattleGroundAvatar pos=(593.8511962890625, -682.4637451171875, -658.6053466796875)
+ENT 20001 BattleGroundSpace pos=()
+spaceEntity=BattleGroundSpace at 0x76383242ba20 type=BattleGroundSpace
+  space.mapID=700
+  space.gameStatus=1
+  space.circleStage=1
+  space.whiteCircleCenter=( 845.000000, -2467.000000)
+  space.whiteCircleRadius=300
+  space.blueCircleCenter=( 845.000000, -2467.000000)
+  space.blueCircleRadius=1200
+  space.aliveNum=100
+  space.planeEntityIDs=[20002]
+ent20001 type=BattleGroundSpace
+  ent20001.mapID=700
+  ent20001.gameStatus=1
+  ent20001.circleStage=1
+  ent20001.whiteCircleCenter=( 845.000000, -2467.000000)
+  ent20001.whiteCircleRadius=300
+  ent20001.blueCircleCenter=( 845.000000, -2467.000000)
+  ent20001.blueCircleRadius=1200
+  ent20001.aliveNum=100
+player type=PlayerBattleGroundAvatar spaceID=1

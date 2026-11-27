@@ -1,0 +1,116 @@
+{
+  "benchmark": "gateway_local_store",
+  "task": "RO-119",
+  "measured_at": "2026-11-26T22:40:59+0700",
+  "command": "python tests/compatibility/gateway/local_store/bench_local_store.py --loads 1000 --saves 200",
+  "environment": {
+    "python": "3.12.10",
+    "implementation": "CPython",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "machine": "AMD64"
+  },
+  "notes": [
+    "Single thread, generated files in a temp directory; real saved_accounts.json size measured with os.path.getsize only.",
+    "local_store loads are warm-cache (stat + deep copy); legacy loads open and parse each call.",
+    "local_store saves include flush + fsync + os.replace; legacy saves rewrite in place without fsync."
+  ],
+  "real_saved_accounts_bytes": 1398,
+  "loads": 1000,
+  "saves": 200,
+  "cases": {
+    "200_keys": {
+      "file_bytes": 215878,
+      "keys": 200,
+      "load.legacy": {
+        "count": 1000,
+        "p50_ms": 4.600949992891401,
+        "p95_ms": 7.841399987228215,
+        "mean_ms": 4.980061198875774,
+        "max_ms": 43.63470000680536
+      },
+      "load.local_store": {
+        "count": 1000,
+        "p50_ms": 1.3638999953400344,
+        "p95_ms": 2.0904999983031303,
+        "mean_ms": 1.4313986001070589,
+        "max_ms": 8.661300002131611
+      },
+      "get_one_key.legacy": {
+        "count": 1000,
+        "p50_ms": 3.0337000061990693,
+        "p95_ms": 5.158299987670034,
+        "mean_ms": 3.3149138000735547,
+        "max_ms": 70.13979999464937
+      },
+      "get_one_key.local_store": {
+        "count": 1000,
+        "p50_ms": 0.04840001929551363,
+        "p95_ms": 0.07349997758865356,
+        "mean_ms": 0.05177430040203035,
+        "max_ms": 0.1343000039923936
+      },
+      "save.legacy": {
+        "count": 200,
+        "p50_ms": 45.55975001130719,
+        "p95_ms": 77.38999999128282,
+        "mean_ms": 48.17836000016541,
+        "max_ms": 121.47349998122081
+      },
+      "save.local_store": {
+        "count": 200,
+        "p50_ms": 27.006050004274584,
+        "p95_ms": 35.71060000103898,
+        "mean_ms": 27.16756050096592,
+        "max_ms": 47.37600000225939
+      },
+      "files_identical_after_run": true
+    },
+    "real_size": {
+      "file_bytes": 2143,
+      "keys": 2,
+      "load.legacy": {
+        "count": 1000,
+        "p50_ms": 0.20110001787543297,
+        "p95_ms": 0.31510001281276345,
+        "mean_ms": 0.20933949956088327,
+        "max_ms": 1.474700024118647
+      },
+      "load.local_store": {
+        "count": 1000,
+        "p50_ms": 0.049250011215917766,
+        "p95_ms": 0.08510000770911574,
+        "mean_ms": 0.05786379936034791,
+        "max_ms": 0.28899998869746923
+      },
+      "get_one_key.legacy": {
+        "count": 1000,
+        "p50_ms": 0.23535001673735678,
+        "p95_ms": 0.3752000047825277,
+        "mean_ms": 0.2429882995202206,
+        "max_ms": 0.8618000138085335
+      },
+      "get_one_key.local_store": {
+        "count": 1000,
+        "p50_ms": 0.09029998909682035,
+        "p95_ms": 0.15219999477267265,
+        "mean_ms": 0.09839879980427213,
+        "max_ms": 1.130599994212389
+      },
+      "save.legacy": {
+        "count": 200,
+        "p50_ms": 2.5449999957345426,
+        "p95_ms": 11.113899992778897,
+        "mean_ms": 3.538432999921497,
+        "max_ms": 13.569600007031113
+      },
+      "save.local_store": {
+        "count": 200,
+        "p50_ms": 2.8956000023754314,
+        "p95_ms": 5.964100011624396,
+        "mean_ms": 3.481190998427337,
+        "max_ms": 26.863399980356917
+      },
+      "files_identical_after_run": true
+    }
+  }
+}

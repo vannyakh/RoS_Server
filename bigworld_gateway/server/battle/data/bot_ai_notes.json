@@ -1,0 +1,86 @@
+{
+  "_comment": "Gateway-local Solo BR bot AI design notes (RO-111). HFSM, fair perception, no LLM. Not original RoS AI. No Mercury opcodes invented — movement sync cites RO-068 unknowns only.",
+  "task_id": "RO-111",
+  "design_choice": "hierarchical_fsm",
+  "llm_forbidden": true,
+  "entity": {
+    "client_type": 58,
+    "name": "Robot",
+    "id_base": 40000,
+    "evidence": "bigworld_gateway/docs/BOT_ENTITIES.md (RO-068)"
+  },
+  "module_mapping": {
+    "spawn": "bigworld_gateway/server/battle/modules/bots.py",
+    "fill": "bigworld_gateway/server/battle/modules/solo_fill.py",
+    "ai_future": "bigworld_gateway/server/battle/modules/bot_ai.py",
+    "do_not_invent": "server/modules/"
+  },
+  "states": [
+    "IDLE",
+    "MOVE",
+    "LOOT",
+    "ENGAGE",
+    "FLEE",
+    "DISABLED"
+  ],
+  "decision_priority": [
+    "DISABLED",
+    "FLEE",
+    "ENGAGE",
+    "LOOT",
+    "MOVE",
+    "IDLE"
+  ],
+  "fair_perception": {
+    "status": "proposed_unverified",
+    "sight_range_m": 120,
+    "sight_fov_deg": 110,
+    "hearing_range_m": 40,
+    "loot_sense_range_m": 35,
+    "memory_ttl_s": 8,
+    "los_required_for_engage": true,
+    "engage_disabled_without_collision_data": true
+  },
+  "forbidden": [
+    "teleport",
+    "wallhack",
+    "omniscience",
+    "llm",
+    "invented_opcodes"
+  ],
+  "movement_sync": {
+    "initial_pose": "createEntity header position + packed yaw (RO-068 / RO-056)",
+    "detailed_position_0x58": "unknown_layout_do_not_invent",
+    "forced_position_0x59": "avatar_layout_partial; Robot unproven; not a walk substitute",
+    "continuous_walk": "blocked_until_0x58_captured",
+    "static_spawn_default": true
+  },
+  "nav_collision": {
+    "gateway_navmesh": null,
+    "in_repo_blocker_mesh": null,
+    "app_game_blockers": "separate_process_do_not_import",
+    "status": "unknown"
+  },
+  "proposed_tuning": {
+    "status": "unverified",
+    "max_yaw_rate_deg_s": 180,
+    "flee_hp_fraction": 0.35,
+    "goal_radius_m": 2.0,
+    "ai_tick_hz": 5
+  },
+  "scale": {
+    "first_playable_n": 9,
+    "later_targets": [29, 59, 119],
+    "scale_task": "RO-112"
+  },
+  "remaining_issues": [
+    "Live Robot createEntity accept on LDPlayer unverified (RO-068 / RO-113)",
+    "detailedPosition (0x58) 30-byte layout unknown — do not invent walk packets",
+    "forcedPosition (0x59) on Robot eid unproven",
+    "Collision / navmesh data source for fair LOS and pathing is unknown",
+    "Engage must stay disabled until a gateway-legal collision source exists (fail closed vs wallhack)",
+    "Loot sensing depends on DtsProp spawn / pickup research (RO-064+)",
+    "Combat S2C damage/die/dtsKillTip formats unknown — skip until researched",
+    "Bot plane / parachute AI out of first ground HFSM scope"
+  ]
+}
