@@ -1,7 +1,33 @@
 {
   "version": "1.0.0",
-  "updated_at": "2026-11-27T12:54:00+07:00",
+  "updated_at": "2026-11-27T14:20:00+07:00",
   "entries": [
+    {
+      "change_id": "CH-0035",
+      "date": "2026-11-27",
+      "version": "unreleased",
+      "category": "Infrastructure",
+      "title": "RO-128 main already contains the feature branch",
+      "description": "DevOps compared local main, origin/main, and origin/feat/original-client-gateway. All three are 289b7be71875cfefa833714e0d16cbdb5fa65925. No merge commit was created and the branch was not pushed.",
+      "task_id": "RO-128",
+      "agent": "cto",
+      "files_changed": [
+        ".cursor/management/tasks.json",
+        ".cursor/management/milestones.json",
+        ".cursor/management/changelog.json"
+      ],
+      "migration_revision": null,
+      "tests": [
+        "git fetch origin --prune",
+        "git rev-parse HEAD origin/main origin/feat/original-client-gateway",
+        "git merge-base --is-ancestor origin/feat/original-client-gateway HEAD",
+        "python scripts/validate_agent_registry.py",
+        "python scripts/validate_project_management.py"
+      ],
+      "breaking_change": false,
+      "related_discovery": null,
+      "git_commit": "289b7be71875cfefa833714e0d16cbdb5fa65925"
+    },
     {
       "change_id": "CH-0034",
       "date": "2026-11-27",
