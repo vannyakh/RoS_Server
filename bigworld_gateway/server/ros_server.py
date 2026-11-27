@@ -18,6 +18,7 @@ import lobby_topup  # Top-Up packs -> diamonds, no payment (server/lobby_topup.p
 import lobby_vip  # VIP Privilege screen data and reward claims (server/lobby_vip.py)
 import pickle
 import client_pickle  # safe decode of client PYTHON args (server/client_pickle.py)
+import server_registry  # heartbeat + server-select list from RoS_Server (server/server_registry.py)
 import perf_monitor  # in-memory per-request latency/bytes (server/perf_monitor.py)
 import supply_cache  # pre-pickled Supply catalogue (server/supply_cache.py)
 import local_store  # cached, atomic saved_accounts.json store (server/local_store.py)
@@ -327,6 +328,16 @@ class RoSHTTPHandler(BaseHTTPRequestHandler):
             "/server_list_ad.txt": (os.environ.get("SERVER_LIST_FILE", "server_list_ad.local.txt"), "text/plain"),
             "/notice_pc_hw.txt": ("notice_pc_hw.txt", "text/plain"),
         }
+        if self.path.split("?")[0] == "/server_list_ad.txt":
+            body = server_registry.server_list_text()   # RoS_Server's Game servers list; None = static file
+            if body is not None:
+                print(f"  -> Serving server list from RoS_Server ({len(body)} bytes)")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
         route = static_map.get(self.path.split("?")[0])
         if route:
             fpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "real", route[0])
@@ -1514,6 +1525,7 @@ class GateUDP(asyncio.DatagramProtocol):
                 import loginapp
                 self._select_session(addr, data)
                 account_link.touch()          # presence lease for this player (no I/O on this path)
+                server_registry.note(addr, bool(self._in_battle.get(addr)))   # player counts for the heartbeat
                 bf_key = CURRENT_BF_KEY
                 if not bf_key:
                     try:
@@ -3923,4 +3935,6 @@ if __name__ == "__main__":
     threading.Thread(target=start_http_server, daemon=True).start()
     threading.Thread(target=start_https_server, daemon=True).start()
     threading.Thread(target=start_stub_8080, daemon=True).start()
+    if account_link.enabled() and os.environ.get("SERVER_HEARTBEAT", "on") != "off":
+        server_registry.start()       # this gateway on RoS_Server's Game servers page
     asyncio.run(start_tcp_gate())

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Index, String, UniqueConstraint, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database import Base
@@ -166,3 +166,39 @@ class GatewayMail(IdMixin, CreatedAtMixin, Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Operator username that sent it; null for mail the server sent itself.
     sent_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+SERVER_STATUSES = ("auto", "smooth", "busy", "full", "maintenance")
+
+
+class GatewayServer(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
+    """One original-client gateway process, as listed on the game's server-select screen.
+
+    The gateway reports itself (address, version, player counts) on every heartbeat; operators set
+    the display name, status and whether it is listed. status "auto" derives smooth/busy/full from
+    players_online / capacity. A server not heard from for HEARTBEAT_LIVE_SECONDS counts as down.
+    """
+
+    __tablename__ = "gateway_servers"
+    __table_args__ = (
+        UniqueConstraint("server_key", name="uq_gateway_servers_key"),
+        CheckConstraint("status IN ('auto', 'smooth', 'busy', 'full', 'maintenance')", name="status"),
+        CheckConstraint("capacity >= 1", name="capacity"),
+        CheckConstraint("port >= 1 AND port <= 65535", name="port"),
+        CheckConstraint("players_online >= 0 AND players_in_match >= 0", name="players"),
+    )
+
+    server_key: Mapped[str] = mapped_column(String(32), nullable=False)
+    name: Mapped[str] = mapped_column(String(32), nullable=False)
+    host: Mapped[str] = mapped_column(String(253), nullable=False)
+    port: Mapped[int] = mapped_column(nullable=False)
+    zone: Mapped[int] = mapped_column(default=1, server_default="1", nullable=False)
+    group_id: Mapped[int] = mapped_column(default=10001, server_default="10001", nullable=False)
+    status: Mapped[str] = mapped_column(String(16), default="auto", server_default="auto", nullable=False)
+    capacity: Mapped[int] = mapped_column(default=100, server_default="100", nullable=False)
+    listed: Mapped[bool] = mapped_column(default=True, server_default=true(), nullable=False)
+    version: Mapped[str] = mapped_column(String(64), default="", server_default="", nullable=False)
+    players_online: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
+    players_in_match: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

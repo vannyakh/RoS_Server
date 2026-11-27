@@ -22,6 +22,9 @@ TICK_DURATION = Histogram("ros_game_tick_duration_seconds", "Game tick callback 
 TICK_OVERRUNS = Counter("ros_game_tick_overruns_total", "Ticks that exceeded the interval.")
 DB_DURATION = Histogram("ros_database_query_duration_seconds", "Database cursor execution time.")
 DB_POOL = Gauge("ros_database_pool_connections", "Checked-out database connections.")
+GATEWAY_SERVERS_LIVE = Gauge("ros_gateway_servers_live", "Original-client gateway servers with a recent heartbeat.")
+GATEWAY_PLAYERS_ONLINE = Gauge("ros_gateway_players_online", "Players connected to live original-client gateways.")
+GATEWAY_PLAYERS_IN_MATCH = Gauge("ros_gateway_players_in_match", "Gateway players currently in a match.")
 FUNCTION_EXECUTIONS = Counter(
     "ros_function_executions_total",
     "Tracked function executions.",

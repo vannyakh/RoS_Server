@@ -343,3 +343,68 @@ class AdminMailView(GatewayMailDetail):
     read_at: datetime | None
     claimed_at: datetime | None
     deleted_at: datetime | None
+
+
+# ---- Gateway servers (original-client server-select screen) -------------------------------------
+
+SERVER_KEY_PATTERN = r"^[a-z0-9][a-z0-9_-]{0,31}$"
+# One token in the client's space-separated server list line (UILogin.parseOneServerInfo).
+SERVER_NAME_PATTERN = r"^[A-Za-z0-9_.-]{1,32}$"
+SERVER_STATUS_PATTERN = r"^(auto|smooth|busy|full|maintenance)$"
+
+
+class GatewayServerHeartbeat(BaseModel):
+    """What one gateway process reports every few seconds. `name` is used only when the server is
+    first registered; after that the operator's name wins."""
+
+    server_key: str = Field(pattern=SERVER_KEY_PATTERN)
+    name: str = Field(default="Private-Server", pattern=SERVER_NAME_PATTERN)
+    host: str = Field(min_length=1, max_length=253, pattern=r"^[A-Za-z0-9.:-]+$")
+    port: int = Field(ge=1, le=65535)
+    version: str = Field(default="", max_length=64)
+    players_online: int = Field(default=0, ge=0, le=100_000)
+    players_in_match: int = Field(default=0, ge=0, le=100_000)
+    started_at: datetime | None = None
+
+
+class GatewayServerEntry(BaseModel):
+    """One row of the client's server list. `status` is the effective state (auto resolved)."""
+
+    server_key: str
+    name: str
+    host: str
+    port: int
+    zone: int
+    group_id: int
+    status: str
+    listed: bool
+
+
+class GatewayServerList(BaseModel):
+    servers: list[GatewayServerEntry]
+
+
+class AdminGameServer(GatewayServerEntry):
+    configured_status: str
+    capacity: int
+    version: str
+    live: bool
+    players_online: int
+    players_in_match: int
+    started_at: datetime | None
+    last_seen_at: datetime | None
+
+
+class AdminGameServerList(BaseModel):
+    servers: list[AdminGameServer]
+    players_online: int
+    players_in_match: int
+
+
+class AdminGameServerUpdate(BaseModel):
+    name: str | None = Field(default=None, pattern=SERVER_NAME_PATTERN)
+    status: str | None = Field(default=None, pattern=SERVER_STATUS_PATTERN)
+    capacity: int | None = Field(default=None, ge=1, le=100_000)
+    listed: bool | None = None
+    zone: int | None = Field(default=None, ge=0, le=1000)
+    reason: str = Field(min_length=3, max_length=240)

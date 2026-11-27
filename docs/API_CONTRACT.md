@@ -213,6 +213,19 @@ Reads need `store.read`; writes need `players.economy`; writes are audited and a
 
 Web skin purchases now store `{"skin": <code>}` in the ledger row's details.
 
+### Game servers (original client)
+
+Each original-client gateway process reports itself; the game's server-select screen and the admin Game servers page read the same rows (`gateway_servers`).
+
+| Method | Path | Body / query | Response |
+| --- | --- | --- | --- |
+| POST | `/api/v1/gateway/servers/heartbeat` | Gateway key. `server_key` (`^[a-z0-9][a-z0-9_-]{0,31}$`), `name` (`^[A-Za-z0-9_.-]{1,32}$`, used only on first registration), `host`, `port` (1–65535), `version`, `players_online`, `players_in_match`, optional `started_at` | `{"server_key", "name", "host", "port", "zone", "group_id", "status", "listed"}`. `status` is the effective state: the operator's value, or for `auto` `maintenance` when no heartbeat for 30 s, else `full` at ≥95 % of capacity, `busy` at ≥60 %, else `smooth`. 422 for a name with spaces or a bad field. |
+| GET | `/api/v1/gateway/servers` | Gateway key | `{"servers": [entry]}`: listed servers only, by zone then key. The gateway builds `server_list_ad.txt` from it. |
+| GET | `/api/v1/admin/game-servers` | `servers.read` | `{"servers": [entry + configured_status, capacity, version, live, players_online, players_in_match, started_at, last_seen_at], "players_online", "players_in_match"}`. Counts are 0 for a server that is not live. |
+| PATCH | `/api/v1/admin/game-servers/{server_key}` | `servers.manage`. Any of `name`, `status` (`auto`, `smooth`, `busy`, `full`, `maintenance`), `capacity` (1–100000), `listed`, `zone`, plus `reason` (3–240) | The updated admin row. Audited as `server.update`. 404 unknown key. |
+
+Metrics: `ros_gateway_servers_live`, `ros_gateway_players_online`, `ros_gateway_players_in_match`.
+
 ### System mail (original client)
 
 Operators send mail to original-client players; the gateway serves it to the client's mail screen (`UISystemMail`, see `bigworld_gateway/docs/MAIL_FINDINGS.md`). Rows are `gateway_mails` (revision `9e9814d7f549`). `mail_id` is the client's INT32 mailID: a sequence per gateway identity that starts at 1.

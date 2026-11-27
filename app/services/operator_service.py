@@ -46,6 +46,8 @@ CATALOG: tuple[tuple[str, str], ...] = (
     ("roles.create", "Create roles"),
     ("roles.assign", "Assign roles and permissions"),
     ("logs.read", "Read audit and server logs"),
+    ("servers.read", "Read original-client game servers and their player counts"),
+    ("servers.manage", "Rename game servers and set their status, capacity and listing"),
 )
 ROLE_TEMPLATES: dict[str, tuple[str, str, tuple[str, ...]]] = {
     "game_admin": (

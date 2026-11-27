@@ -36,6 +36,8 @@ from app.services.mail_service import MailService
 from app.services.store_listing_service import StoreListingService
 from app.schemas.gateway import GatewayMailClaim, GatewayMailDetail, GatewayMailList
 from app.services.gateway_mail_service import GatewayMailService
+from app.schemas.gateway import GatewayServerEntry, GatewayServerHeartbeat, GatewayServerList
+from app.services.game_server_service import GameServerService
 
 router = APIRouter(prefix="/gateway", tags=["Gateway"])
 
@@ -323,3 +325,19 @@ async def delete_mail(
     """Soft delete. Attachments that were not claimed are forfeited."""
     await GatewayMailService(db).delete(external_uid, mail_id)
     return Response(status_code=204)
+
+
+# Gateway servers (server-select screen) ---------------------------------------------------------
+
+
+
+@router.post("/servers/heartbeat", response_model=GatewayServerEntry, dependencies=[Depends(require_gateway_key)])
+async def server_heartbeat(body: GatewayServerHeartbeat, db: AsyncSession = Depends(get_db)) -> GatewayServerEntry:
+    """Register or refresh one gateway process; returns its name and effective status."""
+    return await GameServerService(db).heartbeat(body)
+
+
+@router.get("/servers", response_model=GatewayServerList, dependencies=[Depends(require_gateway_key)])
+async def server_list(db: AsyncSession = Depends(get_db)) -> GatewayServerList:
+    """Listed servers for the client's server_list_ad.txt."""
+    return await GameServerService(db).client_list()
