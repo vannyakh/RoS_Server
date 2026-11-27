@@ -329,6 +329,8 @@ class MatchSession:
             return False
         if abs(float(x)) < 1.0 and abs(float(y)) < 1.0 and abs(float(z)) < 1.0:
             return False
+        if "position" not in os.environ.get("MATCH_START_ON", "avatar,position"):
+            return False
         return self.start_match("client in world (%.0f, %.0f, %.0f)" % (x, y, z))
 
     def _start_on_avatar_request(self, msgid, payload):
@@ -342,9 +344,26 @@ class MatchSession:
             req = battle_flow.decode_request(msgid, payload)
         except Exception:
             return False
-        if req is None or req[1] != "BattleGroundAvatar":
+        if req is None or req[1] != "BattleGroundAvatar" or req[0] not in (0, battle_flow.AVATAR_ID):
+            return False
+        seen = self.__dict__.setdefault("_pre_start_requests", set())
+        if req[2] not in seen:              # evidence: what the client sends while it loads
+            seen.add(req[2])
+            self._log("      [BATTLE SESSION] pre-start client request: %s" % req[2])
+        if "avatar" not in os.environ.get("MATCH_START_ON", "avatar,position"):
             return False
         return self.start_match("client in world: %s" % req[2])
+
+    def start_timeout(self, limit):
+        if self.client_ready or self.closed:
+            return
+        record = {"stage": "loading", "expected": "client avatar request or position report",
+                  "elapsed": limit, "human_ready": False, "bots_ready": False,
+                  "pending_messages": len(self._queue), "reason": "no start signal",
+                  "recovery": "start match"}
+        self.flow.timeouts.append(record)
+        self._log("      [FLOW] TIMEOUT %s" % " ".join("%s=%s" % (k, v) for k, v in record.items()))
+        self.start_match("start timeout after %.0fs" % limit)
 
     def start_match(self, reason="start"):
         """Start the match timeline once (waiting stage first). Returns True on the first call."""
@@ -431,4 +450,9 @@ def load_battle_modules(session, modules_dir=None, *, log=print):
     # client's first position report (MatchSession.on_client_position).
     if loaded and os.environ.get("MATCH_START", "client") == "immediate" and hasattr(session, "start_match"):
         session.start_match("MATCH_START=immediate")
+    elif loaded and hasattr(session, "start_match"):
+        # No start signal at all (no avatar request, no position report): record why and start anyway
+        # so the match is not stuck forever before the waiting stage (QA 2026-11-27).
+        limit = float(os.environ.get("MATCH_START_TIMEOUT", "120"))
+        session.schedule(limit, session.start_timeout, limit)
     return loaded

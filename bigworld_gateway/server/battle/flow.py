@@ -125,7 +125,9 @@ class MatchFlow:
         planned = {
             "waiting": d.get("warmup", 0.0),
             "aircraft": d.get("boarding", 0.0) + d.get("flight", 0.0),
-            "parachute": float(os.environ.get("JUMP_LAND_DELAY", "8")),
+            # jump.py lands from the client's fall reports; JUMP_LAND_MAX is its hard cap (a real drop
+            # from the plane took ~70 s on LDPlayer, so the old 8 s timed landing was not a limit).
+            "parachute": float(os.environ.get("JUMP_LAND_MAX", "300")),
             "results": float(os.environ.get("RESULTS_LOBBY_DELAY", "3")),
         }.get(stage)
         return None if planned is None else float(planned) + TIMEOUT_GRACE

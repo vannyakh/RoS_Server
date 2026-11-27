@@ -169,8 +169,11 @@ class ZoneModule:
         self.session.zone_module = self
         self.session._log("      [BATTLE] zone module started (%d stages)" % len(self.stages))
 
-    def track_position(self, x, z):
-        """Update the avatar XZ used for poison checks (tests and future position decode)."""
+    def track_position(self, x, z, from_client=True):
+        """Update the avatar XZ used for poison checks. Client reports (position_sync) win: once one
+        arrives, the jump module's landing point is no longer used (QA 2026-11-27)."""
+        if from_client:
+            self._client_position = True
         self.pos_x = float(x)
         self.pos_z = float(z)
         self._position_set = True
@@ -228,15 +231,17 @@ class ZoneModule:
         self._on_play("ground")
 
     def _sync_position_from_jump(self):
+        if getattr(self, "_client_position", False):
+            return
         jump = getattr(self.session, "jump_module", None)
         if jump is None:
             return
         land = getattr(jump, "land_pos", None)
         if land and len(land) >= 3:
-            self.track_position(land[0], land[2])
+            self.track_position(land[0], land[2], from_client=False)
         elif getattr(jump, "drop_pos", None):
             d = jump.drop_pos
-            self.track_position(d[0], d[2])
+            self.track_position(d[0], d[2], from_client=False)
 
     def _apply_stage(self, stage):
         if self.session.closed:

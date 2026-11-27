@@ -25,9 +25,12 @@ def test_undecryptable_packet_is_dropped_and_keepalive_stopped(gw, udp, capsys):
         junk = os.urandom(24)
     udp.datagram_received(junk, ADDR)
     udp.datagram_received(junk, ADDR)
+    assert udp._ka_gens.get(ADDR, 0) == gen0                # two strikes: nothing ended yet
+    udp.datagram_received(junk, ADDR)
+    udp.datagram_received(junk, ADDR)
     out = capsys.readouterr().out
-    assert out.count("stale channel") == 1                  # logged once per address
-    assert udp._stale_addrs[ADDR] == 2
+    assert out.count("stale channel") == 1                  # logged once per address, at strike 3
+    assert udp._stale_addrs[ADDR][0] == 4
     assert udp._ka_gens[ADDR] == gen0 + 1                   # running keepalive timers stop
     assert ADDR not in udp._unacked_packets
     assert udp.transport.sent == []                          # nothing answered on the dead channel

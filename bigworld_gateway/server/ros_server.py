@@ -90,6 +90,7 @@ def _new_session(bf, u32):
 
 GATE_CAPTURE = os.environ.get("GATE_CAPTURE", "off") == "on"   # raw packet capture files
 LOG_RAW = os.environ.get("LOG_RAW", "off") == "on"              # raw hex line per received packet
+STALE_STRIKES = int(os.environ.get("STALE_STRIKES", "3"))      # undecryptable packets before a channel is dead
 
 
 def _bf_plain_ok(pt):
@@ -1477,19 +1478,33 @@ class GateUDP(asyncio.DatagramProtocol):
         the menu/lobby. Drop it, stop this address's keepalive and battle state, and let the client
         time the dead channel out and log in again."""
         stale = self.__dict__.setdefault("_stale_addrs", {})
-        first = addr not in stale
-        stale[addr] = stale.get(addr, 0) + 1
-        if first:
-            print(f"      [SESSION] {addr}: packet ({len(data)}B) matches no session key -> stale channel; "
+        now = time.time()
+        for old in [a for a, (_n, at) in stale.items() if now - at > 600]:
+            del stale[old]                                        # pruned: idle addresses
+        count = stale.get(addr, (0, now))[0] + 1
+        stale[addr] = (count, now)
+        if count == STALE_STRIKES:
+            print(f"      [SESSION] {addr}: {count} packets match no session key -> stale channel; "
                   f"dropped, keepalive stopped (client must log in again)")
             self._ka_gens[addr] = self._ka_gens.get(addr, 0) + 1     # stale keepalive timers stop
             self.__dict__.get("_keepalive_started", set()).discard(addr)
             self._unacked_packets.pop(addr, None)
             if self._in_battle.get(addr):
-                self._end_match_session(addr)
-                self._in_battle[addr] = False
-        elif stale[addr] % 50 == 0:
-            print(f"      [SESSION] {addr}: {stale[addr]} stale-channel packets dropped")
+                self._abandon_match(addr, "stale channel")
+        elif count % 50 == 0:
+            print(f"      [SESSION] {addr}: {count} stale-channel packets dropped")
+
+    def _abandon_match(self, addr, reason):
+        """The client left the match without the result screen (re-login, dead channel): record the
+        result once as a quit, end the match session and leave the battle state."""
+        session = self._match_session(addr)
+        results = getattr(session, "results_module", None) if session is not None else None
+        if results is not None:
+            results.record_quit()
+        print(f"      [BATTLE] match abandoned ({reason}) for {addr}")
+        self.__dict__.get("_matches", {}).pop(addr, None)
+        self._end_match_session(addr)
+        self._in_battle[addr] = False
     def datagram_received(self, data, addr):
         import time as _t
         is_login = data[:4] == b"\x01\x00\x00\x84"
@@ -1592,6 +1607,8 @@ class GateUDP(asyncio.DatagramProtocol):
                     print(f"  [{ts}] [BASEAPP LOGIN REQ] from {addr} req5={req_id_5.hex()} req7={req_id_7.hex()} sess={session_key.hex()} bf={bf_key.hex() if bf_key else None}")
                     # New BaseApp session: reset per-channel state
                     self.__dict__.get("_stale_addrs", {}).pop(addr, None)
+                    if self._in_battle.get(addr):          # reconnect mid-match: end the old match once
+                        self._abandon_match(addr, "re-login")
                     self._player_created.pop(addr, None)
                     self._last_client_seq.pop(addr, None)
                     self.__dict__.get("_seen_client_seq", {}).pop(addr, None)
@@ -1740,7 +1757,10 @@ class GateUDP(asyncio.DatagramProtocol):
                     for m, p in msgs:
                         if m == 3 and session is not None:
                             try_sync_xyz(session, p)
-                        if m == 3 and hasattr(battle_flow.Match, "on_position"):
+                        # With the module engine (jump.py) the legacy height landing would land the
+                        # player a second time; it only runs without a match session's jump module.
+                        if (m == 3 and hasattr(battle_flow.Match, "on_position")
+                                and getattr(session, "jump_module", None) is None):
                             handled = session.dispatch_inbound(m, p) if session is not None else None
                             if handled is not None:
                                 if handled:
@@ -1775,10 +1795,9 @@ class GateUDP(asyncio.DatagramProtocol):
                                 if handled:
                                     session.enqueue(handled)
                                 continue
-                            # The modules own in-match requests (battle/modules); the legacy handler only
-                            # runs for comparison runs with LEGACY_MATCH=on.
-                            if session is not None and os.environ.get("LEGACY_MATCH", "off") != "on":
-                                continue
+                            # No module claimed it: battle_flow.Match still owns changePose, fall,
+                            # changeFallPhase/changeGlidePhase, doPutGun and the battle_world vehicle and
+                            # crate requests (QA 2026-11-27).
                             try:
                                 reply = battle_flow.Match.handle(self._battle_match(addr), m, p, log=print)
                             except Exception as e:
@@ -1816,6 +1835,7 @@ class GateUDP(asyncio.DatagramProtocol):
                 # "Starting in N s" countdown, the player count and the safe-zone circle. Sent once, after
                 # the map has had time to load (BATTLE_SPACE_DELAY seconds). BATTLE_SPACE=off disables it.
                 if (self._in_battle.get(addr) and os.environ.get("BATTLE_SPACE", "on") == "on"
+                        and getattr(self._match_session(addr), "space_module", None) is None
                         and not self.__dict__.setdefault("_space_sent", {}).get(addr)
                         and time.time() - self.__dict__.setdefault("_battle_t0", {}).get(addr, float("inf"))
                         >= float(os.environ.get("BATTLE_SPACE_DELAY", "20"))):

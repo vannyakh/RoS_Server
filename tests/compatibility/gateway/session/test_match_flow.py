@@ -88,11 +88,19 @@ def test_one_decoder_rule_matches_the_captured_packets():
     import battle.requests as reqs
     import battle_flow as bf
 
-    jump = bytes.fromhex("00000000" "13" "ffffffff")       # request_get_off_plane.hex.txt
-    assert bf.decode_request(0xBC, jump)[2] == "requestGetOffPlane"
-    assert reqs.EXPOSED_SHIFT_FROM == bf.EXPOSED_SHIFT_FROM and reqs.EXPOSED_SHIFT == bf.EXPOSED_SHIFT
-    assert bf.decode_request(0xB4, struct.pack("<I", 0))[2] == "fire"       # unshifted below the start
-    for raw in (52, 61, 77, 150, 289, 305):
+    assert reqs.EXPOSED_SHIFT_FROM == bf.EXPOSED_SHIFT_FROM == 180 and reqs.EXPOSED_SHIFT == bf.EXPOSED_SHIFT
+    # Measured (LDPlayer 2026-11-27, args parsed against the .def signatures): wire -> method.
+    measured = {
+        (0xBC, "13ffffffff"): "markFloor",          # the old "Jump capture": a map marker, INT32 -1
+        (0xBC, "11"): "requestGetOffPlane",         # the Jump button, wire 77, unshifted
+        (0xBC, "5a" + "00" * 27): "verifyClientValue",          # wire 150, unshifted
+        (0xBC, "e7" + "17000000"): "onRecvClientFPS",           # wire 291 = raw 289 (+2)
+        (0xBC, "93" + "00000000"): "setPerspectPlayers",        # wire 207 = raw 205 (+2)
+    }
+    for (msgid, hx), name in measured.items():
+        assert bf.decode_request(msgid, bytes.fromhex("00000000" + hx))[2] == name, (hx, name)
+    assert bf.decode_request(0xB4, struct.pack("<I", 0))[2] == "fire"
+    for raw in (52, 61, 77, 150, 178, 289, 305):
         assert bf.avatar_raw_index(bf.avatar_wire_index(raw)) == raw
 
 
@@ -100,6 +108,7 @@ def test_one_decoder_rule_matches_the_captured_packets():
 
 def test_jump_request_reaches_the_jump_module_with_all_modules_loaded(session, sent, clock, monkeypatch):
     """Regression: results.py used to claim every 0x80-0xBF request, so Jump never reached jump.py."""
+    import battle_flow as bf
     from battle.session import load_battle_modules
 
     monkeypatch.setenv("JUMP_LAND_DELAY", "100")
@@ -109,7 +118,8 @@ def test_jump_request_reaches_the_jump_module_with_all_modules_loaded(session, s
     jump.in_jump_window = lambda: True                      # the plane's jump area is open
     session.flow.enter("aircraft")
 
-    handled = session.dispatch_inbound(0xBC, bytes.fromhex("00000000" "13" "ffffffff"))
+    jump_req = struct.pack("<I", 0) + bytes([bf.avatar_wire_index(77) - 60])    # requestGetOffPlane
+    handled = session.dispatch_inbound(0xBC, jump_req)
     assert handled is not None
     assert jump.off_plane is True and session.flow.stage == "parachute"
     assert session.results_module.ended is False            # the Jump did not end the match
@@ -226,3 +236,48 @@ def test_first_avatar_request_starts_the_match_once(session, sent, clock):
     assert session.client_ready and session.flow.stage == "waiting"
     assert [s for s, _a, _r in session.flow.history] == ["waiting"]
     assert sent and sent[0][:1] == b"\x0b"                  # space entity first
+
+
+def test_zone_follows_the_player_not_the_landing_point(session, clock):
+    """QA: the zone reset the position to the fixed jump landing point every poison tick."""
+    from battle.position_sync import try_sync_xyz
+    from battle.session import load_battle_modules
+
+    load_battle_modules(session, MODULES_DIR, log=lambda *a, **k: None)
+    session.start_match("test")
+    clock.advance(0.0)
+    session.flow.enter("ground", "test")
+    clock.advance(0.0)
+    zone = session.zone_module
+    try_sync_xyz(session, _pos(40000.0, -500.0, 40000.0))     # far outside the first blue circle
+    hp0 = zone.player_hp
+    clock.advance(6.0)                                        # a few poison ticks
+    assert (zone.pos_x, zone.pos_z) == (40000.0, 40000.0)
+    assert zone.player_hp < hp0
+
+
+def test_no_start_signal_records_a_timeout_and_starts(session, clock, monkeypatch):
+    from battle.session import load_battle_modules
+
+    monkeypatch.setenv("MATCH_START_TIMEOUT", "90")
+    load_battle_modules(session, MODULES_DIR, log=lambda *a, **k: None)
+    clock.advance(89.0)
+    assert session.flow.stage is None
+    clock.advance(1.5)
+    assert session.flow.stage == "waiting"
+    record = session.flow.timeouts[0]
+    assert (record["stage"], record["reason"], record["recovery"]) == ("loading", "no start signal", "start match")
+
+
+def test_other_entity_requests_do_not_start_the_match(session, clock):
+    import battle_flow as bf
+    from battle.session import load_battle_modules
+
+    load_battle_modules(session, MODULES_DIR, log=lambda *a, **k: None)
+    other_avatar = struct.pack("<I", 777) + bytes.fromhex("e717000000")   # an Avatar id that is not ours
+    session.dispatch_inbound(0xBC, other_avatar)
+    clock.advance(0.0)
+    assert not session.client_ready
+    own = struct.pack("<I", bf.AVATAR_ID) + bytes.fromhex("e717000000")
+    session.dispatch_inbound(0xBC, own)
+    assert session.client_ready
