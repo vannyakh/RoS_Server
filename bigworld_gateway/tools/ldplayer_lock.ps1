@@ -12,6 +12,8 @@ param(
 )
 
 $lock = Join-Path (Split-Path $PSScriptRoot -Parent) "logs\LDPLAYER.lock"
+$ErrorActionPreference = "Stop"          # a failed write must not still print "acquired"
+New-Item -ItemType Directory -Force (Split-Path $lock -Parent) | Out-Null
 
 function Read-Lock {
     if (-not (Test-Path $lock)) { return $null }

@@ -33,6 +33,17 @@ Original client research stays in `docs/reverse-engineering/`. Research notes ar
 
 `bigworld_gateway/` was imported from RosGG-Server-v2 by owner decision. It holds the BigWorld Mercury gateway for the original client, its DNS/HTTPS targets, the client APK patch and host-rewrite tools, and Frida inspection scripts. The boundary above about original-client protection work does not apply inside `bigworld_gateway/`. Everything else in this file still does, including no secrets (keys and certificates stay git-ignored) and no proprietary binaries such as the APK. Code in `app/` must not import from `bigworld_gateway/`. The gateway reaches the database only through `/api/v1/gateway` (see `docs/API_CONTRACT.md`), never by opening the SQLite file.
 
+### Sync with RosGG-Server-v2
+
+Another team develops `bigworld_gateway/` in RosGG-Server-v2, and both copies change. Every gateway change moves both ways with `scripts/sync_rosgg_gateway.py`:
+
+- Before editing `bigworld_gateway/`, pull RosGG changes (`status`, then `pull --fetch --ref origin/main`).
+- After editing it and passing the gateway tests, `push` the files into the RosGG working tree. A human commits and pushes there. Then `pull` again so `bigworld_gateway/UPSTREAM_SYNC.json` records the new base.
+- A file changed on both sides is a conflict. Merge it by hand. Keys, `.env`, captures, logs, `saved_accounts.json` and APKs never cross.
+- Only one gateway can serve LDPlayer at a time. Take `tools/ldplayer_lock.ps1` in both copies, and do not stop the other copy's gateway yourself.
+
+The full rule is `.cursor/rules/15-rosgg-sync.mdc`.
+
 ## Task registry
 
 Engineering work is coordinated from `.cursor/management/tasks.json`. The CTO agent is the only role that changes task assignment or status.

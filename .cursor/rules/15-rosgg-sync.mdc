@@ -1,0 +1,46 @@
+---
+description: Keep bigworld_gateway/ and the RosGG-Server-v2 repository in sync in both directions.
+globs: bigworld_gateway/**
+alwaysApply: false
+---
+
+# RosGG-Server-v2 sync
+
+RosGG-Server-v2 is where another team develops the original-client gateway. RoS_Server is the copy
+that runs the game and its API. `bigworld_gateway/` here is the RosGG repository root. The two copies
+change in parallel, so every gateway change moves both ways through `scripts/sync_rosgg_gateway.py`.
+Set `ROSGG_SERVER_V2` to the RosGG-Server-v2 checkout, or pass `--source`.
+
+## Before you change bigworld_gateway/
+
+1. `python scripts/sync_rosgg_gateway.py status`. Fetch first: `pull --fetch --ref origin/main --dry-run`.
+2. If RosGG has changes, pull them before you edit:
+   `python scripts/sync_rosgg_gateway.py pull --fetch --ref origin/main`.
+3. A conflict (a file changed on both sides) is never overwritten. Merge it by hand, then pull again.
+   The base in `bigworld_gateway/UPSTREAM_SYNC.json` advances only when no conflict is left.
+4. Run the gateway tests and fix what the new upstream code broke. Commit the upstream files as one
+   commit (`Sync bigworld_gateway with RosGG-Server-v2 <sha>`) and the RoS_Server fixes in another.
+
+## After you change bigworld_gateway/
+
+1. Run `pytest tests/compatibility/gateway tests/unit -k gateway`. All of them must pass.
+2. `python scripts/sync_rosgg_gateway.py push --dry-run`, then `push`. This copies the files into the
+   RosGG working tree. It never overwrites uncommitted RosGG work: a conflict stops for a human.
+3. A human commits in RosGG (`Sync from RoS_Server: <what>`) and pushes. Agents do not commit or
+   push in the other team's repository.
+4. After that push, run `pull` here so `UPSTREAM_SYNC.json` records the new RosGG commit, and commit it.
+
+## Never synced
+
+Keys and certificates, `.env`, packet captures (`*_capture.bin`, `framing/captures/`), `latest_bf_key.bin`,
+`saved_accounts.json`, logs and APKs. The tool skips them. Do not copy them by hand.
+Tests stay in RoS_Server (`tests/compatibility/gateway/`). RosGG has no test suite.
+
+## Device
+
+- Only one gateway can serve LDPlayer, because both bind UDP/TCP 25000, DNS 53 and HTTP/HTTPS 80/443.
+  Check which copy is running (the process command line names its folder) before you test.
+- Take the LDPlayer lock in both copies (`tools/ldplayer_lock.ps1 acquire` in each). The other
+  team reads the RosGG lock.
+- Do not stop the other copy's gateway yourself. Ask the user, who runs that copy's `stop.cmd`.
+- Device evidence (checklist PASS) counts for the copy that served the run. Name it in the note.
