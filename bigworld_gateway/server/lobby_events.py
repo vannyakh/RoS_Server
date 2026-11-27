@@ -41,7 +41,7 @@ def day_of(ts):
 
 def week_of(ts):
     import datetime
-    y, w, _d = datetime.datetime.utcfromtimestamp(ts).isocalendar()
+    y, w, _d = datetime.datetime.fromtimestamp(ts, datetime.timezone.utc).isocalendar()
     return "%d-W%02d" % (y, w)
 
 
@@ -77,23 +77,41 @@ def signin_claim(state, now):
 # ---------------------------------------------------------------- daily activity (missions)
 
 _table = None
+TABLE_FILE = os.path.join(_HERE, "extract", "daily_activity.json")
+
+
+def _fallback_table():
+    """Shape-only table used until extract/daily_activity.json is read from the client. Sizes are the
+    client's fresh-day values (resetDailyActivityState): 14 activities, daily tiers 30/60/90/120 points,
+    weekly tiers 300/600. Activity kinds, counts, points and tier props are not extracted yet, so no
+    activity can reach MET and no tier awards props: claims answer with the unchanged state."""
+    size = int(os.environ.get("DAILY_ACTIVITY_COUNT", "14"))
+    return {"activities": {}, "size": size, "source": "fallback",
+            "daily": [{"points": p, "props": []} for p in (30, 60, 90, 120)],
+            "weekly": [{"points": p, "props": []} for p in (300, 600)]}
 
 
 def activity_table():
-    """extract/daily_activity.json (read from the client: iterDailyActivityData, getActivityRewardData)."""
+    """extract/daily_activity.json (read from the client: iterDailyActivityData, getActivityRewardData),
+    or the shape-only fallback when that file has not been extracted yet."""
     global _table
     if _table is None:
-        path = os.path.join(_HERE, "extract", "daily_activity.json")
-        with open(path, encoding="utf-8") as f:
-            raw = json.load(f)
-        _table = {"activities": {int(k): v for k, v in raw["activities"].items()},
-                  "daily": raw["daily_tiers"], "weekly": raw["weekly_tiers"]}
+        if not os.path.isfile(TABLE_FILE):
+            print("      [BASEAPP] extract/daily_activity.json missing: Activity Points use the "
+                  "shape-only fallback (nothing claimable)")
+            _table = _fallback_table()
+        else:
+            with open(TABLE_FILE, encoding="utf-8") as f:
+                raw = json.load(f)
+            _table = {"activities": {int(k): v for k, v in raw["activities"].items()},
+                      "daily": raw["daily_tiers"], "weekly": raw["weekly_tiers"], "source": "client"}
     return _table
 
 
 def _fresh(now, old=None):
     t = activity_table()
     n = max(t["activities"]) + 1 if t["activities"] else 0
+    n = max(n, int(t.get("size") or 0))
     st = {"day": day_of(now), "week": week_of(now), "progress": [0] * n, "state": [UNMET] * n,
           "daily": 0, "daily_tiers": [UNMET] * len(t["daily"]),
           "weekly": 0, "weekly_tiers": [UNMET] * len(t["weekly"])}
@@ -143,8 +161,9 @@ def activity_event(st, kind, amount=1):
 
 def activity_claim(st, aid):
     """getActivityReward(idx): MET -> GOT and add the points. Returns calls ([] if not claimable)."""
-    a = activity_table()["activities"].get(int(aid))
-    if a is None or st["state"][aid] != MET:
+    aid = int(aid)
+    a = activity_table()["activities"].get(aid)
+    if a is None or not 0 <= aid < len(st["state"]) or st["state"][aid] != MET:
         return []
     st["state"][aid] = GOT
     st["daily"] += int(a["points"])

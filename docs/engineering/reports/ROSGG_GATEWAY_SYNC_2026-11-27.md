@@ -65,3 +65,33 @@ gave `OK: 128 tasks, 12 discoveries, 43 compatibility features`.
 - Nothing is committed. A human reviews and merges.
 - `bigworld_gateway/README.md` now refers to `scripts/sync_rosgg_gateway.py`, which exists only in
   RoS_Server. A `push` would copy that README into RosGG.
+
+## Review and QA follow-up (same day)
+
+### Security
+- `delMails` ran `pickle.loads` on client bytes (remote code execution from UDP :25000). It now decodes
+  with `server/client_pickle.py`, which refuses every class or function reference and data over 64 KiB.
+  Tests: `tests/unit/test_gateway_client_pickle.py`, plus the `delMails` tests in `lobby_new/`.
+- `pytest.ini` gained `testpaths = tests`. Without it, plain `pytest` collected a Frida payload.
+
+### Bugs from the offline QA check, all fixed
+| # | Bug | Fix |
+|---|---|---|
+| 1 | `extract/daily_activity.json` is missing (RosGG has no copy either), so every Activity Points call raised `FileNotFoundError` | `lobby_events.activity_table()` falls back to a shape-only table: 14 activities and 30/60/90/120 and 300/600 tiers, the client's fresh-day values. Nothing can be claimed until the real table is extracted. Login bytes are unchanged. |
+| 2 | `getActivityReward` / `getDailyActivityReward` / `getWeeklyActivityReward` had no handler | `GateUDP._activity_reward` handles them, with state per account (`activity:<gid>`). Props are settled on RoS_Server and then granted. When nothing can be claimed, the reply is the unchanged state. Login now sends the stored state. |
+| 3 | Top-up credited heuristic amounts (121 of 121 client packs were wrong), and the `lobby_topup` branch could never be reached | `_complete_private_pay` uses `lobby_topup.grant` (AMOUNT + NORMAL_PRESENT from `pay_goods.json`) first, and the heuristic only for unknown ids. The unreachable `_topup_reply` was removed and the `lobby_topup` docstring corrected. |
+| 4 | Two mail systems: `delMails` went to `lobby_mail`, the other four requests to RoS_Server | When linked, all five go to RoS_Server; `delMails` deletes each id through `account_link.delete_mail`. When not linked, all five use the local `lobby_mail.json` mailbox. `LOCAL_MAIL=off` restores the old empty mailbox, and the existing RoS_Server mail tests set it. |
+| 5 | Sign-in state was stored under one global `signin` key | It is now stored per account, under `signin:<gid>`. |
+
+Also: `lobby_events.week_of` no longer uses the deprecated `utcfromtimestamp`.
+
+Tests: `pytest tests/compatibility/gateway tests/unit -k "gateway or lobby_new or sync_rosgg"`
+gave **1662 passed, 1 xfailed**. The one strict xfail is the real `daily_activity.json` data, which
+needs a read-only Frida dump of `iterDailyActivityData` / `getActivityRewardData` on a device.
+
+Still to do:
+- These fixes exist only in RoS_Server. `python scripts/sync_rosgg_gateway.py push` copies them into
+  the RosGG working tree for the other team to commit.
+- Nothing has been checked on a device yet. The running LDPlayer session uses RosGG's copy of the
+  gateway.
+- A previous global `signin` value is not carried over, so each account starts its sign-in streak again.

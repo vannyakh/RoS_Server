@@ -17,6 +17,7 @@ import lobby_rank  # leaderboard replies (server/lobby_rank.py)
 import lobby_topup  # Top-Up packs -> diamonds, no payment (server/lobby_topup.py)
 import lobby_vip  # VIP Privilege screen data and reward claims (server/lobby_vip.py)
 import pickle
+import client_pickle  # safe decode of client PYTHON args (server/client_pickle.py)
 import perf_monitor  # in-memory per-request latency/bytes (server/perf_monitor.py)
 import supply_cache  # pre-pickled Supply catalogue (server/supply_cache.py)
 import local_store  # cached, atomic saved_accounts.json store (server/local_store.py)
@@ -999,6 +1000,16 @@ def save_local_state(yuanbao=None, add_items=(), outfit=None, recent_got=None):
 
 def _vip_key():
     return "vip:" + str(account_link.current_gid())
+
+
+def _signin_key():
+    """Per-account daily sign-in state (lobby_events.signin_claim)."""
+    return "signin:" + str(account_link.current_gid())
+
+
+def _activity_key():
+    """Per-account Activity Points state (lobby_events.activity_state)."""
+    return "activity:" + str(account_link.current_gid())
 
 
 def vip_claimed():
@@ -2341,10 +2352,15 @@ class GateUDP(asyncio.DatagramProtocol):
 
             if name == "requestDtsSigninAward":      # lane 2: server/lobby_events.py
                 import lobby_events
-                st, award, calls = lobby_events.signin_claim(load_accounts().get("signin"), athlete_requests.game_now())
-                save_account("signin", st)
+                st, award, calls = lobby_events.signin_claim(load_accounts().get(_signin_key()), athlete_requests.game_now())
+                save_account(_signin_key(), st)
                 print(f"      [BASEAPP] sign-in claim -> level {st['level']}, award {award or 'none (already claimed today)'}")
                 return b"".join(athlete_method(n, a) for n, a in calls)
+
+            # Benefits > Activity Points "Get" buttons (ui.UIDailyActivity): one activity, or a
+            # daily / weekly tier box. State per account; nothing claimable answers with the state.
+            if name in ("getActivityReward", "getDailyActivityReward", "getWeeklyActivityReward"):
+                return self._activity_reward(addr, name, rd.i32())
 
             if name == "setHasAlreadyShowSupplyID":
                 # Athlete.def declares no arguments, so the server picks the id: this week's box
@@ -2454,9 +2470,13 @@ class GateUDP(asyncio.DatagramProtocol):
                 return athlete_method("onUpdateItemConvertRemind",
                                       py(dict(self._item_convert_remind[addr])))
 
-            # System mail (iMail): list, detail, claim attachments, delete.
-            if name in ("requestMails", "requestMailDetail", "getAwardFromMail", "deleteMail"):
-                return self._mail_request(addr, name, rd)
+            # System mail (iMail): list, detail, claim attachments, delete. Linked: RoS_Server is the
+            # mailbox (operators send mail there). Not linked: the local lobby_mail.json mailbox
+            # (server/lobby_mail.py); LOCAL_MAIL=off keeps an empty mailbox instead.
+            if name in MAIL_REQUESTS:
+                if account_link.current() or os.environ.get("LOCAL_MAIL", "on") == "off":
+                    return self._mail_request(addr, name, rd)
+                return self._mail_reply(addr, name, rd)
 
             # Depot > Vehicles > Display: the vehicle skin shown beside the player in the lobby.
             # Depot > Firearms > Display Firearm: setOutGameWeapon(charType, weapon skin, pose);
@@ -2666,17 +2686,9 @@ class GateUDP(asyncio.DatagramProtocol):
                 print(f"      [BASEAPP] setNationalFlag '{flag}' -> {'saved' if saved else 'not saved'}")
                 return b""
 
-            # Mailbox (server/lobby_mail.py, mails in lobby_mail.json).
-            if name in MAIL_REQUESTS:
-                return self._mail_reply(addr, name, rd)
-
             # Leaderboard, "data" tab (server/lobby_rank.py).
             if name in RANK_REQUESTS:
                 return self._rank_reply(addr, name, rd)
-
-            # Top-Up packs: credit diamonds here; never approve an SDK payment (server/lobby_topup.py).
-            if name == "requestRealNameAuthenCheckBeforeRequsetingPayGoods":
-                return self._topup_reply(addr, rd.string())
 
             # Friend lists (iFriend.getFriendList(UINT8 friendType) -> onGetFriendList(UINT8,
             # ARRAY<FRIEND_ABSTRACT>, PY_DICT)). No other players on this server yet: empty lists.
@@ -2797,6 +2809,28 @@ class GateUDP(asyncio.DatagramProtocol):
         return lobby_mail.Mailbox(lambda: load_accounts().get(key), lambda st: save_account(key, st),
                                   athlete_requests.game_now())
 
+    def _activity_reward(self, addr, name, idx):
+        """getActivityReward(idx) / getDailyActivityReward(idx) / getWeeklyActivityReward(idx)
+        (Athlete.def INT32) -> lobby_events claim; props are settled on RoS_Server, then granted."""
+        import lobby_events
+        now = athlete_requests.game_now()
+        st = lobby_events.activity_state(load_accounts().get(_activity_key()), now)
+        props = []
+        if name == "getActivityReward":
+            calls = lobby_events.activity_claim(st, idx)
+        else:
+            props, calls = lobby_events.tier_claim(st, name == "getWeeklyActivityReward", idx)
+        save_account(_activity_key(), st)
+        print(f"      [BASEAPP] {name}({idx}) -> {'claimed' if calls else 'not claimable'}, props {props}")
+        if not calls:                    # answer anyway, so the panel does not wait on the button
+            return b"".join(athlete_method(n, a) for n, a in lobby_events.activity_sync_calls(st))
+        out = b""
+        if props:
+            if not self._settle(addr, 0, props, f"gateway:activity:{name}:{idx}"):
+                print(f"      [BASEAPP] {name}: items not saved")
+            out += self._grant_props(props, force=True)
+        return out + b"".join(athlete_method(n, a) for n, a in calls)
+
     def _mail_reply(self, addr, name, rd):
         """Mail list / detail / claim / delete (client iChat.py + UISystemMail.py)."""
         py = athlete_requests.py
@@ -2826,7 +2860,12 @@ class GateUDP(asyncio.DatagramProtocol):
             box.delete([rd.i32()])
             return mail_list()
         if name == "delMails":
-            box.delete(list(pickle.loads(rd.blob()) or []))
+            try:
+                ids = client_pickle.int_list(rd.blob())   # never pickle.loads client bytes
+            except pickle.UnpicklingError as e:
+                print(f"      [BASEAPP] delMails refused: {e}")
+                return b""
+            box.delete(ids)
             return mail_list()
         return b""
 
@@ -2857,31 +2896,6 @@ class GateUDP(asyncio.DatagramProtocol):
         if name in ("requestLBSRankList", "requestLBSPlayerRank"):
             return athlete_method("onGetLBSRank", athlete_requests.py([]))
         return b""
-
-    def _topup_reply(self, addr, goods_id):
-        """Grant a Top-Up pack's diamonds (no payment) and confirm it like a paid order."""
-        amounts = lobby_topup.grant(goods_id)
-        if not lobby_topup.enabled() or amounts is None:
-            print(f"      [BASEAPP] top-up {goods_id}: not granted (TOPUP_GRANT off or unknown pack)")
-            return b""
-        base, bonus = amounts
-        total = base + bonus
-        wallet = self._session_wallet(addr)
-        if account_link.current():
-            result = account_link.purchase(-total, [], f"gateway:topup:{goods_id}")
-            if not result or "_error" in result:
-                print(f"      [ACC-LINK] top-up {goods_id}: RoS_Server refused or unreachable, not granted")
-                return b""
-            wallet.balances[athlete_requests.YUANBAO] = int(result["yuanbao"])
-        else:
-            wallet.balances[athlete_requests.YUANBAO] = wallet.balances.get(athlete_requests.YUANBAO, 0) + total
-            save_local_state(yuanbao=wallet.balances[athlete_requests.YUANBAO])
-        sn = f"local-{int(time.time() * 1000)}"
-        print(f"      [BASEAPP] top-up {goods_id}: +{base}+{bonus} diamonds -> {wallet.balances[athlete_requests.YUANBAO]}")
-        bids = struct.pack("<I", 1) + _bw_blob(goods_id.encode())
-        return (self._diamond_props(addr) +
-                athlete_method("onConfirmPayOrder", b"\x01" + _bw_blob(sn.encode()) + struct.pack("<ii", base, bonus) + bids) +
-                athlete_method("onAddHistoryPayGoodsIDs", _bw_blob(goods_id.encode())))
 
     def _diamond_props(self, addr):
         """iCurrency.onYBUpdated(freeYuanbao, payYuanbao, src) with the session's diamond balance
@@ -2915,7 +2929,8 @@ class GateUDP(asyncio.DatagramProtocol):
     def _complete_private_pay(self, addr, bid):
         """Simulate a successful IAP: onRequirePayOrder then onConfirmPayOrder + balance updates."""
         import uuid as _uuid
-        ingot, bonus = pay_goods.diamonds_for_bid(bid)
+        # Client PayGoods table (AMOUNT, NORMAL_PRESENT) first; the bid heuristic only for unknown ids.
+        ingot, bonus = lobby_topup.grant(bid) or pay_goods.diamonds_for_bid(bid)
         total = ingot + bonus
         sn = _uuid.uuid4().hex
         ref = f"iap.{account_link.ledger_reason(bid)[:24]}.{sn[:12]}"
@@ -3314,6 +3329,15 @@ class GateUDP(asyncio.DatagramProtocol):
         py = athlete_requests.py
         if name == "requestMails":
             return self._mail_update_calls("requestMails")
+        if name == "delMails":                # PY_LIST of mail ids, decoded without running code
+            try:
+                ids = client_pickle.int_list(rd.blob())
+            except pickle.UnpicklingError as e:
+                print(f"      [BASEAPP] delMails refused: {e}")
+                return b""
+            deleted = [mid for mid in ids if self._link_call("delete_mail", mid)]
+            print(f"      [BASEAPP] delMails {ids} -> deleted {deleted}")
+            return self._mail_update_calls("delMails")
         mail_id = rd.i32()
         if name == "requestMailDetail":
             detail = self._link_call("mail_detail", mail_id)
@@ -3600,22 +3624,19 @@ class GateUDP(asyncio.DatagramProtocol):
             # could not close. Fresh-day values as the client's resetDailyActivityState builds them:
             # 14 activities (iterDailyActivityData), 4 daily tiers (30/60/90/120 pts), 2 weekly
             # tiers (300/600 pts), all const.RewardState.UnmetNeeds (0).
-            i8s = lambda n: struct.pack("<I", n) + b"\x00" * n
-            n_act = int(os.environ.get("DAILY_ACTIVITY_COUNT", "14"))
+            # The account's stored state (server/lobby_events.py); a new day starts from those values.
             if os.environ.get("DAILY_ACTIVITY_SYNC", "on") == "off":    # rule out these calls when the hall fails to load
                 raise RuntimeError("DAILY_ACTIVITY_SYNC=off")
-            calls += athlete_method("syncDailyActivity", struct.pack("<i", 0))
-            calls += athlete_method("syncDailyActivityRewardState", i8s(4))
-            calls += athlete_method("syncWeeklyActivity", struct.pack("<i", 0))
-            calls += athlete_method("syncWeeklyActivityRewardState", i8s(2))
-            calls += athlete_method("syncActivityProgress", struct.pack("<I", n_act) + b"\x00\x00\x00\x00" * n_act)
-            calls += athlete_method("syncActivityState", i8s(n_act))
+            import lobby_events
+            act = lobby_events.activity_state(load_accounts().get(_activity_key()), athlete_requests.game_now())
+            for n, a in lobby_events.activity_sync_calls(act):
+                calls += athlete_method(n, a)
         except Exception as e:
             print(f"      [BASEAPP] Warning: daily activity sync skipped: {e}")
         try:     # lane 2: stored sign-in time/level (popup stays closed after today's claim)
             import lobby_events
             if os.environ.get("SIGNIN_SYNC", "on") != "off":
-                for n, a in lobby_events.signin_login_calls(load_accounts().get("signin")):
+                for n, a in lobby_events.signin_login_calls(load_accounts().get(_signin_key())):
                     calls += athlete_method(n, a)
         except Exception as e:
             print(f"      [BASEAPP] Warning: sign-in sync skipped: {e}")

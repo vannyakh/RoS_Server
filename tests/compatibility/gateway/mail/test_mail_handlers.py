@@ -18,6 +18,9 @@ PROP_A, PROP_B = 200027, 203011
 def gw(monkeypatch, tmp_path):
     monkeypatch.setenv("GATEWAY_API_KEY", "")
     monkeypatch.setenv("ATHLETE_SEED_CURRENCY", "1:10000,2:1000")
+    # These tests pin the RoS_Server mail path; not linked, it is used only with LOCAL_MAIL=off
+    # (otherwise the local lobby_mail.json mailbox answers, see tests/.../lobby_new/test_lobby_mail.py).
+    monkeypatch.setenv("LOCAL_MAIL", "off")
     module = importlib.reload(importlib.import_module("ros_server"))
     module.ACCOUNTS_FILE = str(tmp_path / "saved_accounts.json")
     module._SESSIONS.clear()
