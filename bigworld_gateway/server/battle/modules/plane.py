@@ -124,7 +124,7 @@ class PlaneModule:
         if self._owns_timeline:
             self.timeline.start(self.session)
         self.session.plane_module = self
-        self.session.close = self._close_with_cleanup
+        self.session.on_close(self.remove)
 
     def _on_boarding(self, _phase):
         if self.session.closed or self.created:

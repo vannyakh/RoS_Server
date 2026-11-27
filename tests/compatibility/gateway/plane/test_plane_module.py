@@ -154,12 +154,13 @@ def test_auto_load_from_modules_dir(sent, clock):
     names = [Path(getattr(m, "__file__", "")).name for m in loaded]
     assert "plane.py" in names
     assert "space.py" in names
-    # plane defers; space creates immediately
-    assert len(sent) >= 1
+    # Nothing until the match starts; then the space is created with the waiting stage.
+    assert sent == []
+    session.start_match("test")
+    clock.advance(0.0)
     assert sent[0][:1] == b"\x0b"  # space enterAoI
-    clock.advance(0.0)  # plane deferred start (+ shared or own warmup)
-    # Advance through warmup default 3s to boarding
-    clock.advance(3.0)
+    # Advance through the waiting stage to boarding
+    clock.advance(session.timeline.durations["warmup"])
     # Expect a Plane createEntity among sent bodies
     plane_creates = [
         b for b in sent

@@ -10,7 +10,7 @@ from battle.timeline import PHASES, MatchTimeline, load_phase_durations
 def test_default_phases_match_data_file():
     durations = load_phase_durations()
     assert list(durations) == list(PHASES)
-    assert durations["warmup"] == 3.0
+    assert durations["warmup"] == 30.0          # waiting stage (solo_fill warmup_seconds)
     assert durations["boarding"] == 2.0
     assert durations["flight"] == 8.0
     assert durations["play"] == 0.0

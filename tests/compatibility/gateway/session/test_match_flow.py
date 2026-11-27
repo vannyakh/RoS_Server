@@ -137,3 +137,92 @@ def test_slots_from_solo_fill_reach_results(session, clock):
     fill = session.solo_fill
     assert session.flow.slots == fill.human_count + fill.bot_count
     assert session.results_module._alive_start == session.flow.slots
+
+
+# ---- match start waits for the client in the world (aircraft timeout fix) ------------------------
+
+def _pos(x, y, z):
+    return struct.pack("<II3f", 1, 0, x, y, z) + b"\x00" * 12
+
+
+def test_match_waits_for_the_client_then_starts_once(session, sent, clock):
+    from battle.position_sync import try_sync_xyz
+    from battle.session import load_battle_modules
+
+    load_battle_modules(session, MODULES_DIR, log=lambda *a, **k: None)
+    clock.advance(60.0)
+    assert sent == [] and session.flow.stage is None          # loading screen: nothing sent
+    try_sync_xyz(session, _pos(0.0, 0.0, 0.0))               # origin report: not in the world yet
+    clock.advance(1.0)
+    assert session.flow.stage is None
+    try_sync_xyz(session, _pos(698.0, -677.0, -373.0))
+    try_sync_xyz(session, _pos(699.0, -677.0, -373.0))
+    clock.advance(0.0)
+    assert session.flow.stage == "waiting" and session.client_ready
+    assert sent[0][:1] == b"\x0b"                               # the space entity is created first
+    assert [s for s, _a, _r in session.flow.history] == ["waiting"]
+
+
+def test_countdown_shows_the_waiting_length(session, clock):
+    from battle.modules import space as space_mod_loaded  # noqa: F401  (loaded by load_battle_modules)
+    from battle.session import load_battle_modules
+
+    load_battle_modules(session, MODULES_DIR, log=lambda *a, **k: None)
+    clock.advance(42.0)                                         # map loading took 42 s
+    session.start_match("test")
+    clock.advance(0.0)
+    space = session.space_module
+    mod = __import__("sys").modules["battle.modules.space"]
+    warmup = session.timeline.durations["warmup"]
+    # client shows PREPARE_TIME - (serverTime - gameStageStartTime) = warmup at create time
+    assert mod.PREPARE_TIME - (session.server_time() - space.stage_start) == pytest.approx(warmup)
+
+
+def test_stuck_aircraft_stage_is_recorded_and_recovered_once(session, clock):
+    from battle.session import load_battle_modules
+
+    load_battle_modules(session, MODULES_DIR, log=lambda *a, **k: None)
+    session.start_match("test")
+    clock.advance(0.0)
+    session.flow.enter("aircraft", "test")
+    jump = session.jump_module
+    jump._force_drop_if_needed = lambda: setattr(jump, "dropped_by_watchdog", True)   # stand-in
+    clock.advance(session.flow.stage_limit("aircraft") + 0.1)
+    assert len(session.flow.timeouts) == 1
+    record = session.flow.timeouts[0]
+    assert record["stage"] == "aircraft" and record["recovery"] == "jump force-drop"
+    assert record["human_ready"] is True and "jump" in record["expected"]
+    assert getattr(jump, "dropped_by_watchdog", False) is True
+
+
+def test_close_runs_every_module_cleanup_once(session, sent, clock):
+    import battle_flow as bf
+    from battle.session import load_battle_modules
+
+    load_battle_modules(session, MODULES_DIR, log=lambda *a, **k: None)
+    session.start_match("test")
+    clock.advance(session.timeline.durations["warmup"] + 0.1)  # boarding: the plane exists too
+    session.close()
+    assert bf.leave_aoi(session.space_id) in sent and bf.leave_aoi(session.plane_id) in sent
+    n = len(sent)
+    session.close()
+    assert len(sent) == n
+
+
+def test_first_avatar_request_starts_the_match_once(session, sent, clock):
+    """Measured: an idle client in the world sends no position report, but its avatar sends
+    onRecvClientFrameLevel / onRecvClientFPS 6 s after battle entry."""
+    import battle_flow as bf
+    from battle.session import load_battle_modules
+
+    load_battle_modules(session, MODULES_DIR, log=lambda *a, **k: None)
+    clock.advance(30.0)
+    assert session.flow.stage is None
+    fps = bytes.fromhex("00000000e717000000")              # captured onRecvClientFPS (0xBC)
+    assert bf.decode_request(0xBC, fps)[2] == "onRecvClientFPS"
+    session.dispatch_inbound(0xBC, fps)
+    session.dispatch_inbound(0xBC, fps)
+    clock.advance(0.0)
+    assert session.client_ready and session.flow.stage == "waiting"
+    assert [s for s, _a, _r in session.flow.history] == ["waiting"]
+    assert sent and sent[0][:1] == b"\x0b"                  # space entity first

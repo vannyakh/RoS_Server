@@ -26,6 +26,8 @@ def _py(value):
 
 def test_register_creates_space_with_required_props(session, sent, bf, space_mod):
     mod = space_mod.register(session)
+    assert sent == [] and not mod.created          # nothing during the client's loading screen
+    session.flow.enter("waiting")                  # client in the world -> waiting stage
     assert mod.created
     assert len(sent) == 1
     body = sent[0]
@@ -49,6 +51,7 @@ def test_register_creates_space_with_required_props(session, sent, bf, space_mod
 
 def test_session_end_removes_space(session, sent, bf, space_mod):
     space_mod.register(session)
+    session.flow.enter("waiting")
     assert len(sent) == 1
     session.close()
     assert len(sent) == 2
@@ -78,6 +81,9 @@ def test_auto_load_from_modules_dir(sent, clock):
     loaded = load_battle_modules(session, MODULES_DIR, log=lambda *_a, **_k: None)
     names = [Path(getattr(m, "__file__", "")).name for m in loaded]
     assert "space.py" in names
+    assert sent == []                              # the match waits for the client
+    session.start_match("test")
+    clock.advance(0.0)
     assert len(sent) >= 1
     assert sent[0][:1] == b"\x0b"  # enterAoI
 

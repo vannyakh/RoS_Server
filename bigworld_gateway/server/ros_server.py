@@ -88,6 +88,10 @@ def _new_session(bf, u32):
     return sess
 
 
+GATE_CAPTURE = os.environ.get("GATE_CAPTURE", "off") == "on"   # raw packet capture files
+LOG_RAW = os.environ.get("LOG_RAW", "off") == "on"              # raw hex line per received packet
+
+
 def _bf_plain_ok(pt):
     """A BaseApp packet decrypted with the right key ends in a wastage byte 1..8 and has small flags."""
     return len(pt) >= 3 and 1 <= pt[-1] <= 8 and struct.unpack("<H", pt[:2])[0] < 0x0200
@@ -1465,18 +1469,41 @@ class GateUDP(asyncio.DatagramProtocol):
         self._training = {}         # addr -> training_event.TrainingState
     def connection_made(self, transport):
         self.transport = transport
+
+    def _drop_stale_channel(self, addr, data):
+        """No known session key decrypts this BaseApp packet: the client still talks on a channel
+        this gateway no longer has (gateway restarted, or a second login replaced the key). Parsing
+        it gave garbage and the keepalive ACKs kept the client from ever timing out, so it hung on
+        the menu/lobby. Drop it, stop this address's keepalive and battle state, and let the client
+        time the dead channel out and log in again."""
+        stale = self.__dict__.setdefault("_stale_addrs", {})
+        first = addr not in stale
+        stale[addr] = stale.get(addr, 0) + 1
+        if first:
+            print(f"      [SESSION] {addr}: packet ({len(data)}B) matches no session key -> stale channel; "
+                  f"dropped, keepalive stopped (client must log in again)")
+            self._ka_gens[addr] = self._ka_gens.get(addr, 0) + 1     # stale keepalive timers stop
+            self.__dict__.get("_keepalive_started", set()).discard(addr)
+            self._unacked_packets.pop(addr, None)
+            if self._in_battle.get(addr):
+                self._end_match_session(addr)
+                self._in_battle[addr] = False
+        elif stale[addr] % 50 == 0:
+            print(f"      [SESSION] {addr}: {stale[addr]} stale-channel packets dropped")
     def datagram_received(self, data, addr):
         import time as _t
         is_login = data[:4] == b"\x01\x00\x00\x84"
 
         if is_login:
             print(f"[UDP GATE:{self.port}] LOGIN from {addr} {len(data)}B seq={data[5:7].hex()}")
-        else:
+        elif LOG_RAW:
             print(f"[UDP GATE:{self.port}] NON-LOGIN from {addr} {len(data)}B: {data.hex()}")
 
-        # Always capture to gate_capture.bin
-        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "gate_capture.bin"), "ab") as f:
-            f.write(data)
+        # Raw capture for protocol work only (GATE_CAPTURE=on): two file appends per packet on the
+        # event loop grew these files past 14 MB and slowed every packet.
+        if GATE_CAPTURE:
+            with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "gate_capture.bin"), "ab") as f:
+                f.write(data)
 
         # --- Login reply handler ---
         reply_variant_env = os.environ.get("REPLY_VARIANT", "24")
@@ -1518,7 +1545,8 @@ class GateUDP(asyncio.DatagramProtocol):
         # --- BaseApp Mercury channel handler ---
         if self.port == 25000 and not is_login:
             ts = _t.strftime('%H:%M:%S')
-            with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "baseapp_capture.bin"), "ab") as f:
+            if GATE_CAPTURE:
+              with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "baseapp_capture.bin"), "ab") as f:
                 f.write(len(data).to_bytes(2, 'little') + data)
 
             try:
@@ -1563,6 +1591,7 @@ class GateUDP(asyncio.DatagramProtocol):
                         session_key = data[11:15] if len(data) >= 15 else struct.pack("<I", 0x11223344)
                     print(f"  [{ts}] [BASEAPP LOGIN REQ] from {addr} req5={req_id_5.hex()} req7={req_id_7.hex()} sess={session_key.hex()} bf={bf_key.hex() if bf_key else None}")
                     # New BaseApp session: reset per-channel state
+                    self.__dict__.get("_stale_addrs", {}).pop(addr, None)
                     self._player_created.pop(addr, None)
                     self._last_client_seq.pop(addr, None)
                     self.__dict__.get("_seen_client_seq", {}).pop(addr, None)
@@ -1604,6 +1633,9 @@ class GateUDP(asyncio.DatagramProtocol):
                                 self._bind_session(addr, other)
                                 bf_key, pt = other["bf"], alt
                                 break
+                        if not _bf_plain_ok(pt):
+                            self._drop_stale_channel(addr, data)
+                            return
                     elif self._sess.get(addr) is not None:
                         self._sess[addr]["confirmed"] = True
                     wastage = pt[-1]

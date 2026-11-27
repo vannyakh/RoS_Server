@@ -183,6 +183,12 @@ class MatchSession:
         self.timeline = MatchTimeline(load_phase_durations())
         self.flow = MatchFlow(self)
         self.flow.attach_timeline(self.timeline)
+        # The match clock starts when the client is in the world (first non-origin position report,
+        # LOBBY_FINDINGS "Auto timeline"), not when the modules load: entities sent during the map
+        # loading screen were never seen and the whole match ran before the player arrived.
+        self.client_ready = False
+        self._t0 = self._now()
+        self._close_hooks = []      # module cleanups (leaveAoI of their entities), newest first      # battle entry: BigWorld.serverTime 1.0 (setGameTime, ros_server)
 
     # ---- entity ids -----------------------------------------------------------------
 
@@ -283,6 +289,8 @@ class MatchSession:
         """
         if self.closed:
             return None
+        if not self.client_ready and 0x80 <= msgid <= 0xBF:
+            self._start_on_avatar_request(msgid, payload)
         for key, handler in list(self._inbound):
             matched = False
             if callable(key) and not isinstance(key, type):
@@ -308,9 +316,63 @@ class MatchSession:
             return result
         return None
 
+    def server_time(self):
+        """BigWorld.serverTime the client sees now: 1.0 + seconds since battle entry (the gateway's
+        setGameTime keepalive uses the same origin, ros_server._battle_t0)."""
+        return 1.0 + (self._now() - self._t0)
+
+    # ---- match start ----------------------------------------------------------------
+
+    def on_client_position(self, x, y, z):
+        """Client position report (msg 3). The first one away from the origin starts the match."""
+        if self.client_ready or self.closed:
+            return False
+        if abs(float(x)) < 1.0 and abs(float(y)) < 1.0 and abs(float(z)) < 1.0:
+            return False
+        return self.start_match("client in world (%.0f, %.0f, %.0f)" % (x, y, z))
+
+    def _start_on_avatar_request(self, msgid, payload):
+        """The client's first BattleGroundAvatar cell request means its avatar is in the world.
+        Measured on LDPlayer 2026-11-27: 6 s after battle entry the client sends
+        onRecvClientFrameLevel, getOnTrain, then onRecvClientFPS every second (render-loop stats),
+        while an idle player sends no position report at all."""
+        try:
+            import battle_flow
+
+            req = battle_flow.decode_request(msgid, payload)
+        except Exception:
+            return False
+        if req is None or req[1] != "BattleGroundAvatar":
+            return False
+        return self.start_match("client in world: %s" % req[2])
+
+    def start_match(self, reason="start"):
+        """Start the match timeline once (waiting stage first). Returns True on the first call."""
+        if self.client_ready or self.closed:
+            return False
+        self.client_ready = True
+        self._log("      [BATTLE SESSION] match start: %s" % reason)
+        self.timeline.start(self)
+        return True
+
     # ---- lifecycle ------------------------------------------------------------------
 
+    def on_close(self, callback):
+        """Run ``callback()`` once when the session closes, before its queue is dropped (modules send
+        leaveAoI for their entities here). Replaces wrapping ``session.close``, which let a later
+        module drop an earlier module's cleanup and could make a wrapper call itself."""
+        if callback not in self._close_hooks:
+            self._close_hooks.append(callback)
+
     def close(self):
+        if self.closed:
+            return
+        for callback in reversed(list(self._close_hooks)):
+            try:
+                callback()
+            except Exception as e:
+                self._log(f"      [BATTLE SESSION] close hook failed: {e!r}")
+        self._close_hooks.clear()
         self.closed = True
         self._queue.clear()
         self._inbound.clear()
@@ -365,7 +427,8 @@ def load_battle_modules(session, modules_dir=None, *, log=print):
         except Exception as e:
             log(f"      [BATTLE SESSION] module {path.name} failed: {e!r}")
             log(traceback.format_exc())
-    timeline = getattr(session, "timeline", None)
-    if loaded and timeline is not None and not getattr(session, "closed", False):
-        timeline.start(session)       # idempotent: a module may already have started it
+    # MATCH_START=immediate starts the timeline now (tests, debugging); the default waits for the
+    # client's first position report (MatchSession.on_client_position).
+    if loaded and os.environ.get("MATCH_START", "client") == "immediate" and hasattr(session, "start_match"):
+        session.start_match("MATCH_START=immediate")
     return loaded

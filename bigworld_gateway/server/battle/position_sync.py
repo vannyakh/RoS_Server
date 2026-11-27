@@ -24,4 +24,7 @@ def try_sync_xyz(session, payload: bytes) -> tuple[float, float, float] | None:
     zone = getattr(session, "zone_module", None)
     if zone is not None and hasattr(zone, "track_position"):
         zone.track_position(x, z)
+    start = getattr(session, "on_client_position", None)
+    if callable(start):
+        start(x, y, z)                 # first report in the world starts the match
     return (float(x), float(y), float(z))
