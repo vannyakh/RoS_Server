@@ -42,7 +42,7 @@ class FakeRosServer:
         self.calls = []
         self.outfit = None
 
-    def __call__(self, method, path, body):
+    def __call__(self, method, path, body, retry_stale=False):
         self.calls.append((method, path, body))
         try:
             if path.endswith("/purchase"):

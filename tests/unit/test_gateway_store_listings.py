@@ -36,7 +36,7 @@ class FakeRosServer:
         self.yuanbao, self.listings, self.down = yuanbao, listings or [], down
         self.calls = []
 
-    def __call__(self, method, path, body):
+    def __call__(self, method, path, body, retry_stale=False):
         self.calls.append((method, path, body))
         if path == "/api/v1/gateway/store/listings":
             return None if self.down else {"listings": self.listings}
@@ -152,7 +152,7 @@ def test_coin_listing_linked_success_spends_gold_through_workshop_compound(gw):
     server = FakeRosServer(1000, [_listing(SCHOOLGIRL, SCHOOLGIRL_GOOD, currency="coin", price=900)])
     gold = [10000]
 
-    def call(method, path, body):
+    def call(method, path, body, retry_stale=False):
         if path.endswith("/workshop/compound"):
             server.calls.append((method, path, body))
             gold[0] -= body["consume_currency"][0]["amount"]
