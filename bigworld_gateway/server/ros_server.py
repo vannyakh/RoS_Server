@@ -3780,7 +3780,19 @@ class GateUDP(asyncio.DatagramProtocol):
                 print(f"      [ROOM] state relay failed: {e!r}")
         max_body = int(os.environ.get("FRAG_BODY", "1200"))
         if len(body) > max_body:
-            chunks = [body[i:i + max_body] for i in range(0, len(body), max_body)]
+            # Never split a message header across fragments: the client drops the whole bundle
+            # ("Got corrupted message header"). FRAG_SPLIT=blind restores the old fixed cuts.
+            import mercury_frag
+            if os.environ.get("FRAG_SPLIT", "messages") == "blind":
+                chunks = [body[i:i + max_body] for i in range(0, len(body), max_body)]
+                bad = mercury_frag.header_split_points(body, max_body)
+                if bad:
+                    print(f"      [BASEAPP] FRAG_SPLIT=blind cuts {len(bad)} message header(s) at {bad[:8]}")
+            else:
+                chunks = mercury_frag.split_bundle(body, max_body)
+                bad = mercury_frag.header_split_points(body, max_body)
+                if bad:
+                    print(f"      [BASEAPP] fragments cut at message boundaries ({len(bad)} header(s) a fixed cut would split)")
             first = self._seq.get(addr, 0)
             last = first + len(chunks) - 1
             for n, chunk in enumerate(chunks):
