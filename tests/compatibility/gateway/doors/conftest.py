@@ -101,14 +101,3 @@ def tiny_doors_data(tmp_path):
     p.write_text(json.dumps(data), encoding="utf-8")
     return p
 
-
-def pack_open(reqs, elem_id, state, *, space_id=20001):
-    args = __import__("struct").pack("<ib", int(elem_id), int(state))
-    frame = reqs.encode_call("BattleGroundSpace", "openElement", space_id, args)
-    return frame[0], frame[3:]
-
-
-def pack_close(reqs, elem_id, *, space_id=20001):
-    args = __import__("struct").pack("<i", int(elem_id))
-    frame = reqs.encode_call("BattleGroundSpace", "closeElement", space_id, args)
-    return frame[0], frame[3:]

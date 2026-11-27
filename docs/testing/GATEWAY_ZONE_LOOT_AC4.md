@@ -170,6 +170,60 @@ Record **PASS** only when both **client observation** and **matching log lines**
 
 ---
 
+## Mobile loot AC4 — owner run (RO-113 gate → RO-066 pickup → RO-079 discard)
+
+Do **not** mark RO-066 / RO-079 AC4 until lobby START reaches match (RO-113 hall markers). Pickup/discard in hall do not count.
+
+### 1. Gateway
+
+From repo root (`config.cmd` must match PC LAN — `ROS_PC_IP`, typically same as `192.168.180.137`):
+
+```powershell
+cmd /c "call bigworld_gateway\config.cmd && set BATTLE_SPACE=off && echo ROS_PC_IP=%ROS_PC_IP%> bigworld_gateway\logs\ac4_env.txt && echo BATTLE_SPACE=%BATTLE_SPACE%>> bigworld_gateway\logs\ac4_env.txt && cd bigworld_gateway && stop.cmd && start.cmd"
+```
+
+Keep **FastAPI** (`uvicorn`) up if the account is linked.
+
+### 2. Emulator + `to_match.sh`
+
+```powershell
+powershell -ExecutionPolicy Bypass -File bigworld_gateway\client\scripts\setup_emulator.ps1
+& "C:\Program Files\Git\bin\bash.exe" -lc "export ADB=/e/LDPlayer/LDPlayer9/adb.exe && cd /c/Users/LUFY/Desktop/RoS_Server/bigworld_gateway && bash tools/to_match.sh"
+```
+
+### 3. RO-113 hall markers (paste into `solo_first_playable.md` / task notes)
+
+After the script finishes, counts in `bigworld_gateway/logs/server.log` must rise in order:
+
+| Marker | RO-113 meaning |
+| --- | --- |
+| `athleteEnterHall` | Lobby reached |
+| `createHallTeam` | Team / Solo lobby ready |
+| `matchBattleGround` | START accepted |
+| `-> battle: resetEntities` | Match handoff |
+
+```powershell
+Select-String -Path bigworld_gateway\logs\server.log -Pattern 'athleteEnterHall|createHallTeam|matchBattleGround|-> battle: resetEntities'
+```
+
+If **zero** for any of these, fix network/DNS (see `docs/testing/solo_first_playable.md`) before loot AC4.
+
+### 4. On device (in match, after countdown → play)
+
+| Action | RO-066 log | RO-079 log |
+| --- | --- | --- |
+| Walk to ground loot, tap pickup | `[BATTLE] props pickup` | — |
+| Open bag, discard stack | — | `[BATTLE] discard prop=` |
+| Pick up dropped prop again | `[BATTLE] props pickup` | — |
+
+```powershell
+Select-String -Path bigworld_gateway\logs\server.log -Pattern '\[BATTLE\] props module started|\[BATTLE\] props spawn|\[BATTLE\] props pickup|\[BATTLE\] discard module started|\[BATTLE\] discard prop=|\[BATTLE\] discard reject'
+```
+
+Attach: 5–15 line excerpt from `server.log` covering one pickup + one discard + module start lines. Screenshots optional; **log + UI agree** = AC4 pass row.
+
+---
+
 ## Operator steps when BLOCKED
 
 1. Confirm `config.cmd` `ROS_PC_IP` matches the PC LAN IP the emulator can reach.

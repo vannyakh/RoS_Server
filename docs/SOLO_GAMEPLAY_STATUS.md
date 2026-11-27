@@ -25,7 +25,7 @@ Related: [RESTORATION_STATUS.md](RESTORATION_STATUS.md) · Phase 09 tasks in `.c
 | Bot entity research | DOCUMENTED | RO-068 | Completed: Robot entity research (pytest/docs); combat deferred |
 | Solo fill 1+N bots | IMPLEMENTED | RO-110 | Completed: `solo_fill` module; N=9 default (**unverified** on LDPlayer) |
 | 9 bots visible in match | IMPLEMENTED | RO-069 | **Review:** `battle/modules/bots.py`; LDPlayer visibility → RO-113 |
-| First-playable LDPlayer accept | BROKEN | RO-113 | Live FAIL: Network Error(15) before Start; 0 hall/battle log markers; bots/plane/parachute/land NOT_RUN (owners RO-107/108, RO-069, RO-062, RO-063). Evidence: `docs/testing/solo_first_playable.md`. Not original-compatible. |
+| First-playable LDPlayer accept | BROKEN | RO-113 | **2026-11-27:** Hall reached (screenshot + `athleteEnterHall` keypoint); still **0** `createHallTeam`/`matchBattleGround`/battle `resetEntities`. START UI visible; bots/plane/land NOT_RUN. Owner: RO-107/108 until markers pass. Evidence: `docs/testing/solo_first_playable.md`. Not original-compatible. |
 
 ## Proposed solo config (NOT verified)
 

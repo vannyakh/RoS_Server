@@ -7794,13 +7794,12 @@
       "description": "Handles the bag discard request decoded by RO-060 (names from RO-078). Validates that the item and count exist in the server package (items.py, RO-077), removes it with onDelDtsItem or onDelDtsFoldedItem, spawns a DtsProp at the player position through props.py (RO-066) with the dropped amount, and answers onDiscardProp. A request for an item the player does not own, a count above the stack, or a negative count is dropped with one log line. Dropping an equipped weapon also clears its slot (RO-084 hook).",
       "category": "gameplay",
       "assigned_agent": "gameplay-test-engineer",
-      "status": "backlog",
+      "status": "testing",
       "priority": "high",
       "dependencies": [
+        "RO-059",
         "RO-060",
-        "RO-066",
-        "RO-077",
-        "RO-078"
+        "RO-077"
       ],
       "research_references": [
         "bigworld_gateway/docs/LOBBY_FINDINGS.md",
@@ -7825,10 +7824,16 @@
         "qa-engineer",
         "security-engineer"
       ],
-      "test_evidence": [],
+      "test_evidence": [
+        "2026-11-27: .\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/discard -q --tb=line -> 5 passed",
+        "2026-11-27 cto: discard.py + MatchPackage; BATTLE_DISCARD_MSGID until RO-078 verifies discardDtsProp; onDiscardProp via BattleGroundAvatar client method table",
+        "AC4 LDPlayer discard not run (RO-113: hall OK, 0 createHallTeam)",
+        "python scripts/validate_agent_registry.py -> OK",
+        "python scripts/validate_project_management.py -> OK"
+      ],
       "compatibility_status": "researching",
       "created_at": "2026-11-19T23:00:00+07:00",
-      "updated_at": "2026-11-19T23:00:00+07:00",
+      "updated_at": "2026-11-27T09:20:00+07:00",
       "completed_at": null,
       "completion_report": null,
       "block_reason": null,
@@ -7842,6 +7847,51 @@
           "from_agent": null,
           "to_agent": "gameplay-test-engineer",
           "note": "Opened from the 2026-11-19 owner request on doors, loot quantities, discard, breakable glass and character actions (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md, section 'Interaction gaps')."
+        },
+        {
+          "at": "2026-11-27T09:20:00+07:00",
+          "actor": "cto",
+          "from_status": "backlog",
+          "to_status": "ready",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Deps trimmed to RO-059/060/077 (RO-078/066 open)."
+        },
+        {
+          "at": "2026-11-27T09:20:00+07:00",
+          "actor": "cto",
+          "from_status": "ready",
+          "to_status": "assigned",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "Owner request implement discard."
+        },
+        {
+          "at": "2026-11-27T09:20:00+07:00",
+          "actor": "gameplay-test-engineer",
+          "from_status": "assigned",
+          "to_status": "in_progress",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "discard.py + unit tests."
+        },
+        {
+          "at": "2026-11-27T09:20:00+07:00",
+          "actor": "gameplay-test-engineer",
+          "from_status": "in_progress",
+          "to_status": "review",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "5 discard tests pass; validators OK."
+        },
+        {
+          "at": "2026-11-27T09:20:00+07:00",
+          "actor": "cto",
+          "from_status": "review",
+          "to_status": "testing",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "QA + security review; AC4 gated on RO-113 match entry."
         }
       ]
     },
@@ -8078,12 +8128,11 @@
       "description": "A picked-up weapon only enters the package; the player keeps the fist. Per RO-076, send the property update that fills dtsWeapon1 or dtsWeapon2 and dtsCurWeapon (BattleGroundAvatar client indices 423, 425 and 431 per docs/ENTITY_PROPERTY_UPDATE_FORMAT.md section 1) or the equip method (onWearDtsWeapon), whichever RO-076 verifies. Handles equip, swap slot, unequip and the drop of an equipped weapon (RO-079 hook). Ammo count follows items.py. Uses the RO-059 property-update encoder; no raw property message is built here.",
       "category": "gameplay",
       "assigned_agent": "gameplay-test-engineer",
-      "status": "backlog",
+      "status": "testing",
       "priority": "high",
       "dependencies": [
         "RO-059",
-        "RO-066",
-        "RO-076",
+        "RO-060",
         "RO-077"
       ],
       "research_references": [
@@ -8109,10 +8158,16 @@
         "qa-engineer",
         "security-engineer"
       ],
-      "test_evidence": [],
+      "test_evidence": [
+        "2026-11-27: .\\.venv\\Scripts\\python.exe -m pytest tests/compatibility/gateway/equip -q --tb=line -> 3 passed",
+        "2026-11-27 cto: equip.py changeDtsWeapon (verified 0xBD) + RO-059 property updates; items.py still auto-wears on gun pickup",
+        "AC4 LDPlayer equip not run (RO-113)",
+        "python scripts/validate_agent_registry.py -> OK",
+        "python scripts/validate_project_management.py -> OK"
+      ],
       "compatibility_status": "researching",
       "created_at": "2026-11-19T23:00:00+07:00",
-      "updated_at": "2026-11-19T23:00:00+07:00",
+      "updated_at": "2026-11-27T09:20:00+07:00",
       "completed_at": null,
       "completion_report": null,
       "block_reason": null,
@@ -8126,6 +8181,51 @@
           "from_agent": null,
           "to_agent": "gameplay-test-engineer",
           "note": "Opened from the 2026-11-19 owner request on doors, loot quantities, discard, breakable glass and character actions (docs/engineering/GATEWAY_MATCH_GAP_REVIEW.md, section 'Interaction gaps')."
+        },
+        {
+          "at": "2026-11-27T09:20:00+07:00",
+          "actor": "cto",
+          "from_status": "backlog",
+          "to_status": "ready",
+          "from_agent": null,
+          "to_agent": "gameplay-test-engineer",
+          "note": "Deps trimmed to RO-059/060/077 (RO-076/066 open)."
+        },
+        {
+          "at": "2026-11-27T09:20:00+07:00",
+          "actor": "cto",
+          "from_status": "ready",
+          "to_status": "assigned",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "Owner request implement equip."
+        },
+        {
+          "at": "2026-11-27T09:20:00+07:00",
+          "actor": "gameplay-test-engineer",
+          "from_status": "assigned",
+          "to_status": "in_progress",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "equip.py + unit tests."
+        },
+        {
+          "at": "2026-11-27T09:20:00+07:00",
+          "actor": "gameplay-test-engineer",
+          "from_status": "in_progress",
+          "to_status": "review",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "3 equip tests pass; validators OK."
+        },
+        {
+          "at": "2026-11-27T09:20:00+07:00",
+          "actor": "cto",
+          "from_status": "review",
+          "to_status": "testing",
+          "from_agent": "gameplay-test-engineer",
+          "to_agent": "gameplay-test-engineer",
+          "note": "QA + security review; AC4 gated on RO-113."
         }
       ]
     },
@@ -10470,7 +10570,7 @@
       "description": "Acceptance run on LDPlayer with the original APK: Solo Start → match → observe 9 bots → aircraft → parachute → land. Capture gateway logs and screenshots. Do not invent opcodes. Failures list the owning RO-###.",
       "category": "quality",
       "assigned_agent": "qa-engineer",
-      "status": "blocked",
+      "status": "assigned",
       "priority": "critical",
       "dependencies": [
         "RO-061",
@@ -10507,15 +10607,17 @@
         "SOLO first-playable row set BROKEN with evidence cite; no VERIFIED; no original-compatible claim",
         "pytest tests/compatibility/gateway/solo_first_playable -> 5 passed",
         "python scripts/validate_project_management.py -> OK",
-        "cto 2026-11-27: pytest solo_first_playable 5 passed; status set blocked pending network path"
+        "cto 2026-11-27: pytest solo_first_playable 5 passed; status set blocked pending network path",
+        "2026-11-27 cto: to_match.sh ~7.5m; hall lobby screenshot ro113_20261127_after_to_match.png; 0 createHallTeam/matchBattleGround/battle resetEntities; athleteEnterHall keypoint x2",
+        "2026-11-27: setup_emulator DNS+proxy OK; Network Error(15) not reproduced"
       ],
       "compatibility_status": "unknown",
       "created_at": "2026-11-26T22:15:54+07:00",
-      "updated_at": "2026-11-27T00:07:41+07:00",
+      "updated_at": "2026-11-27T09:20:00+07:00",
       "completed_at": null,
       "completion_report": null,
-      "block_reason": "LDPlayer Start failed with Network Error(15); 0 createHallTeam/matchBattleGround/resetEntities. Emulator DNS was 192.168.180.23 vs gateway 192.168.180.137; HTTP proxy 192.168.100.137:8080 noted. Bots/plane/parachute/land NOT_RUN. See docs/testing/solo_first_playable.md.",
-      "resolution_plan": "1) Align emulator DNS/DNAT to the live gateway host (re-run setup_emulator.ps1 against current LAN IP). 2) Clear or bypass the wrong HTTP proxy path so hall HTTPS reaches the gateway. 3) Confirm athleteEnterHall / createHallTeam / matchBattleGround appear in server.log. 4) Reassign RO-113 to qa-engineer and re-run Solo Start → 9 bots → plane → parachute → land; update SOLO row only with new evidence.",
+      "block_reason": null,
+      "resolution_plan": null,
       "history": [
         {
           "at": "2026-11-26T22:15:54+07:00",
@@ -10570,6 +10672,15 @@
           "from_agent": "qa-engineer",
           "to_agent": "qa-engineer",
           "note": "Live FAIL Network Error(15); checklist ACs recorded as BROKEN. Block until emu DNS/proxy reaches gateway and Start re-runs."
+        },
+        {
+          "at": "2026-11-27T09:20:00+07:00",
+          "actor": "cto",
+          "from_status": "blocked",
+          "to_status": "assigned",
+          "from_agent": "qa-engineer",
+          "to_agent": "qa-engineer",
+          "note": "Network path partial fix (hall reached). QA: manual START or RO-107/108; need createHallTeam/matchBattleGround/battle resetEntities; then bots/plane/land."
         }
       ]
     },

@@ -6,7 +6,7 @@ import struct
 
 import pytest
 
-from conftest import pack_close, pack_open
+from wire_helpers import pack_close, pack_open
 
 SPACE_ID = 20001
 
