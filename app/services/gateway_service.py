@@ -134,7 +134,8 @@ class GatewayService:
         await self.session.commit()
         items = (
             await self.session.scalars(
-                select(GatewayItem).where(GatewayItem.identity_id == identity.id).order_by(GatewayItem.prop_id)
+                select(GatewayItem).where(GatewayItem.identity_id == identity.id, GatewayItem.number > 0)
+                .order_by(GatewayItem.prop_id)
             )
         ).all()
         return GatewayState(
@@ -163,6 +164,8 @@ class GatewayService:
                 await self.session.flush()
                 added.append(prop_id)
             else:
+                if item.number == 0:
+                    added.append(prop_id)
                 item.number += 1
         await self.session.commit()
         return GatewayPurchaseResult(yuanbao=balance, added=added)

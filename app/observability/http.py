@@ -1,5 +1,6 @@
 """HTTP instrumentation: correlation id, trace, function record, and metrics."""
 
+import logging
 from time import perf_counter
 from uuid import uuid4
 
@@ -42,6 +43,8 @@ def install_http_instrumentation(app: FastAPI) -> None:
                         execution.mark("SERVICE_EXECUTION")
                     execution.mark("RESPONSE_SENT")
         except Exception:
+            # The operations log reads logs/server.log, which the ASGI server's own traceback never reaches.
+            logging.getLogger("ros.error").exception("unhandled error on %s %s", request.method, request.url.path)
             observe_request(request.method, "unmatched", 500, perf_counter() - started)
             raise
         route = request.scope.get("route")

@@ -17,3 +17,6 @@ storage/game_assets/icons/**
 # Original game data tables imported from a local OBB (publisher data)
 storage/original_data/**
 !storage/original_data/.gitkeep
+
+# Database backups
+storage/backups/

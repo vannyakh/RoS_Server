@@ -2,7 +2,7 @@
 
 from datetime import date, datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,7 @@ from app.core.logging import server_log_path
 from app.infrastructure.database import get_db
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.schemas.common import Page
+from app.services.auth_service import clear_failures, record_failure, too_many_attempts
 from app.services.operator_service import OperatorActor, OperatorService
 
 router = APIRouter(prefix="/admin", tags=["Administration"])
@@ -60,8 +61,18 @@ def require(permission: str):
 
 
 @router.post("/auth/login", response_model=TokenResponse)
-async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
-    return await OperatorService(db).login(data.username, data.password)
+async def login(data: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+    # Counted apart from player sign-ins, so one cannot lock the other out.
+    key = f"operator:{request.client.host if request.client else 'unknown'}"
+    if too_many_attempts(key):
+        raise AppError(429, "Too many login attempts")
+    try:
+        token = await OperatorService(db).login(data.username, data.password)
+    except AppError:
+        record_failure(key)
+        raise
+    clear_failures(key)
+    return token
 
 
 @router.post("/auth/refresh", response_model=TokenResponse)

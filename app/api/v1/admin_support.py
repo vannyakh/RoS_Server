@@ -1,6 +1,7 @@
 """Support cases, reports, and the player record those permissions can read."""
 
 from datetime import date
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -10,6 +11,7 @@ from app.api.v1.admin_access import current_operator, require
 from app.infrastructure.database import get_db
 from app.schemas.common import Page
 from app.services.analytics_service import AnalyticsService
+from app.services.mail_service import MailService
 from app.services.operator_service import OperatorActor
 from app.services.support_service import SupportService
 
@@ -44,6 +46,17 @@ class PlayerAdjustment(BaseModel):
     kind: str = Field(pattern="^(currency|item|prop)$")
     key: str = Field(min_length=1, max_length=64)
     delta: int = Field(ge=-1_000_000_000, le=1_000_000_000)
+    reason: str = Field(min_length=3, max_length=240)
+
+
+class MailSend(BaseModel):
+    title: str = Field(min_length=1, max_length=80)
+    sender: str = Field(default="RoS Server", min_length=1, max_length=40)
+    content: str = Field(min_length=1, max_length=2000)
+    props: list[tuple[Annotated[int, Field(gt=0, le=2_147_483_647)], Annotated[int, Field(gt=0, le=999)]]] = Field(
+        default_factory=list, max_length=10
+    )
+    deadline_days: int = Field(default=0, ge=0, le=365)
     reason: str = Field(min_length=3, max_length=240)
 
 
@@ -133,6 +146,28 @@ async def player_action(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     return await SupportService(db).act(actor, account_id, body.action, body.reason)
+
+
+@router.post("/players/{account_id}/mail", status_code=201)
+async def send_player_mail(
+    account_id: str,
+    body: MailSend,
+    actor: OperatorActor = Depends(current_operator),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    return await MailService(db).send(
+        actor, account_id, body.title, body.sender, body.content,
+        [list(pair) for pair in body.props], body.deadline_days, body.reason,
+    )
+
+
+@router.get("/players/{account_id}/mail")
+async def player_mail(
+    account_id: str,
+    _actor: OperatorActor = Depends(require("players.read")),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    return await MailService(db).for_account(account_id)
 
 
 @router.get("/support")

@@ -27,6 +27,7 @@ from app.schemas.gateway import (
 )
 from app.services.gateway_profile_service import GatewayProfileService
 from app.services.gateway_service import GatewayService
+from app.services.mail_service import MailService
 
 router = APIRouter(prefix="/gateway", tags=["Gateway"])
 
@@ -182,3 +183,20 @@ async def report_presence(
     db: AsyncSession = Depends(get_db),
 ) -> GatewayPresence:
     return GatewayPresence(online=await GatewayService(db).report_presence(external_uid, body.online))
+
+
+@router.get("/accounts/{external_uid}/mail", dependencies=[Depends(require_gateway_key)])
+async def player_mail(
+    external_uid: str = Path(pattern=EXTERNAL_UID_PATTERN),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    return await MailService(db).inbox(external_uid)
+
+
+@router.post("/accounts/{external_uid}/mail/{mail_id}/claim", dependencies=[Depends(require_gateway_key)])
+async def claim_player_mail(
+    mail_id: int = Path(ge=0, le=2_147_483_647),
+    external_uid: str = Path(pattern=EXTERNAL_UID_PATTERN),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    return await MailService(db).claim(external_uid, mail_id)
