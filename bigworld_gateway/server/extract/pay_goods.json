@@ -1,0 +1,1212 @@
+{
+ "com.netease.h45na.05": {
+  "AMOUNT": 5,
+  "CHANNEL": "COMMON",
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "5钻",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 0.09
+ },
+ "com.netease.h45na.05axe": {
+  "AMOUNT": 5,
+  "CHANNEL": "AXESO5",
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "5钻",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 82
+ },
+ "com.netease.h45na.102": {
+  "AMOUNT": 12,
+  "CHANNEL": "COMMON",
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "12钻",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 0.2
+ },
+ "com.netease.h45na.102axe": {
+  "AMOUNT": 12,
+  "CHANNEL": "AXESO5",
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "12钻",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 182
+ },
+ "com.netease.h45na.12": {
+  "AMOUNT": 120,
+  "CHANNEL": "COMMON",
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 5,
+  "NAME": "120钻",
+  "NORMAL_PRESENT": 5,
+  "ORDER_MONEY": 1.99
+ },
+ "com.netease.h45na.128": {
+  "AMOUNT": 1200,
+  "CHANNEL": "COMMON",
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 180,
+  "NAME": "1280钻",
+  "NORMAL_PRESENT": 180,
+  "ORDER_MONEY": 19.99
+ },
+ "com.netease.h45na.128axe": {
+  "AMOUNT": 1200,
+  "CHANNEL": "AXESO5",
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 180,
+  "NAME": "1280钻",
+  "NORMAL_PRESENT": 180,
+  "ORDER_MONEY": 18173
+ },
+ "com.netease.h45na.12axe": {
+  "AMOUNT": 120,
+  "CHANNEL": "AXESO5",
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 5,
+  "NAME": "120钻",
+  "NORMAL_PRESENT": 5,
+  "ORDER_MONEY": 1809
+ },
+ "com.netease.h45na.12w": {
+  "AMOUNT": 120,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "周卡_购买",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 1.99
+ },
+ "com.netease.h45na.12w_rn": {
+  "AMOUNT": 120,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "周卡_续费",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 1.99
+ },
+ "com.netease.h45na.12w_rnaxe": {
+  "AMOUNT": 120,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "axe周卡_续费",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 1809
+ },
+ "com.netease.h45na.12waxe": {
+  "AMOUNT": 120,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "axe周卡_购买",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 1809
+ },
+ "com.netease.h45na.18": {
+  "AMOUNT": 180,
+  "CHANNEL": "COMMON",
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 10,
+  "NAME": "180钻",
+  "NORMAL_PRESENT": 10,
+  "ORDER_MONEY": 2.99
+ },
+ "com.netease.h45na.18axe": {
+  "AMOUNT": 180,
+  "CHANNEL": "AXESO5",
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 10,
+  "NAME": "180钻",
+  "NORMAL_PRESENT": 10,
+  "ORDER_MONEY": 2718
+ },
+ "com.netease.h45na.18m": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月卡",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 2.99
+ },
+ "com.netease.h45na.18maxe": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月卡",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 2718
+ },
+ "com.netease.h45na.30": {
+  "AMOUNT": 300,
+  "CHANNEL": "COMMON",
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 20,
+  "NAME": "300钻",
+  "NORMAL_PRESENT": 20,
+  "ORDER_MONEY": 4.99
+ },
+ "com.netease.h45na.30axe": {
+  "AMOUNT": 300,
+  "CHANNEL": "AXESO5",
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 20,
+  "NAME": "300钻",
+  "NORMAL_PRESENT": 20,
+  "ORDER_MONEY": 4536
+ },
+ "com.netease.h45na.30m": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月卡",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 4.99
+ },
+ "com.netease.h45na.30m_rn": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月卡_续费",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 4.99
+ },
+ "com.netease.h45na.30m_rn1": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月卡钻石会员_续费",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 3.99
+ },
+ "com.netease.h45na.30m_rn1axe": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "axe月卡钻石会员_续费",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 3628
+ },
+ "com.netease.h45na.30m_rnaxe": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "axe月卡_续费",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 4537
+ },
+ "com.netease.h45na.30maxe": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月卡",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 4537
+ },
+ "com.netease.h45na.328": {
+  "AMOUNT": 3000,
+  "CHANNEL": "COMMON",
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 560,
+  "NAME": "3280钻",
+  "NORMAL_PRESENT": 560,
+  "ORDER_MONEY": 49.99
+ },
+ "com.netease.h45na.328axe": {
+  "AMOUNT": 3000,
+  "CHANNEL": "AXESO5",
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 560,
+  "NAME": "3280钻",
+  "NORMAL_PRESENT": 560,
+  "ORDER_MONEY": 45445
+ },
+ "com.netease.h45na.6": {
+  "AMOUNT": 60,
+  "CHANNEL": "COMMON",
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "60钻",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 0.99
+ },
+ "com.netease.h45na.648": {
+  "AMOUNT": 6000,
+  "CHANNEL": "COMMON",
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 1380,
+  "NAME": "6480钻",
+  "NORMAL_PRESENT": 1380,
+  "ORDER_MONEY": 99.99
+ },
+ "com.netease.h45na.648axe": {
+  "AMOUNT": 6000,
+  "CHANNEL": "AXESO5",
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 1380,
+  "NAME": "6480钻",
+  "NORMAL_PRESENT": 1380,
+  "ORDER_MONEY": 90900
+ },
+ "com.netease.h45na.68": {
+  "AMOUNT": 600,
+  "CHANNEL": "COMMON",
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 60,
+  "NAME": "680钻",
+  "NORMAL_PRESENT": 60,
+  "ORDER_MONEY": 9.99
+ },
+ "com.netease.h45na.68axe": {
+  "AMOUNT": 600,
+  "CHANNEL": "AXESO5",
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 60,
+  "NAME": "680钻",
+  "NORMAL_PRESENT": 60,
+  "ORDER_MONEY": 9082
+ },
+ "com.netease.h45na.6axe": {
+  "AMOUNT": 60,
+  "CHANNEL": "AXESO5",
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "60钻",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 900
+ },
+ "com.netease.h45na.6w": {
+  "AMOUNT": 60,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "周卡",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 0.99
+ },
+ "com.netease.h45na.6waxe": {
+  "AMOUNT": 60,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "周卡",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 900
+ },
+ "com.netease.h45na.PHP.mol.yuanbao120": {
+  "AMOUNT": 120,
+  "CHANNEL": null,
+  "CURRENCY": "PHP",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 5,
+  "NAME": "120钻",
+  "NORMAL_PRESENT": 5,
+  "ORDER_MONEY": 100
+ },
+ "com.netease.h45na.PHP.mol.yuanbao1200": {
+  "AMOUNT": 1200,
+  "CHANNEL": null,
+  "CURRENCY": "PHP",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 180,
+  "NAME": "1200钻",
+  "NORMAL_PRESENT": 180,
+  "ORDER_MONEY": 1000
+ },
+ "com.netease.h45na.PHP.mol.yuanbao180": {
+  "AMOUNT": 180,
+  "CHANNEL": null,
+  "CURRENCY": "PHP",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 10,
+  "NAME": "180钻",
+  "NORMAL_PRESENT": 10,
+  "ORDER_MONEY": 150
+ },
+ "com.netease.h45na.PHP.mol.yuanbao24": {
+  "AMOUNT": 24,
+  "CHANNEL": null,
+  "CURRENCY": "PHP",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "24钻",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 20
+ },
+ "com.netease.h45na.PHP.mol.yuanbao240": {
+  "AMOUNT": 240,
+  "CHANNEL": null,
+  "CURRENCY": "PHP",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 15,
+  "NAME": "240钻",
+  "NORMAL_PRESENT": 15,
+  "ORDER_MONEY": 200
+ },
+ "com.netease.h45na.PHP.mol.yuanbao2400": {
+  "AMOUNT": 2400,
+  "CHANNEL": null,
+  "CURRENCY": "PHP",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 420,
+  "NAME": "2400钻",
+  "NORMAL_PRESENT": 420,
+  "ORDER_MONEY": 2000
+ },
+ "com.netease.h45na.PHP.mol.yuanbao300": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "PHP",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 20,
+  "NAME": "300钻",
+  "NORMAL_PRESENT": 20,
+  "ORDER_MONEY": 250
+ },
+ "com.netease.h45na.PHP.mol.yuanbao360": {
+  "AMOUNT": 360,
+  "CHANNEL": null,
+  "CURRENCY": "PHP",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 30,
+  "NAME": "360钻",
+  "NORMAL_PRESENT": 30,
+  "ORDER_MONEY": 300
+ },
+ "com.netease.h45na.PHP.mol.yuanbao60": {
+  "AMOUNT": 60,
+  "CHANNEL": null,
+  "CURRENCY": "PHP",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "60钻",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 50
+ },
+ "com.netease.h45na.PHP.mol.yuanbao600": {
+  "AMOUNT": 600,
+  "CHANNEL": null,
+  "CURRENCY": "PHP",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 60,
+  "NAME": "600钻",
+  "NORMAL_PRESENT": 60,
+  "ORDER_MONEY": 500
+ },
+ "com.netease.h45na.PHP.mol.yuanbao6000": {
+  "AMOUNT": 6000,
+  "CHANNEL": null,
+  "CURRENCY": "PHP",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 1380,
+  "NAME": "6000钻",
+  "NORMAL_PRESENT": 1380,
+  "ORDER_MONEY": 5000
+ },
+ "com.netease.h45na.UStates.mol.yuanbao1200": {
+  "AMOUNT": 1200,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 180,
+  "NAME": "1200钻",
+  "NORMAL_PRESENT": 180,
+  "ORDER_MONEY": 20.0
+ },
+ "com.netease.h45na.UStates.mol.yuanbao300": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 20,
+  "NAME": "300钻",
+  "NORMAL_PRESENT": 20,
+  "ORDER_MONEY": 5.0
+ },
+ "com.netease.h45na.UStates.mol.yuanbao3000": {
+  "AMOUNT": 3000,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 560,
+  "NAME": "3000钻",
+  "NORMAL_PRESENT": 560,
+  "ORDER_MONEY": 50.0
+ },
+ "com.netease.h45na.UStates.mol.yuanbao600": {
+  "AMOUNT": 600,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 60,
+  "NAME": "600钻",
+  "NORMAL_PRESENT": 60,
+  "ORDER_MONEY": 10.0
+ },
+ "com.netease.h45na.UStates.mol.yuanbao6000": {
+  "AMOUNT": 6000,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 1380,
+  "NAME": "6000钻",
+  "NORMAL_PRESENT": 1380,
+  "ORDER_MONEY": 100.0
+ },
+ "com.netease.h45na.chip128": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "半月礼包-$19.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 19.99
+ },
+ "com.netease.h45na.chip128axe": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "半月礼包-$19.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 18173
+ },
+ "com.netease.h45na.chip30": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "半月礼包-$4.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 4.99
+ },
+ "com.netease.h45na.chip30axe": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "半月礼包-$4.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 4536
+ },
+ "com.netease.h45na.chip318": {
+  "AMOUNT": 3000,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "半月礼包-$48.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 48.99
+ },
+ "com.netease.h45na.chip318axe": {
+  "AMOUNT": 3000,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "半月礼包-$48.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 44536
+ },
+ "com.netease.h45na.chip328": {
+  "AMOUNT": 388,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "半月礼包-$49.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 49.99
+ },
+ "com.netease.h45na.chip328axe": {
+  "AMOUNT": 388,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "半月礼包-$49.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 45445
+ },
+ "com.netease.h45na.chip648": {
+  "AMOUNT": 1588,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "半月礼包-$99.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 99.99
+ },
+ "com.netease.h45na.chip648axe": {
+  "AMOUNT": 1588,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "半月礼包-$99.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 90900
+ },
+ "com.netease.h45na.diamondgift1": {
+  "AMOUNT": 60,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "限时礼包-$6.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 6.99
+ },
+ "com.netease.h45na.diamondgift1axe": {
+  "AMOUNT": 60,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "限时礼包-$6.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 6355
+ },
+ "com.netease.h45na.diamondgift2": {
+  "AMOUNT": 60,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "限时礼包-$0.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 0.99
+ },
+ "com.netease.h45na.diamondgift2axe": {
+  "AMOUNT": 60,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "限时礼包-$0.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 900
+ },
+ "com.netease.h45na.diamondgift3": {
+  "AMOUNT": 0,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "限时礼包-$4.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 4.99
+ },
+ "com.netease.h45na.diamondgift3axe": {
+  "AMOUNT": 0,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "限时礼包-$4.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 4537
+ },
+ "com.netease.h45na.fit12": {
+  "AMOUNT": 120,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "限时礼包-$1.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 1.99
+ },
+ "com.netease.h45na.fit12axe": {
+  "AMOUNT": 120,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "限时礼包-$1.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 1809
+ },
+ "com.netease.h45na.fit30": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "限时礼包-$4.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 4.99
+ },
+ "com.netease.h45na.fit30axe": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "限时礼包-$4.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 4536
+ },
+ "com.netease.h45na.fit6": {
+  "AMOUNT": 60,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "限时礼包-$0.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 0.99
+ },
+ "com.netease.h45na.fit6axe": {
+  "AMOUNT": 60,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "限时礼包-$0.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 900
+ },
+ "com.netease.h45na.fit90": {
+  "AMOUNT": 5,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "限时礼包-$0.09",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 0.09
+ },
+ "com.netease.h45na.fit90axe": {
+  "AMOUNT": 5,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "限时礼包-$0.09",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 82
+ },
+ "com.netease.h45na.fit91": {
+  "AMOUNT": 12,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "限时礼包-$0.2",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 0.2
+ },
+ "com.netease.h45na.fit91axe": {
+  "AMOUNT": 12,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "限时礼包-$0.2",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 182
+ },
+ "com.netease.h45na.ltd6": {
+  "AMOUNT": 60,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "60钻",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 0.99
+ },
+ "com.netease.h45na.ltd6axe": {
+  "AMOUNT": 60,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "60钻",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 900
+ },
+ "com.netease.h45na.market12": {
+  "AMOUNT": 60,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$1.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 1.99
+ },
+ "com.netease.h45na.market128": {
+  "AMOUNT": 500,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$19.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 19.99
+ },
+ "com.netease.h45na.market128axe": {
+  "AMOUNT": 500,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$19.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 18173
+ },
+ "com.netease.h45na.market12axe": {
+  "AMOUNT": 60,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$1.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 1809
+ },
+ "com.netease.h45na.market168": {
+  "AMOUNT": 0,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$25.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 25.99
+ },
+ "com.netease.h45na.market168axe": {
+  "AMOUNT": 0,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$25.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 23627
+ },
+ "com.netease.h45na.market18": {
+  "AMOUNT": 80,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$2.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 2.99
+ },
+ "com.netease.h45na.market188": {
+  "AMOUNT": 0,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$27.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 27.99
+ },
+ "com.netease.h45na.market188axe": {
+  "AMOUNT": 0,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$27.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 25445
+ },
+ "com.netease.h45na.market18axe": {
+  "AMOUNT": 80,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$2.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 2718
+ },
+ "com.netease.h45na.market258": {
+  "AMOUNT": 0,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$39.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 39.99
+ },
+ "com.netease.h45na.market258axe": {
+  "AMOUNT": 0,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$39.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 36355
+ },
+ "com.netease.h45na.market288": {
+  "AMOUNT": 588,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "288元",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 288.0
+ },
+ "com.netease.h45na.market30": {
+  "AMOUNT": 100,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$4.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 4.99
+ },
+ "com.netease.h45na.market30axe": {
+  "AMOUNT": 100,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$4.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 4536
+ },
+ "com.netease.h45na.market328": {
+  "AMOUNT": 0,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$49.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 49.99
+ },
+ "com.netease.h45na.market328axe": {
+  "AMOUNT": 0,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$49.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 45445
+ },
+ "com.netease.h45na.market50": {
+  "AMOUNT": 150,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$7.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 7.99
+ },
+ "com.netease.h45na.market50axe": {
+  "AMOUNT": 150,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$7.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 7264
+ },
+ "com.netease.h45na.market6": {
+  "AMOUNT": 30,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$0.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 0.99
+ },
+ "com.netease.h45na.market648": {
+  "AMOUNT": 0,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$99.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 99.99
+ },
+ "com.netease.h45na.market648axe": {
+  "AMOUNT": 0,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$99.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 90900
+ },
+ "com.netease.h45na.market68": {
+  "AMOUNT": 250,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$9.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 9.99
+ },
+ "com.netease.h45na.market68axe": {
+  "AMOUNT": 250,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$9.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 9082
+ },
+ "com.netease.h45na.market6axe": {
+  "AMOUNT": 30,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$0.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 900
+ },
+ "com.netease.h45na.market88": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$12.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 12.99
+ },
+ "com.netease.h45na.market88axe": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "$12.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 11809
+ },
+ "com.netease.h45na.monthlygift12": {
+  "AMOUNT": 120,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月礼包-$1.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 1.99
+ },
+ "com.netease.h45na.monthlygift128": {
+  "AMOUNT": 1200,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月礼包-$19.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 19.99
+ },
+ "com.netease.h45na.monthlygift128axe": {
+  "AMOUNT": 1200,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月礼包-$19.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 18173
+ },
+ "com.netease.h45na.monthlygift12axe": {
+  "AMOUNT": 120,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月礼包-$1.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 1809
+ },
+ "com.netease.h45na.monthlygift30": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月礼包-$4.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 4.99
+ },
+ "com.netease.h45na.monthlygift30axe": {
+  "AMOUNT": 300,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月礼包-$4.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 4536
+ },
+ "com.netease.h45na.monthlygift328": {
+  "AMOUNT": 3000,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月礼包-$49.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 49.99
+ },
+ "com.netease.h45na.monthlygift328axe": {
+  "AMOUNT": 3000,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月礼包-$49.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 45445
+ },
+ "com.netease.h45na.monthlygift6": {
+  "AMOUNT": 60,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月礼包-$0.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 0.99
+ },
+ "com.netease.h45na.monthlygift648": {
+  "AMOUNT": 6000,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月礼包-$99.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 99.99
+ },
+ "com.netease.h45na.monthlygift648axe": {
+  "AMOUNT": 6000,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月礼包-$99.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 90900
+ },
+ "com.netease.h45na.monthlygift68": {
+  "AMOUNT": 600,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月礼包-$9.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 9.99
+ },
+ "com.netease.h45na.monthlygift68axe": {
+  "AMOUNT": 600,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月礼包-$9.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 9082
+ },
+ "com.netease.h45na.monthlygift6axe": {
+  "AMOUNT": 60,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "月礼包-$0.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 900
+ },
+ "com.netease.h45na.weeklygift60": {
+  "AMOUNT": 0,
+  "CHANNEL": null,
+  "CURRENCY": "USD",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "周礼包-$8.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 8.99
+ },
+ "com.netease.h45na.weeklygift60axe": {
+  "AMOUNT": 0,
+  "CHANNEL": null,
+  "CURRENCY": "AXESO5",
+  "EXTRA_PRESENT": 0,
+  "FIRST_PRESENT": 0,
+  "NAME": "周礼包-$8.99",
+  "NORMAL_PRESENT": 0,
+  "ORDER_MONEY": 8173
+ }
+}

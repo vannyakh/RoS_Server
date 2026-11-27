@@ -1,7 +1,7 @@
 @echo off
 rem ===== RoS private server config (edit this) =====
 rem LAN IP of this PC (must match what the phone/emulator uses as DNS + game server)
-if "%ROS_PC_IP%"=="" set ROS_PC_IP=192.168.180.137
+if "%ROS_PC_IP%"=="" set ROS_PC_IP=192.168.1.21
 rem Fixed lobby test account. Leave EMPTY for real new-player behaviour: a new device account
 rem gets the in-game character screen (normal male/female human, starter outfit, no hero).
 rem Set it (e.g. TestPlayer) only to skip that screen for quick tests.

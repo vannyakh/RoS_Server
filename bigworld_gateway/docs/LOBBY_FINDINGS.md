@@ -30,7 +30,7 @@ Found with read-only Frida payloads (`client/frida/payloads/portrait_*.py`, run 
 **Portrait (hall avatar).** `UIMain._init_profile` calls `client_utils.getAvatarProtrait(widget, roleID=baseCharacterType, fileID=portrait)`:
 - `portrait` empty or `'0'`: built-in image `ui/images/avatar/portrait/<baseCharacterType>_on.png`.
 - otherwise `portrait` is a FilePicker file id: downloaded from `http://g89ros.fp.ps.easebar.com:80/file/<id>?fop=imageView/0/w/800/h/600/f/jpeg/q/50` and cached as `ui/images/tantan/<id>.png`.
-- `portrait` lives in Athlete `childBaseClientPropertyList` (FIXED_DICT field `portrait`, STRING). The gateway sends it empty.
+- `portrait` lives in Athlete `childBaseClientPropertyList` (FIXED_DICT field `portrait`, STRING). Full list not sent at login (package2 stream bug); gateway uses `onSetPortrait("0")` in `_lobby_data_calls` + `_sync_lobby_portrait` after enterHall (`PORTRAIT_SYNC` / `PORTRAIT_DELAY`) so `getAvatarProtrait` uses built-in `ui/images/avatar/portrait/<baseCharacterType>_on.png`.
 - char 30001 (robot placeholder) showed a grey avatar; switched the test account to 20001 (Human male), which renders in the Supply screen. The hall avatar with 20001 is not yet confirmed.
 
 **Upload flow (not implemented yet).**
@@ -213,3 +213,309 @@ Read with `docs/CREATE_ENTITY_FORMAT.md` (static analysis of `libclient.so`, con
 - **Network change.** The PC's Wi-Fi IP changed (192.168.245.137 -> 192.168.8.72). Symptom: game stuck at "Retrieving patch lists 0.00%", no DNS or HTTP request in the logs. Fix: `$env:ROS_PC_IP` = new IP, run `client/scripts/sync_server_list.ps1`, start the server with that env, run `client/scripts/setup_emulator.ps1`, then delete the old DNAT rule on the emulator (`iptables -t nat -D OUTPUT -p udp --dport 53 -j DNAT --to-destination <old ip>:53`), since the old rule is matched first. `config.cmd` still has the old IP as default.
 - Leftover `server/trigger_battle.txt` files fire into the next match; delete after an interrupted test.
 - **Normal heroes only (hero_rules.py).** A player is the normal male (20001) or female (20002) hero. `createCharacter`, the saved `char_type`, `ATHLETE_CHAR`, the gender switch and the My Page `characterType` all go through `hero_rules.normalize_hero()`: 10001/10002 (no hall model on LDPlayer), the 30001 robot placeholder and unknown values become the hero of the saved gender. `MALE_CHAR`/`FEMALE_CHAR` overrides were removed. The tutorial Avatar still uses `AVATAR_CHAR` (30001) for load time. Verified by unit tests only; not yet re-checked on LDPlayer.
+
+## Update 2026-11-21 (18): mailbox works; lobby audit
+
+Read with `client/frida/payloads/mail_rank_dis.py`, `mail_ui_keys.py`, `mail_detail_dis.py`, `mail_enum.py` (client `entities\iChat.py`, `ui\UISystemMail.py`).
+
+- **Lobby audit (LDPlayer).** Requests the gateway did not answer: `requestMails` (Mail, "Empty!"), `getFriendList` (Invite/Friends, "Nothing"), `requestLBSPlayerRank` / `requestLBSRankList` (data tab), `getHighestProficiencyWeapons` / `getAthleteRosMatchTeamBriefData` (My Page). Settings is client-only.
+- **Mail (working, verified in game).** `server/lobby_mail.py`, mails in `server/lobby_mail.json` (editable), per-account read/claimed/deleted ids in `saved_accounts.json` `mail:<gid>`. The gateway reloads `lobby_mail.py` on every mail request (`MAIL_RELOAD=off` to disable).
+  - `requestMails` -> `onMailUpdate(PYTHON mails, PYTHON topMails)`; mail dict `mailID, type, title, sender, when, unread` (+ `deadline` only if it expires: with the key present the list always shows "LEFT ..."). The timestamp key is `when` (`KeyError: 'when'` in `refreshMailList` otherwise). `topMails` = list of pinned ids.
+  - `SysMailTypeEnum` (shared.shared_const): TXT 0, PROPS 1 (gift icon), NPC 2, TXT_PRIVATE 3, PROPS_PRIVATE 4, LEGION 5, QUIZ 6, ROS2_* 1000-1004.
+  - `requestMailDetail(INT32)` -> `onLoadMailDetail(INT32, STRING content, PYTHON {"props": [[propID, count], ...]})`; item icons show under the text.
+  - Claim -> `getAwardFromMail(INT32)` -> `onGetAwardFromMail(PYTHON {propID: count})` (a list of pairs raises `unhashable type: list`; an empty dict raises IndexError in `generateArgsForUIItemDisplay`, and both leave the lobby UI hidden). The client then sends `requestMails`. Verified: "AKM - Hellfire", "Tang Sanzang Frame", "S9 Training Medallion" result screen; items saved to the account (`_settle`, reason `gateway:mail:<id>`).
+  - The client shows a Claim button on every mail. Claim on a mail with nothing left removes it (no reply, the client refreshes the list itself).
+- **Test notes.** Script errors are logcat lines tagged `<SCRIPT>`. The weekly Supreme Supply push opens on every login; wait until its page has loaded before pressing back, or the tap is ignored. After a gateway restart the running client keeps its dead session (taps send nothing): relaunch the game.
+- **Still open.** My Page weapon / match-team replies (`getHighestProficiencyWeapons`, `getAthleteRosMatchTeamBriefData`).
+
+## Update 2026-11-21 (19): leaderboard, Activity panel, friend lists
+
+Read with `client/frida/payloads/rank_dis.py`, `rank_panel_dis.py`, `rank_types.py`, `rank_cols_dis.py`, `welfare_attrs2.py`.
+
+- **Leaderboard ("data" tab, ui.UIRankPanel) works, verified in game.** `server/lobby_rank.py` (reloaded on each request). Opening sends `updatePlayerLBSData(admin, sub)`, `requireRankInfo(INT32 type)` and `requireRankList(INT32 type, INT32 bufVersion, INT32 bufLength, BOOL nextBatch)`; Rank tab = type 35, Win = 37, Kill = 52.
+  - List reply by `rank_list_utils.RANK_LIST_TYPE_DTS_{FORCE,WINNING,KILLING}_LIST`: `onRequireBattleGround{Force,Winning,Killing}RankList(INT32 start, ARRAY rows, INT32 version, INT32 rankType)`. `RankList.onGetRankData` replaces the buffer when the version changes and start == 0, appends when start == len(buffer).
+  - Row = RANK_DATA (gid GID, nickname STRING, nationalFlag STRING, value INT32) + identifyTagID INT32 + Force (winRate, topFiveRate, killDeathRate FLOAT) / Win (winRate FLOAT, topFiveCount UINT32, topFiveRate FLOAT) / Kill (killCombo UINT16, killDeathRate, headshotRate FLOAT). Parent fields first (confirmed). Rates are fractions; the client shows value * 100 %.
+  - Own row: `onGetPlayerBattleGroundRank(INT32 type, PY_DICT {"rank", "col-3".."col-6"})`; missing `col-N` raises KeyError in `*Component.infoInitFunc` and the row keeps "00000" placeholders. Columns: Rank tab points / win rate / top-5 rate; Win tab wins / win rate / top-5 count; Kill tab kills / most kills / KDR. The Rewards column is computed by the client.
+  - Players listed: the accounts this server knows (now only the current player, stats from RoS_Server's profile or zeros). LBS (regional) requests get `onUpdatePlayerLBSData` echo and `onGetLBSRank([])`.
+- **Activity panel opens (verified).** `UILimitWelfareController.on_enter` aborted on `isTelkosmeOpen`, set only by `syncTelkomseOpenStatus(BOOL)`; the gateway now sends `False` in `_lobby_data_calls`. Latest Event (Lucky Carnival, Season Bounty, Weekend Rush, Amazing $0.99, Drone, Paraglider) and Event (Limited Supply Box packs) render with no script error. The events' own pages are not checked yet.
+- **Friend lists.** `getFriendList(UINT8 type)` (types 1, 2, 5 at login) -> `onGetFriendList(type, [] , {})`; no other players yet.
+
+## Update 2026-11-21 (20): Top-Up grants diamonds; outfit shows in matches
+
+Read with `client/frida/payloads/topup_dis.py`, `topup_confirm_dis.py`, `paygoods_table.py`, `match_appear.py`, `idress_dis.py`, `equip_parts_prop.py`, `equip_utils_dis.py`, `wear_propitem.py`.
+
+- **Top-Up (verified, no payment).** A pack tap runs `Athlete.requsetPayGoods` -> base `requestRealNameAuthenCheckBeforeRequsetingPayGoods(STRING goodsID)`. Only the server's `onRequestRealNameAuthenCheckBeforeRequsetingPayGoods(goodsID, BOOL)` reply makes the client start the SDK / Google Play payment (`_requsetPayGoods`); the gateway never sends it. `server/lobby_topup.py` credits `AMOUNT + NORMAL_PRESENT` from the client's PayGoods table (`server/extract/pay_goods.json`, 121 packs, e.g. `com.netease.h45na.6` 60, `.12` 120+5, `.648` 6000+1380) and replies `onYBUpdated` + `onConfirmPayOrder(True, sn, ingot, ingot_send, [goodsID])` + `onAddHistoryPayGoodsIDs`. Saved like other diamonds (local `saved_accounts.json`, or RoS_Server `purchase` with a negative price when linked; refused -> nothing granted). `TOPUP_GRANT=off` disables it. `pay_utils.isPaying` expires by itself (PAYING_REQUIRE_CD). The "Limited extra 50%" badge (EXTRA) is an event bonus and is not granted. Verified: 100000 -> 100060 (60) -> 100185 (120+5), no billing activity in logcat.
+- **Outfit in the match (verified).** The match model is dressed by `iDress.initDress` from `iDtsEquip.curr_equip_parts` = `equip_utils.getCurrentEquipPartsFromEquips(getCurrentEquips(avatar), characterType, battlegroundPropID2AppearanceIDDict)`; `getCurrentEquips` reads the INT32 cell props `dtsHelmet, dtsVest, dtsPackage, cloth0, cloth1, cloth3..cloth6`. `dtsWearableAppearanceList` alone changes nothing. A clothing skin is its own battle prop (hall `PROP_TYPE.PROP_ITEM_ID` == item id, e.g. 111900 "RWC-White"), so `avatar_create_messages(outfit=...)` puts each worn item into its slot from `extract/appearance_slots.json` (`["wear", "cloth0", gender]`), plus the four appearance lists and `dtsAppearanceGender` (base prop; the .def default 2 = female). `OUTFIT_IN_MATCH=off` disables it. The prop -> skin dictionary comes from `dtsBattlegroundPropAppearanceList` (not sent yet; needed for skins on picked-up battle clothes).
+
+## Update 2026-11-21 (21): plane -> jump -> freefall
+
+Read with `client/frida/payloads/plane_dis*.py`, `plane_users.py`, `plane_phase_dis.py`, `game_status_enum.py`, `fall_state.py`, `map_info.py`.
+
+- **Enums.** `BattleGroundGameStatusEnum`: READY 0, PREPARE 1 (shows "Starting in N s", mapData.PREPARE_TIME = 80 on map 700), BEFORE_FIGHT 2, FIGHT 3, END 4. `const.FallPhase`: NORMAL 0, BEFORE_FALL 1, CAN_FALL 2, BEFORE_OPEN_PARACHUTE 3, CAN_OPEN_PARACHUTE 4, PARACHUTE_OPENED 5. `const.PlayerState` (battleState): Normal 0, Wounded 1, Died 2, Parachute 4, InVehicle 5, Swim 11. `const.PlaneWorkMode`: PEOPLE 1, PROP 2, REBORN 4.
+- **Boarding (verified).** Zone (`BattleGroundSpace`, gameStatus BEFORE_FIGHT) + `Plane` createEntity, then the player properties `fallPhase` = CAN_FALL, `leftPlayerNumOnPlane`, `planeID` = plane id. `PlayerAvatar.set_planeID` -> `BigWorld.entities[planeID]` -> `getOnPlane` (camera on the plane, UIBattlegroundsFall: "1 Onboard", Paraglider/Parachute, Jump). planeID must be set after the plane has loaded and the loading screen is gone: set too early, `getOnPlane` does nothing; a plane entering the world during the loading screen runs getOnPlane -> enterObserverMode -> script error and the client hung (ANR).
+- **Jump (verified).** Jump = cell `requestGetOffPlane()` (exposed index 77, arrives unshifted; the decoder's +2 shift now starts at 180, between 151 and 207). Reply: `planeID` 0, `battleState` Parachute, `fallPhase` BEFORE_OPEN_PARACHUTE -> freefall UI (speed, altitude bar).
+- **Freefall with BEFORE_OPEN_PARACHUTE ignores the terrain.** With `fallPhase` 3 sent at the jump, the client falls through the ground (stopped at a world floor near y -620). The server must step `fallPhase` by height: client message 2 (position report) starts with x, y, z floats. `battle_flow.Match.on_message` (called for every in-match client message) opens the parachute at ground + 150 m (CAN_OPEN, OPENED) and lands at ground + 3 m (NORMAL, battleState Normal, hasLanded, forcedPosition a little above the ground so normal physics settles on the real terrain, zone -> FIGHT). Not yet seen end to end.
+- **Positions.** `forcedPosition` (0x59, 36 bytes: id, spaceID, vehicleID, pos 3f, dir 3f) moves the own player (verified). `detailedPosition` (0x58) is 30 bytes, not the standard 28; plane movement (the Plane uses an AvatarFilter fed by server positions) is not streamed yet, so the plane is parked over the player. Map 700: MAP_RANGE (-20000, -20000, 20000, 20000); the spawn (0, 0, 0) settles on ground at y -468.5; the avatar's first position reports are the raw (0, 0, 0) before that.
+- **Auto timeline (now off by default, `AUTO_BOARD=on`).** `AUTO_BOARD`, `BOARD_DELAY` 3 s, `PLANE_HEIGHT` 500, `PARACHUTE_HEIGHT` 150, `LAND_HEIGHT` 3. The plane spawns when the first non-origin position report arrives after the HUD is up; planeID is re-sent every 5 s while reports still show the ground. Trigger commands for tests: `board`, `fpos x y z`, `sprop name int`, `setp8 name int`.
+- Superseded by section (22) after merging the team's update (14)-(17).
+
+## Update 2026-11-26 (22): full drop verified (merged with the team's flight sequence)
+
+- **Merge.** The team's update (`f4b1ed7`, sections 14-17: game clock `setGameTime`, countdown, `FLIGHT_STEPS`, `fall()` -> fallPhase 3, landing by position message 3) and sections 18-21 run together. The flight backbone is `FLIGHT_STEPS`; my height timeline (`Match.on_message`) is off by default (`AUTO_BOARD=on` enables it instead).
+- **Boarding fix.** `FLIGHT_STEPS`: `plane` at +0 s, BEFORE_FIGHT space at +1 s, then at +3 s `planeID` 0 -> plane id, `leftPlayerNumOnPlane` 1, `fallPhase` 2. With planeID in the same step as the plane (the old step 0) the player stayed on the ground.
+- **Jump button releases the player.** The automatic release after 2.5 s is gone (`FLIGHT_AUTO_RELEASE=on` restores it). `requestGetOffPlane` (the "jump sends nothing we log" in section 15/16 was the decoder shift, fixed in section 21) answers `planeID` 0, `forcedPosition` to `FLIGHT_START`, `fallPhase` CAN_FALL; the client falls on its own physics and stops at the terrain; `on_position` lands it.
+- **Verified on LDPlayer (2026-11-26, after an emulator reboot):** match -> 79 s countdown -> camera on the plane ("Onboard", Jump button) -> Jump -> drop from (698, 19300, -373) -> "landed at (698, -677, -373)" -> ground HUD. Twice, once with the trigger, once fully automatic.
+- **Still open.** The camera stays zoomed out after the first landing in a session; the jump point is the fixed `FLIGHT_START`, not the plane's position; the plane is not flown along `movePath` (`detailedPosition` 0x58 is 30 bytes, layout unknown); zone shrink (`circleStage`, circles, `updateCircleRestTime`, FIGHT).
+- **Emulator reboot.** `ldconsole reboot` did not reboot (uptime unchanged); `ldconsole quit --index 0` + `launch --index 0` did. Then `client/scripts/setup_emulator.ps1` and `su -c 'date -u 042012002022.00'`.
+
+## Update 2026-11-26 (23): skydive HUD and parachute work
+
+- **Server-driven fall phases** (`Match._parachute_phase`, called from `on_position`). After the Jump the client does not always send `fall()`, so the server steps `fallPhase` by height, as fractions of the drop from the jump point to `FLIGHT_GROUND` (-677, the measured terrain under `FLIGHT_START`): 2 % -> BEFORE_OPEN_PARACHUTE + `battleState` Parachute (skydive HUD, 162 km/h); `CHUTE_BUTTON` 0.6 -> CAN_OPEN_PARACHUTE (the parachute button replaces the skydive button); `CHUTE_AUTO` 0.95 -> PARACHUTE_OPENED as a fallback.
+- **The canopy needs the client's button.** `fallPhase` 5 sent by the server only changes the HUD icon (speed stays 162 km/h). The button (`UIBattlegroundsFall.doOnBtnOpenParachuteClick` -> `PlayerMachineMgr.onTrigger(TRIGGER_OPEN_PARACHUTE)`) opens the canopy on the client and sends `changeFallPhase(5)`. Verified on LDPlayer: parachute open, 21 km/h, landing, ground HUD.
+- After the canopy is open the client sends `fall()` once more just before touchdown; the server now ignores it (`chute_open`), so the skydive state does not come back.
+- Reports sent before the `forcedPosition` arrives carry the old position; the stepping starts only once a report is near the jump height (`fall_started`).
+- **Hot reload.** Position reports now call `battle_flow.Match.on_position(match, ...)` through the module (a match object can predate a reload and keep the old method). Test command `drop` repeats the Jump release in the current match.
+
+## Update 2026-11-26 (24): safe zone shrinks; property path fix
+
+Read with `client/frida/payloads/zone_dis.py`, `circle_param.py`, `zone_state.py`.
+
+- **Client side.** `BattleGroundSpace.updateBlueCircle` animates the blue circle toward each new `blueCircleRadius` / `blueCircleCenter` (0.05 s steps), so the server only sends the interpolated circle about once a second while it shrinks. `updateCircleRestTime(INT32)` (client method 45) drives the HUD zone timer, which counts down by itself; the minimap arc shows the shrink progress. `showCircleNotify(STRING)` / `showCircleMessage(INT8, STRING)` are not used yet.
+- **Map 700 stages** (`maps_utils.getBattleGroundParamData(700)`): initial blue (-7507, -4674) r 32000; stages (wait s, shrink s, radius) = (270, 180, 16000), (150, 150, 10000), (120, 120, 6000), (120, 80, 3000), (90, 60, 1500), (90, 60, 750), (90, 60, 300), (120, 120, 0); DAMAGE 1, 1, 1, 1, 2, 3, 5, 7 per INTERVAL (5, 3.3, 2, 1 ... s).
+- **Server timeline** (`Match.zone_start` / `zone_tick`, `battle_flow.py`): starts after the landing (`ZONE_AUTO`, default on): gameStatus FIGHT, stage 1, blue = initial circle, white = next radius placed toward the player and inside the blue; wait -> shrink (blue interpolated toward white, ~1 s steps, `blueCircleStart*` at shrink start) -> next stage; closes after stage 8. `ZONE_TIME_SCALE` (default 1.0) or the test command `zone <scale>` speeds it up.
+- **Bug fixed: property path length.** `prop_update` always wrote a 2-byte bit path for property indices > 60. The path is index bits + 1 "more" bit padded to whole bytes: 2 bytes for BattleGroundAvatar (495 properties), **1 byte for BattleGroundSpace (95)**. With 2 bytes every zone value arrived shifted by one byte (radius x 256, centres near 0). Player updates are byte-identical to before.
+- **Hot reload.** `_adopt(match)` moves a match object created before a reload onto the current `Match` class at every entry point (`on_message`, `on_position`, `handle`, `debug_command`).
+- **Verified on LDPlayer:** client values after the fix: white (698, -373) r 16000, blue (-7507, -4674) r 32000, timer 27 s; at 10x speed all 8 stages ran; the zone timer counts down; the minimap draws the white and blue rings around the player at the small stages.
+- **Still open.** The full map (UIDtsMap) shows no circles; no zone damage (the server has no health model yet); no circle notifications; the 3D blue wall was not checked.
+
+## Update 2026-11-26 (25): the plane flies its route; jump from where it is
+
+- **No client-side flight.** `Plane` has an `AvatarFilter` and only follows server positions; `movePath` / `moveSpeed` are not used to move it (the plane stayed at (0, 0, 0)).
+- **detailedPosition layout (verified).** ClientInterface 0x58, fixed 30 bytes: entity id u32, position 3 x float32, direction 3 x float32 (roll, pitch, yaw), then 2 bytes of unknown meaning sent as 0 (`battle_flow.detailed_position`; `DPOS_TAIL=front` tries the 2 bytes after the id). The filter interpolates between updates. Test command `dpos <eid> <x> <y> <z> [yaw]`.
+- **Flight.** `FLIGHT_STEPS` step 0 is now `flight`: the Plane is created at the start of `FLIGHT_ROUTE` (default `-16000,-14000,7000,6000`, through FLIGHT_START's area, at y 19300) with `mode` 1 (PEOPLE: the RoS transport jet model) and `movePath` = the route. `Match.flight_tick` sends `detailedPosition` every 0.2 s at `FLIGHT_SPEED` (500 units/s, about a minute across). The boarded player rides along (attached to the plane); the minimap scrolls with it.
+- **Jump.** `requestGetOffPlane` releases the player at the plane's current position (`Match.release_from_plane`; a second press is ignored). At the end of the route a player still aboard is released automatically.
+- **Verified on LDPlayer:** countdown -> jet flying over the island (minimap distance 1367 m -> 996 m in 6 s) -> Jump at (-2319, 19300, -2103) -> skydive -> parachute button at 60 % -> canopy (button pressed) -> landed in Echo Valley (-3275, -550, 1198) -> zone stage 1 centred there (270 s wait).
+- **Note.** The Top-Ups (04:32:09-11) and the Supreme draws seen in these test sessions were made by hand in the LDPlayer window in parallel with the tests, not by the server or the test scripts.
+
+## Update 2026-11-26 (26): zone damage
+
+- **Server health model.** `Match.hp` starts at `MAX_HP` (100) when the flight is created. `hp_messages` sends `maxHp`, `hp` and `actualHP` together.
+- **Damage** (`Match._zone_damage`, called from `zone_tick`):
+  - When the player crosses the blue circle, the server sends `isInPoisonArea` (1 on leaving, 0 on re-entering).
+  - While the player is outside, the server takes the stage's DAMAGE every INTERVAL (map 700 table, scaled by `ZONE_TIME_SCALE`), sends the HP props, and calls `showPoisonEffect`.
+  - At 0 hp the server sends `battleState` 2 (Died) and logs `killed by the zone`.
+- **Test command.** `zone <scale> away` places each white circle on the side of the map away from the player, so the blue circle passes over them.
+- **Verified on LDPlayer** (`zone 0.2 away`, read with `hp_state.py`):
+  - Leaving the zone in stage 2: `left the safe zone (hp 100)`.
+  - Client values over time:
+    - `hp 83`, `isInPoisonArea 1`, `battleState 0`
+    - then `hp 0`, `battleState 2`
+  - The server logged `killed by the zone` in stage 5. The green poison vignette shows at the screen edges. The zone went on to close after stage 8.
+  - No client script errors in logcat.
+- **Still open.**
+  - There is no death or results screen. The client sits in the poison view with hp 0 (`onBattleGroundDie` and the match-end flow are not sent yet).
+  - The HUD HP bar was not visible in this run (terrain and HUD were not loaded on LDPlayer after the long session).
+  - The `showPoisonEffect` method index was not checked separately from the `isInPoisonArea` vignette.
+
+## Update 2026-11-26 (27): match-end client methods (RE, def + `battle_flow.client_methods`)
+
+Static only (no Frida). Source: `server/extract/entities_out/099_25abc9c1.bin` (`BattleGroundAvatar` ClientMethods) and `battle_flow.client_methods('BattleGroundAvatar')` (raw .def index + default `+3`, adjusted per `CM_DELTAS`).
+
+| Client method | Wire index (this build) | Arguments (def) |
+|---------------|-------------------------|-----------------|
+| `onBattleGroundDie` | **266** | `PYTHON` — killer info dict (use empty `{}` when no killer, same shape as `onBattleGroundResult`’s second PY_DICT) |
+| `onBattleGroundResult` | **267** | `INT32 gameType`, `INT8 teamSize`, `INT32 rank`, `INT32 total`, `INT32 bannerID`, `PY_DICT results`, `PY_DICT killerInfo` |
+| `showPoisonEffect` | **659** | (no args in typical use; already sent from `_zone_damage`) |
+
+**Recommended send order when HP reaches 0 (Harness H1):**
+
+1. `prop_update` `battleState` = `2` (`Died`) — already in `_zone_damage`.
+2. `client_call('BattleGroundAvatar', 'onBattleGroundDie', AVATAR_ID, blob(pickle.dumps({}, 2)))`.
+3. `result_call(...)` → `onBattleGroundResult` (see `battle_flow.result_call`; `RESULT_GAME_TYPE`, `BANNER_*`, rows keyed by gid).
+4. Optional polish: `BattleGroundSpace.gameStatus` = `GS_END` (4) and/or `client_call('BattleGroundSpace', 'gameEnd', SPACE_ID, …)` — not measured live yet.
+
+**Note:** `Match.finish()` already calls `result_call` on zone death (§26) but **does not** send `onBattleGroundDie`; LOBBY_FINDINGS §26 “no results screen” likely means step 2 (or wrong result timing) is missing—not that `result_call` is absent from the server code path.
+
+Re-run Frida `client/frida/payloads/result_dis.py` after lobby load to confirm UI handler names if indices drift after `CM_DELTAS` edits.
+
+**Harness iteration 16 (2026-11-26):** `battle_flow.die_call()` sends `onBattleGroundDie` with `{}` when `Match.finish()` runs and `hp <= 0`, then existing `result_call()`. Live result UI still **unverified** on LDPlayer (harness shell lacked adb; parent run of `ld_debug_match.ps1` hit screenshot bug, fixed via `cmd /c exec-out` redirect like `harness_loop.ps1`).
+
+## Update 2026-11-26 (28): wardrobe ITEMS tab (item skins: backpacks, helmets, vests, parachutes)
+
+- **Was broken.** ITEMS-tab skins are `BattleGroundPropAppearanceType` (274 ids). The server had no list for them: `tryOnAppearance 103929: no shown list`, and `equipAppearance` only sent `onNotifyEquipedAppearance`.
+- **Client rule** (`DtsAppearance.BattleGroundPropAppearanceType`, read with `client/frida/payloads/bgprop_appearance.py`):
+  - Two skins share a slot when `dts_appearance_utils.getBattleGroundPropAppearanceAllPropIDs` sets overlap (`isForSameBattleGroundProp`).
+  - Equip swaps; it never takes the item off. It also drops `isSameTypeFlyDecorate` items, but none of the 274 are fly decorates.
+  - Prop sets: 1/2/3 helmet levels, 8/9/10 backpack levels, 100 parachute, 5/6/7, 2300001-3, 2400001, and one item with {2100001, 2101001, 2101011}.
+  - Gender = `getBattleGroundPropAppearancePropGender`.
+- **Server.**
+  - `extract/appearance_slots.json` items get `["bgprop", "<prop ids>", gender]`.
+  - `Outfit.LISTS` adds `bgprop`.
+  - Lists: `dtsBattlegroundPropAppearanceList` / `dtsShowBattlegroundPropAppearanceList` (login).
+  - Methods: `onUpdateBattlegroundPropAppearanceList` / `onUpdateDtsShowBattlegroundPropAppearanceList`.
+  - `unloadAppearance` removes the item from both lists.
+  - The match avatar gets `dtsBattlegroundPropAppearanceList`.
+- **Not done.**
+  - `dtsOutGameBag` (the bag carried on the hall model) is not tracked. The client resets it to 0 when the equipped bag is replaced.
+  - `HeadFrameAppearanceType` equip is still `type not tracked`.
+  - **Verified on LDPlayer:** try-on of Parasitoid lv 3 (103931) logs `tryOnAppearance 103931 (bgprop) -> shown [103931]`; the client shows the Try mark and the backpack model; the login outfit now includes `bgprop`.
+  - Equip from the UI was not tested: the account owns no backpack, and buying one needs puzzle shards (balance 0). Offline checks of equip, try-off and save/load passed.
+
+## Update 2026-11-26 (28): lobby profile card (portrait, level) verified
+
+Read with `client/frida/payloads/profile_card.py`, `profile_card2.py`, `profile_avatar_state.py`, `portrait_size.py`, `meethttp_dis.py`, `level_dis.py`, `level_table.py`.
+
+- **Card fields.** `UIMain._init_profile`: `baseNickname`, then `getAvatarProtratiAndFrame(p_profile, baseCharacterType, headFrameTag, online=True, fileID=portrait)`, then `updateLevel` (badge = `dtsLevel`, bar = `dtsExp / ExpLevelTable[dtsLevel].levelExp`).
+- **No built-in portraits in this build.** `getAvatarProtrait` loads `ui/images/avatar/portrait/<char>_on.png` only for `fileID` '' or the literal `'""'`. With `'""'` the avatar ImageView stays 0x0 (`getVirtualRendererSize`), so the file is missing. `''` makes the caller look the photo up by gid (`getAvatarPortraitByGID`, online). `'0'` is ignored by `getAvatarPortraitByFPID` (it needs `len(fileID) >= 16`). Section 1's "'0' -> built-in" was wrong for this build.
+- **Fix: serve the portrait over FilePicker.** `portrait_file_id()` default is `rosdefaultportrait01` (`PORTRAIT_BUILTIN` overrides). The client downloads it with `filePicker.download_file` from `g89ros.fp.ps.easebar.com/file/<id>`. `RoSHTTPHandler` now answers `/file/<id>` with `server/portraits/<id>.png|.jpg`, else `server/portraits/default.png` (a plain silhouette drawn with Pillow, not game art). The client caches it as `res/ui/images/tantan/<id>.png`.
+- **Level / exp.** `dtsLevel` / `dtsExp` live in `childBaseClientPropertyList` (stream bug, not sent). `onAddDtsExp(INT32 dtsExp, INT32 dtsLevel, BOOL newLevelup)` (`iDtsLevelSystem`) sets both and calls `UIMain.updateLevel`. The gateway sends it with `onSetPortrait` 12 s after enterHall (`_sync_lobby_portrait`, log `profile sync ...`). Level per account in `saved_accounts.json` `level:<gid>` `{"level", "exp"}` (RoS_Server profile level when linked); also `baseLevel`, `requireBaseInfo`, `queryPersonalInfo`. Level table (1..300, `levelExp` 120 at level 1) in `server/extract/level_exp.json`.
+- **Verified on LDPlayer (08:41 gateway):** `[FILEPICKER] 'rosdefaultportrait01' -> default.png`, the silhouette shows in the top-left card, badge 1.
+- **Death screen still unverified.** The test match reached the landing (zone stage 1), but the gateway was restarted by another session at 08:54 before the `die` trigger was read.
+
+## Update 2026-11-26 (29): Recruit Guide panel no longer locks the lobby
+
+- **Cause.** The Recruit Guide tile (`UIMain.onClickPanelActivity4`) opens `ui.ros2.UIR2FlowActivity`.
+  - Its `on_enter` -> `refreshDownloadStatus` -> `reqDLCSize` -> `BigMapDownloader.queryDLCTotalSize` fetches `https://h45na.update.easebar.com/pl/npk_version_na_ros2_inner_android.plist`.
+  - The server answered with its JSON "patch up-to-date" reply, `Plist.from_url` raised `PatcherException`, and `on_enter` stopped halfway. The panel stayed half-open and the lobby took no more taps.
+- **Fix.** The server serves `server/real/npk_version_na_ros2_inner_android.plist` (`static_map` in `ros_server.py`).
+  - Same layout as the main list: `md5,size,path` lines, a `##########` line, then a JSON line.
+  - It lists only `neox.xml` (already on the device), so the DLC size is 0.
+- **Verified on LDPlayer:** the panel shows the 6 ROS 2.0 steps ("Not started yet", 0 %). Opened and closed it twice; the lobby still takes taps (the Activity tile opens); no script errors in logcat.
+- **Not done.** The ROS 2.0 DLC steps have no server data (the progress stays at 0 %).
+
+## Update 2026-11-26 (30): VIP Privilege screen
+
+- **Cause.** `syncVipInfo` sent a flat `{"level": 0, "exp": 0, "rewardStatus": {}}`. The client keys `player.vipInfo` by card type (`const.Vip.TYPE_SILVER` 0, `TYPE_GOLD` 1), so:
+  - `dts_vip_utils.hasRewardAvailable` (`vipInfo.iteritems()` -> `info["rewardStatus"]`) raised `'int' object has no attribute '__getitem__'`.
+  - `getFirstAvailableLevel` raised `KeyError: 0`.
+  - The half-drawn screen showed overlapping text ("VIP2VIP 2", scribbled card numbers).
+- **Layout (read with Frida from `UIVipPrivilege` / `dts_vip_utils`).** Each of `vipInfo[0]` and `vipInfo[1]` holds:
+  - `level` (max: silver 10, gold 8; gold may not exceed silver)
+  - `rewardStatus` `{level: 0 NA / 1 AVAILABLE / 2 DONE}`
+  - `num`: top-up total, compared with `TOP_UP_NUM` for the progress bar
+  - `redPoint`: bool
+  - `activeTime`: card start; the timer shows `activeTime + 30 days - now`
+- **Rewards.** `legacyProperties.iterVipData` gives 18 rows (`REWARD_PROPS`, `TOP_UP_NUM`, `VIP_TYPE`), saved as `server/extract/vip_levels.json`.
+- **Server.**
+  - `server/lobby_vip.py` builds `vipInfo`. Levels come from `VIP_SILVER_LEVEL` / `VIP_GOLD_LEVEL` (default 0); `VIP_CARD_DAYS` (default 30).
+  - `getVipReward(INT32 type, INT32 level)` / `getAllVipReward()` grant `REWARD_PROPS` (as mail claims do), mark the level DONE (`saved_accounts.json` `vip:<gid>`), then resend `syncVipInfo` + `onGetVipReward(type, level)` / `onGetAllVipReward({prop: 1})`.
+- **Verified on LDPlayer.** Opened from Depot > Lobby Theme > Future Sight > "Acquire Silver VIP 7":
+  - Both cards show VIP 0.
+  - Silver shows "Top Up 60 to Claim Silver VIP 1" (page 1/10); gold shows "Top Up 60 to Claim Gold VIP 1" (page 2/8).
+  - Paging, switching cards and closing all work, and the lobby still takes taps. No script errors.
+- **Not tested.** Claiming a reward (needs `VIP_SILVER_LEVEL` > 0). Top-ups do not raise the VIP level yet.
+- **Separate bug seen.** The top bar's **Benefits** panel raised `KeyError: 0` and locked the lobby. Fixed in update 31.
+
+## Update 2026-11-26 (31): Benefits (Activity Points) panel
+
+- **Cause.** `ui.UIDailyActivity.on_enter` reads the client-only fields `player.activityProgressList`, `activityStateList`, `dailyActivityRewardStateList` and `weeklyActivityRewardState`.
+  - Only the `iDailyActivity.sync*` client methods fill them. The server never called those methods, so the fields stayed `{}`.
+  - `_update_activity_progress` raised `KeyError: 0`, the panel never finished opening, its X did nothing, and the lobby stayed locked until a relaunch.
+- **Fix** (enterHall, next to `syncVipInfo`). The server sends fresh-day values, as the client's own `resetDailyActivityState` builds them:
+  - `syncDailyActivity(0)`
+  - `syncDailyActivityRewardState([0]*4)` (30/60/90/120 points)
+  - `syncWeeklyActivity(0)`
+  - `syncWeeklyActivityRewardState([0]*2)` (300/600 points)
+  - `syncActivityProgress([0]*14)` and `syncActivityState([0]*14)`
+  - 14 = `properties.iterDailyActivityData` rows (ids 0-13: log in daily, share, survive 5/10/30 min, kills, vehicle, supplies, 1 km, open a Supply Box). `DAILY_ACTIVITY_COUNT` overrides it.
+  - States are `const.RewardState` (0 UnmetNeeds, 1 MetNeeds, 2 GotReward).
+- **Verified on LDPlayer:** the panel shows the activity list (0/1, 0/3 ...) and the daily and weekly tiers. Scrolling and the Level Packs tab work, and X closes back to a working lobby. No script errors.
+- **Not done.** Activity progress is not tracked (always 0), and `getDailyActivityReward` / `getWeeklyActivityReward` are not handled.
+
+## Update 2026-11-26 (32a): World entities — vehicles and supply drop (lane 5, RE + code, not yet seen on device)
+
+Sources: `server/extract` defs read with `bwdefs` / `battle_flow.other_client_props`, the client script string tables in
+`../decompile/script/strings/` (module per file, first line = module path), and `extract/message_map.txt`. No device run yet
+(LDPlayer lock busy). Code: `server/battle_world.py`, one-line hooks in `battle_flow.py` (tagged `# lane 5`).
+
+### Vehicles
+- **Entity types.** `LandCar`, `LandBoat`, `LandMotor`, `LandBike`, `LandExpress`, `LandCraft`, `LandGlider`, `LandHelicopter`,
+  `LandHoverCar`, `LandSnowboard`, ... (all `iLandVehicle`, client types 120+ in `client_entity_types.json`). Boats
+  (15.20) are `LandBoat`.
+- **createEntity list** (ALL_CLIENTS, `.def` order): `LandCar` has 73 entries. The model comes from **`tpsVehicleID`**
+  (`iVehicleEntity.vehicleData` = `legacyProperties.getVehicleData(tpsVehicleID)`; `prerequisites` preloads
+  `VEHICLE_BODY_MESH`, wheel meshes and the broken model from it). **`characterType`** selects
+  `getLandVehicleData(characterType)` (the "landVehicleID" used for skins: `landVehicleID2AppearanceIDDict`).
+  State: `hp/actualHP/maxHp/vHasHp/wheelHp`, `fuelAmount/capacity/fuelFull/comsumeFuel` (15.16), `maxSpeed/basicMaxSpeed/topSpeedClient`,
+  `bActive/enabled` (the avatar's `canGetOnLandVehicle` requires `bActive`), `driverID`, `hasDriver`, `usedHangSockets`
+  (`ARRAY<VEHICLE_SOCKET_INFO {sockname STRING, id UINT32}>`), `curAppearanceID` (15.19 vehicle skin), `canDriveInWater/OutWater`.
+- **Requests the client sends** (BattleGroundAvatar exposed cell methods; raw exposed index, the decoder's +2 shift applies):
+  `reqGetOnLandVehicleAsDriver(ENTITY_ID)` 237, `reqGetOnLandVehicleAsPassenger(ENTITY_ID)` 238, `reqGetOffLandVehicle(ENTITY_ID)` 241,
+  `reqSwitchToDriveLandVehicle(ENTITY_ID)` 242, `reqSwitchDriveState()` 243, `reqSwitchToSeat(INT32)` 244, `vehicleHit(...)` 60
+  (collision, 15.13), `getOnVehicle/enterVehicle/getOffVehicle` 279/280/284 (other vehicle kinds).
+  The client sends them from `iLandDrive.reqGetOnLandVehicleAsDriver` etc. (a short `WaitForSeconds` coroutine first);
+  the vehicle's own `reqDriver/reqPassenger/reqGetOff` cell methods are not exposed (server-internal).
+  Exposed on `LandCar` itself: `openDoor/closeDoor`, `playTrumpet`, `onAccStart/onAccEnd`, `hitScene(VECTOR3, FLOAT)`,
+  `getStepInWater/OutWater`, `onBoomComsumeFuel`, `resetPositionAndDirection`.
+- **What makes the client sit in the car** (from the string tables, logic not disassembled yet):
+  - avatar props `vehicleEntID`, `inLandVehicle`, `isLandDriver` -> `iLandDrive.refreshDriveState` -> `onSwitchToDriver` /
+    `onSwitchToPassger` (driving HUD, camera); `onSwitchToOffVehicle` on the way out.
+  - vehicle client methods `onAddAvatarSocket(STRING sockname, ENTITY_ID)` (binds the avatar to the seat socket, `msgEnterHangOnCar`,
+    `onGetOn`), `onDelAvatarSocket`, `onAvtSwitchToSock` (15.06), `onPlayerEnter/Leave`, `onControlledBy(ENTITY_ID, BOOL)`
+    (`beCntrl` when the id is the player -> `selectControl` -> `becomeClientControl` loads the first-person physics comps,
+    `VehiclePhysicAssemble`), `onUncontrolledBy`, `onSyncPos(VECTOR3)` (server correction past `VEHICLE_POS_DIST_CORRECT_THRESHOLD`),
+    `onTireIsBroken(INT32)`, `preShutDownVehicle`, `die(...)` (15.17), `damage(...)` (15.14).
+  - ClientInterface **`controlEntity`** (message_map seq 111 -> wire id 0x5A, fixed 5: entity id u32 + bool) is the BigWorld switch
+    that lets a client move a non-player entity. `enterAoIOnVehicle` (0x0D, fixed 9) and `setVehicle` (0x13) also exist.
+  - While driving, the client should report the vehicle with `avatarUpdateExplicit` (client msg 3, entity id first);
+    `battle_world.on_vehicle_update` logs those reports (15.12).
+- **Server reply in `battle_world.get_on`** (order): vehicle `driverID`/`hasDriver`/`usedHangSockets`, `onPlayerEnter`,
+  `onAddAvatarSocket(socket, 10003)`, avatar `vehicleEntID`/`inLandVehicle`/`inVehicle`/`isLandDriver`/`isDriver`, then for the driver
+  `controlEntity(vid, 1)` + `onControlledBy(10003, 1)`. `get_off` reverses it and `forcedPosition`s the player beside the car.
+- **Open (probe `client/frida/payloads/world_entities_probe.py`, read-only):** valid `tpsVehicleID` / `characterType` ids
+  (defaults 1/1 are placeholders, env `VEHICLE_TPS`, `VEHICLE_CHAR`), `const.VEHICLE_DRIVER_SOCKET` (default `"driver"`, env
+  `VEHICLE_DRIVER_SOCKET`), the seat socket names (`VEHICLE_SEATS_INFO.SOCKET_NAMES`), `const.PlayerState.InVehicle`, and the
+  `LandCar` client-method index offset (`CM_OFFSET_LANDCAR`, 0 assumed). Map 700 vehicle spawn points are server data (not found in
+  the client); the car is placed `VEHICLE_OFFSET` (60, 0, 60) from where the player lands.
+
+### Supply drop
+- **Aircraft = `Plane`** with `mode` not `PlaneWorkMode.PEOPLE` / `REBORN`: `Plane.getPreloadModel` / `enterWorld` then use
+  `rc.AIRDROP_PLANE_MODEL` (`tps/car/airplane_airdrop`) and skip the boarding logic (`leaveWorld` only calls `getOffPlane` for
+  PEOPLE/REBORN). The transport flight uses mode 1 (PEOPLE). Airdrop mode value is a guess (2, env `AIRDROP_PLANE_MODE`) until the probe.
+- **Crate = `DtsPlayerHeritage`** (the loot-box entity, also used for death boxes). ALL_CLIENTS list (15): `mapID, socketHint,
+  moveSpeed, items (PY_DICT), name, drop, dropping, heritageMode, appearanceID, ownerID, teamID, isStarDiamondNpc, playerID, trainID,
+  trainPosition`. `drop` = 1 -> `AIR_DROP_MODEL` `character/female_battlegrounds/supplybox/supplybox_ros.gim`
+  (gold variant for wild mode; `heritageMode` CHRISTMAS_DROP picks a seasonal model) and `onLoadAirDrop`; `dropping` = 1 ->
+  `createParachute` (`parachute_04.gim`) + `AvatarDropFilter`; `set_dropping(0)` removes the parachute. The descent is server-driven
+  (detailedPosition of the crate).
+- **Opening:** proximity (`onPlayerEnter` -> `iDtsProp.nearGroundChest`, which also counts `SearchAirDrop` for missions) shows the
+  pick-up list from `items` (`HeritageListControlComponent.__doRefreshHeritageItemList` iterates `items.iteritems()`, keyed by item
+  uuid); a tap sends `DtsPlayerHeritage.tryPickUp(UUID, INT32, BOOL)` (exposed 1) / `tryPickUpForTeammate`. Client methods
+  `updataItemAmount`, `resetItems` refresh the list. The value layout of `items` is not read yet (`AIRDROP_ITEM_FORMAT`).
+- **Timeline in `battle_world`:** zone start + `AIRDROP_DELAY` (60 s x zone time scale) -> plane created on a route through a drop
+  point `AIRDROP_OFFSET` from the player, `AIRDROP_PLANE_HEIGHT` above it -> detailedPosition every 0.2 s -> at mid-route the crate
+  is created at the plane -> lowered at `AIRDROP_FALL_SPEED` -> on the ground `dropping` 0 -> plane `leaveAoI` at the end of the route.
+  Loot is the fixed list `AIRDROP_ITEMS` (prop ids from `battle_props.json`). Map icons (`UIDtsMap.updateAirdropIcons`) not checked.
+- **Property updates over 255 bytes** (the pickled `items`) can't use the var8 `0xC0|idx` form; `battle_world.prop_update_long`
+  uses the 0xFD bit-path form instead (unverified for small property lists).
+- **Switches.** Automatic spawns are opt-in: `WORLD_VEHICLES=on`, `WORLD_AIRDROP=on` (off by default so other lanes' matches are unaffected).
+- **Triggers** (`server/trigger_battle.txt`, work without the switches): `car [dx dz]`, `airdrop`, `geton <vid> [p]`, `getoff <vid>`.
+
+## Update 2026-11-26 (32): ITEMS sub-tabs, gliders/planes saved, Data Import
+
+- **Sub-tabs.** Depot > ITEMS has eight sub-tabs; each lists only owned or on-sale items.
+  - action: in-game emotes
+  - helmet, box, parachute, last tab (ring icon), backpack: `BattleGroundPropAppearanceType` (`bgprop`)
+  - glider: `JetWingsAppearanceType`
+  - plane: `ShowAircraftAppearanceType`
+- **Why choices came back as default after a restart.**
+  - Gliders and planes were `type not tracked`, so they were never saved.
+  - Item skins, clothes and lobby theme were already saved (`saved_accounts.json` `inventory:<gid>.outfit`).
+  - In-game emotes need no saving: `dtsInGameActionAppearanceIDs` already holds every action.
+- **Client rule** (`DtsAppearance.JetWings/ShowAircraftAppearanceType`): equip sets `dtsJetWingsAppearanceID` / `dtsShowAircraftAppearanceID` to the id and calls `onUpdateDtsJetWingsAppearanceID` / `onUpdateDtsShowAircraftAppearanceID`; unload sets 0.
+- **Server.**
+  - `Outfit.SINGLES` adds `jetwings` and `aircraft` to the saved outfit; `equipAppearance` / `unloadAppearance` handle them.
+  - Login sets the two Athlete props.
+  - The match avatar gets `dtsShowAircraftAppearanceID` and `lastJetWingsID`.
+- **Data Import** (Depot button): `requestLoadOtherServerItemList()`. The client waits on "Importing..." for `onLoadOtherServerItemList(INT8)` (1 success, 2 fail, 3 cool-down; `iDtsAppearancePackage`). The server now answers 1, and the client shows "Import complete".
+- **Test data.** `server/lobby_mail.json` mail 3, "ITEMS tab test pack", holds 23 items: one item skin per slot, 2 gliders, 2 planes, 1 `PlayerSfx`, 1 `Paint`. Claimed on LDPlayer; they appear in the helmet, parachute, glider, plane and backpack tabs. The box and ring-icon tabs stay empty (neither `PlayerSfx` nor `Paint` belongs there).
+- **Verified on LDPlayer:** equipped Glider Wing (104935), Wingman - Marionette (106057) and Melon Helmet III (107902). After a full game relaunch:
+  - The login state has `jetwings`, `aircraft` and `bgprop`.
+  - The ticks show in the glider, plane and helmet tabs.
+- **Not done.** The box and ring-icon tab types are unknown. Head frames (`HeadFrameAppearanceType`) are still `type not tracked`.
+
+## Update 2026-11-26 (33): Other players — first createEntity of a non-player BattleGroundAvatar (lane 6)
+
+- **Design:** [MULTIPLAYER_DESIGN.md](MULTIPLAYER_DESIGN.md). Code: `server/match_room.py`. Hooks in `ros_server.py` are tagged `# lane 6`.
+- **The full 219-property createEntity crashes the client.** `ROOM_CE=full` sent mask flag 0 and every `battle_flow.other_client_props("BattleGroundAvatar")` value. The client logged "Pickler::unpickle: Failed to unpickle", then "PythonDataType::createFromStream: Not enough data", then "IntegerDataType ... Not enough data", then SIGSEGV in NeoXMain (logs/lane6_crash_logcat.txt). So the client's createEntity list for BattleGroundAvatar is **not** the parse-order ALL/OTHER_CLIENTS list that works for Space, Plane and DtsProp. The likely cause is the Avatar interface (`<Implements>`) order. Until the real list is read from the client, the bitmask (`ROOM_CE=mask`) has the same risk.
+- **Workaround (`ROOM_CE=empty`, default):** createEntity with only the flag and compression bytes. The client builds its default dictionary from an empty stream (CREATE_ENTITY_FORMAT.md §2). Property updates follow with the update-list index, which is verified on the own BattleGroundAvatar.

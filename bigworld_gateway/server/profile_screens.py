@@ -119,7 +119,8 @@ def personal_info(profile, gid, fallback_name, char_type, portrait):
         "gid": gid,
         "nickname": profile.get("nickname") or fallback_name,
         "characterType": hero_rules.normalize_hero(profile.get("char_type") or char_type),
-        "protrait": profile.get("portrait", portrait) or "",
+        # FilePicker id served by the gateway (portrait_file_id); this build has no built-in portraits.
+        "protrait": profile.get("portrait") or portrait,
         "nationalFlag": national_flag(profile),
         "dtsLevel": int(profile.get("level", 1)),
         "score": int(profile.get("rank_score", 0)),
@@ -128,3 +129,38 @@ def personal_info(profile, gid, fallback_name, char_type, portrait):
 
 def space_likes(profile):
     return int((profile or {}).get("space_likes", 0))
+
+
+# --- Match exp and level up (21.07 / 21.08) --------------------------------------------------
+# The client shows exp with Athlete.onAddDtsExp(INT32 dtsExp, INT32 dtsLevel, BOOL newLevelup)
+# (iDtsLevelSystem; newLevelup True opens the level-up popup). ExpLevelTable[level].levelExp is the
+# exp needed to leave that level (extract/level_exp.json). The original exp-per-match formula is not
+# known; match_exp() is this server's own rule. battle_flow calls grant_match_exp() when a match ends;
+# the lobby applies the pending exp at its next profile sync (ros_server._sync_lobby_portrait).
+PENDING_EXP = {}   # gid -> exp earned in matches, not yet shown in the lobby
+
+
+def match_exp(rank, total, kills=0):
+    """Exp for one finished match: 20 base, +1 per player outlived, +10 per kill, +50 for a win."""
+    rank, total, kills = max(int(rank), 1), max(int(total), 1), max(int(kills), 0)
+    return 20 + max(total - rank, 0) + 10 * kills + (50 if rank == 1 else 0)
+
+
+def grant_match_exp(gid, rank, total, kills=0):
+    """Queue a match's exp for gid; returns the amount (for the result screen's "exp" row)."""
+    amount = match_exp(rank, total, kills)
+    PENDING_EXP[str(gid)] = PENDING_EXP.get(str(gid), 0) + amount
+    return amount
+
+
+def add_exp(level, exp, amount, level_exp):
+    """(level, exp, levelled_up) after adding amount; level_exp maps level -> exp to leave it."""
+    top = max(level_exp)
+    level, exp = min(max(int(level), 1), top), max(int(exp), 0) + max(int(amount), 0)
+    start = level
+    while level < top and exp >= level_exp[level]:
+        exp -= level_exp[level]
+        level += 1
+    if level == top:
+        exp = min(exp, level_exp[top] - 1)
+    return level, exp, level > start

@@ -1,0 +1,1427 @@
+{
+  "build": "1.610637.617289",
+  "package": "com.netease.chiji",
+  "generated_by": "scratch/build_gameplay_matrix.py",
+  "function_count": 74,
+  "functions": [
+    {
+      "id": "login",
+      "category": "Account_and_Lobby",
+      "player_visible_name": "Login",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "ui.UILogin",
+        "LoginApp Mercury authenticate",
+        "patch.Headcode"
+      ],
+      "data_evidence": [
+        "loginapp.py",
+        "real/server_list_ad.local.txt",
+        "harness iteration_log"
+      ],
+      "server_status": "working",
+      "server_touchpoints": [
+        "loginapp.py",
+        "ros_mock_server.py patch manifest"
+      ],
+      "blockers": []
+    },
+    {
+      "id": "server_selection",
+      "category": "Account_and_Lobby",
+      "player_visible_name": "Server selection",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "ui.UILogin server list",
+        "h45na.update.easebar.com/server_list_ad"
+      ],
+      "data_evidence": [
+        "sync_server_list.ps1",
+        "real/server_list_ad.local.txt"
+      ],
+      "server_status": "working",
+      "server_touchpoints": [
+        "ros_mock_server.py",
+        "dns_server.py"
+      ],
+      "blockers": []
+    },
+    {
+      "id": "player_profile",
+      "category": "Account_and_Lobby",
+      "player_visible_name": "Player profile",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "Athlete childBaseClientPropertyList",
+        "UIMain profile",
+        "level nickname"
+      ],
+      "data_evidence": [
+        "athlete_base_exposed.json",
+        "saved_accounts.json"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "ros_server.py build_base_player_props",
+        "gateway_identities"
+      ],
+      "blockers": [
+        "childBaseClientPropertyList full send breaks PYTHON stream alignment"
+      ]
+    },
+    {
+      "id": "character_customization",
+      "category": "Account_and_Lobby",
+      "player_visible_name": "Character customization",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "equipAppearance",
+        "setDtsAppearanceGender",
+        "onUpdateDtsHallThemeID",
+        "iDress"
+      ],
+      "data_evidence": [
+        "appearance_slots.json",
+        "hall_props.json",
+        "legacyProperties.getCharactersData"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "ros_server.py athlete_requests",
+        "avatar_create_messages outfit"
+      ],
+      "blockers": [
+        "dts_appearance_utils tables incomplete on client without full data push"
+      ]
+    },
+    {
+      "id": "friends",
+      "category": "Account_and_Lobby",
+      "player_visible_name": "Friends",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "getFriendList",
+        "onGetFriendList"
+      ],
+      "data_evidence": [
+        "athlete_base_exposed.json"
+      ],
+      "server_status": "stub",
+      "server_touchpoints": [
+        "ros_server.py empty friend lists"
+      ],
+      "blockers": [
+        "no social backend"
+      ]
+    },
+    {
+      "id": "party_creation",
+      "category": "Account_and_Lobby",
+      "player_visible_name": "Party creation",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "createHallTeam",
+        "onEnterHallTeam",
+        "entities.iHallTeam"
+      ],
+      "data_evidence": [
+        "HALL_TEAM_MEMBER_CLIENT 49 fields"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "ros_server.py START flow onEnterHallTeam"
+      ],
+      "blockers": [
+        "multi-player parties not tested"
+      ]
+    },
+    {
+      "id": "inventory",
+      "category": "Account_and_Lobby",
+      "player_visible_name": "Inventory",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "dtsAppearancePackage",
+        "dtsItemPackage",
+        "Depot UI"
+      ],
+      "data_evidence": [
+        "saved_accounts.json",
+        "RoS_Server gateway state API"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "ros_server.py _encode_appearance_pkg",
+        "account_link"
+      ],
+      "blockers": [
+        "battle inventory sync incomplete"
+      ]
+    },
+    {
+      "id": "shop",
+      "category": "Account_and_Lobby",
+      "player_visible_name": "Shop",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "buyMallGood",
+        "onQueryAvailableMallGoods",
+        "Store UI"
+      ],
+      "data_evidence": [
+        "mall_goods.json 1160 goods",
+        "mall_good_price"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "athlete_requests.py",
+        "ros_server.py mall queries"
+      ],
+      "blockers": [
+        "some themed goods need live event flags"
+      ]
+    },
+    {
+      "id": "missions",
+      "category": "Account_and_Lobby",
+      "player_visible_name": "Missions",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "requestDtsSigninAward",
+        "UIDtsSign",
+        "daily missions UI"
+      ],
+      "data_evidence": [
+        "sign-in award table in LOBBY_FINDINGS"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "ros_server.py requestDtsSigninAward"
+      ],
+      "blockers": [
+        "season pass and many mission UIs need more Athlete methods"
+      ]
+    },
+    {
+      "id": "events",
+      "category": "Account_and_Lobby",
+      "player_visible_name": "Events",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "UILimitWelfareController",
+        "syncTelkomseOpenStatus",
+        "Lucky Carnival"
+      ],
+      "data_evidence": [
+        "notice_pc_hw.txt event changelog",
+        "_lobby_data_calls"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "ros_server.py _lobby_data_calls"
+      ],
+      "blockers": [
+        "individual event pages not fully stubbed"
+      ]
+    },
+    {
+      "id": "settings",
+      "category": "Account_and_Lobby",
+      "player_visible_name": "Settings",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "client graphics sound controls menus"
+      ],
+      "data_evidence": [],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": [
+        "client-local only"
+      ]
+    },
+    {
+      "id": "mode_selection",
+      "category": "Matchmaking",
+      "player_visible_name": "Mode selection",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "createHallTeam INT32 mode",
+        "Ranked vs Casual UI"
+      ],
+      "data_evidence": [
+        "notice_pc_hw separate casual and ranked rankings"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "ros_server.py createHallTeam mode 4 default"
+      ],
+      "blockers": [
+        "not all historical LT modes verified in 617289"
+      ]
+    },
+    {
+      "id": "map_selection",
+      "category": "Matchmaking",
+      "player_visible_name": "Map selection",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "teamMapGroup",
+        "DtsMapBaseType.MAP_4K"
+      ],
+      "data_evidence": [
+        "HALL_TEAM_MAP_GROUP map 700",
+        "BATTLE_MAP env"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "onEnterHallTeam teamMapGroup 1"
+      ],
+      "blockers": [
+        "Fearless Fiord and other map ids not wired in gateway"
+      ]
+    },
+    {
+      "id": "queue",
+      "category": "Matchmaking",
+      "player_visible_name": "Queue",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "syncMatchingProgress",
+        "UIBattleGroundsMatchTimer"
+      ],
+      "data_evidence": [
+        "BattleMatchState MATCHING 1"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "ros_server.py syncMatchingProgress"
+      ],
+      "blockers": [
+        "no real multi-player queue"
+      ]
+    },
+    {
+      "id": "room_assignment",
+      "category": "Matchmaking",
+      "player_visible_name": "Room assignment",
+      "in_build_617289": "partial",
+      "confidence": "inferred_from_notice",
+      "client_evidence": [
+        "BigWorld cell space assignment",
+        "matchBattleGround"
+      ],
+      "data_evidence": [
+        "createCellPlayer space 1"
+      ],
+      "server_status": "stub",
+      "server_touchpoints": [
+        "GateUDP._enter_battle"
+      ],
+      "blockers": [
+        "single synthetic match only"
+      ]
+    },
+    {
+      "id": "waiting_area",
+      "category": "Matchmaking",
+      "player_visible_name": "Waiting area",
+      "in_build_617289": true,
+      "confidence": "inferred_from_notice",
+      "client_evidence": [
+        "Prep Zone NPC interactions in patch notes"
+      ],
+      "data_evidence": [
+        "notice_pc_hw Ghillie Island Prep Zone"
+      ],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": [
+        "not implemented"
+      ]
+    },
+    {
+      "id": "ready_countdown",
+      "category": "Matchmaking",
+      "player_visible_name": "Ready/countdown",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "syncReadyState",
+        "PREPARE_TIME map 700 80s"
+      ],
+      "data_evidence": [
+        "battle_flow PREPARE gameStatus"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "ros_server.py syncReadyState",
+        "battle_flow FLIGHT_STEPS countdown"
+      ],
+      "blockers": []
+    },
+    {
+      "id": "match_start",
+      "category": "Matchmaking",
+      "player_visible_name": "Match start",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "matchBattleGround",
+        "syncMatchState ENTERING 2",
+        "resetEntities createBasePlayer"
+      ],
+      "data_evidence": [
+        "LOBBY_FINDINGS match handoff map 700"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "GateUDP._enter_battle",
+        "avatar_create_messages"
+      ],
+      "blockers": [
+        "return from match and full MM server not done"
+      ]
+    },
+    {
+      "id": "flight_route",
+      "category": "Aircraft_and_Landing",
+      "player_visible_name": "Flight route",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "Plane movePath moveSpeed mode PEOPLE",
+        "detailedPosition 0x58"
+      ],
+      "data_evidence": [
+        "battle_flow FLIGHT_ROUTE flight_tick"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "battle_flow.Match.flight_tick",
+        "detailed_position"
+      ],
+      "blockers": [
+        "AvatarFilter interpolation tuning"
+      ]
+    },
+    {
+      "id": "jump",
+      "category": "Aircraft_and_Landing",
+      "player_visible_name": "Jump",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "requestGetOffPlane",
+        "UIBattlegroundsFall Jump"
+      ],
+      "data_evidence": [
+        "battle_flow.Match.release_from_plane"
+      ],
+      "server_status": "working",
+      "server_touchpoints": [
+        "battle_flow.decode_request requestGetOffPlane"
+      ],
+      "blockers": []
+    },
+    {
+      "id": "freefall",
+      "category": "Aircraft_and_Landing",
+      "player_visible_name": "Freefall",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "fallPhase BEFORE_OPEN_PARACHUTE",
+        "battleState Parachute"
+      ],
+      "data_evidence": [
+        "Match._parachute_phase",
+        "on_position height fractions"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "battle_flow.Match.on_position"
+      ],
+      "blockers": [
+        "camera zoom after first landing in session"
+      ]
+    },
+    {
+      "id": "parachute",
+      "category": "Aircraft_and_Landing",
+      "player_visible_name": "Parachute",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "chooseParachute",
+        "chooseGlider",
+        "TRIGGER_OPEN_PARACHUTE"
+      ],
+      "data_evidence": [
+        "fallPhase CAN_OPEN PARACHUTE_OPENED"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "changeFallPhase client request handling"
+      ],
+      "blockers": [
+        "canopy requires client button event not server-only phase 5"
+      ]
+    },
+    {
+      "id": "landing",
+      "category": "Aircraft_and_Landing",
+      "player_visible_name": "Landing",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "hasLanded",
+        "forcedPosition terrain settle"
+      ],
+      "data_evidence": [
+        "LAND_HEIGHT 3m",
+        "FLIGHT_GROUND measured"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "battle_flow.Match.on_position landing detection"
+      ],
+      "blockers": [
+        "death at hp 0 does not trigger result screen yet"
+      ]
+    },
+    {
+      "id": "team_coordination_landing",
+      "category": "Aircraft_and_Landing",
+      "player_visible_name": "Team coordination (landing)",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "teammate markers follow landing",
+        "squad UI"
+      ],
+      "data_evidence": [],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": [
+        "solo test path only"
+      ]
+    },
+    {
+      "id": "walk",
+      "category": "Movement_and_Camera",
+      "player_visible_name": "Walk",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "joystick locomotion",
+        "client-side prediction"
+      ],
+      "data_evidence": [
+        "client msgs 0xBC 0xBD position reports logged"
+      ],
+      "server_status": "stub",
+      "server_touchpoints": [
+        "battle_flow.Match.on_message position"
+      ],
+      "blockers": [
+        "server does not reconcile movement"
+      ]
+    },
+    {
+      "id": "sprint",
+      "category": "Movement_and_Camera",
+      "player_visible_name": "Sprint",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "sprint control HUD"
+      ],
+      "data_evidence": [],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": [
+        "client authoritative"
+      ]
+    },
+    {
+      "id": "jump_move",
+      "category": "Movement_and_Camera",
+      "player_visible_name": "Jump",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "jumpStart jumpEnd decoded"
+      ],
+      "data_evidence": [
+        "battle_flow.decode_request jumpStart"
+      ],
+      "server_status": "stub",
+      "server_touchpoints": [
+        "battle_flow.decode_request"
+      ],
+      "blockers": [
+        "no server reply or validation"
+      ]
+    },
+    {
+      "id": "crouch",
+      "category": "Movement_and_Camera",
+      "player_visible_name": "Crouch",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "changePose PlayerPose SQUAT"
+      ],
+      "data_evidence": [
+        "prop_update pose index 125"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "battle_flow Match.handle changePose"
+      ],
+      "blockers": []
+    },
+    {
+      "id": "prone",
+      "category": "Movement_and_Camera",
+      "player_visible_name": "Prone",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "changePose CRAWL prone HUD"
+      ],
+      "data_evidence": [
+        "PlayerPose enum"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "battle_flow prop pose"
+      ],
+      "blockers": []
+    },
+    {
+      "id": "crawl",
+      "category": "Movement_and_Camera",
+      "player_visible_name": "Crawl",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "prone movement animation"
+      ],
+      "data_evidence": [],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": [
+        "client animation"
+      ]
+    },
+    {
+      "id": "swim",
+      "category": "Movement_and_Camera",
+      "player_visible_name": "Swim",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "PlayerState Swim 11"
+      ],
+      "data_evidence": [
+        "const.PlayerState"
+      ],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": []
+    },
+    {
+      "id": "free_look",
+      "category": "Movement_and_Camera",
+      "player_visible_name": "Free look",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "camera free look control"
+      ],
+      "data_evidence": [],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": [
+        "client camera"
+      ]
+    },
+    {
+      "id": "ads",
+      "category": "Movement_and_Camera",
+      "player_visible_name": "ADS",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "aim down sights HUD ADS button"
+      ],
+      "data_evidence": [],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": [
+        "client ballistics"
+      ]
+    },
+    {
+      "id": "camera_rotation",
+      "category": "Movement_and_Camera",
+      "player_visible_name": "Camera rotation",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "right touch look zone"
+      ],
+      "data_evidence": [],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": [
+        "client camera"
+      ]
+    },
+    {
+      "id": "equip_weapon",
+      "category": "Weapons_and_Combat",
+      "player_visible_name": "Equip",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "dtsWeapon1 dtsCurWeapon onWearDtsWeapon"
+      ],
+      "data_evidence": [
+        "battle_prop_types.json Gun ids",
+        "trigger wpn command"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "battle_flow tryPickUp auto equip",
+        "prop_update weapons"
+      ],
+      "blockers": [
+        "full weapon switching in combat not tested"
+      ]
+    },
+    {
+      "id": "fire",
+      "category": "Weapons_and_Combat",
+      "player_visible_name": "Fire",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "fire fireEnd client requests"
+      ],
+      "data_evidence": [
+        "battle_flow.decode_request"
+      ],
+      "server_status": "stub",
+      "server_touchpoints": [
+        "battle_flow decode only"
+      ],
+      "blockers": [
+        "no hit registration or ammo drain"
+      ]
+    },
+    {
+      "id": "reload",
+      "category": "Weapons_and_Combat",
+      "player_visible_name": "Reload",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "weapon reload animations client"
+      ],
+      "data_evidence": [
+        "battle_props.json ammo types"
+      ],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": []
+    },
+    {
+      "id": "fire_mode",
+      "category": "Weapons_and_Combat",
+      "player_visible_name": "Fire mode",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "select fire mode on compatible weapons"
+      ],
+      "data_evidence": [
+        "battle_props weapon data"
+      ],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": []
+    },
+    {
+      "id": "recoil",
+      "category": "Weapons_and_Combat",
+      "player_visible_name": "Recoil",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "client weapon spread recoil"
+      ],
+      "data_evidence": [],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": [
+        "client physics"
+      ]
+    },
+    {
+      "id": "projectile_hit_detection",
+      "category": "Weapons_and_Combat",
+      "player_visible_name": "Projectile/hit detection",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "libclient.so ballistics",
+        "BigWorld entities"
+      ],
+      "data_evidence": [
+        "extract/libclient.so message_map"
+      ],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": [
+        "no cell combat simulation"
+      ]
+    },
+    {
+      "id": "damage",
+      "category": "Weapons_and_Combat",
+      "player_visible_name": "Damage",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "hp maxHp actualHP armor props"
+      ],
+      "data_evidence": [
+        "battle_props helmets vests",
+        "ZONE_DAMAGE table"
+      ],
+      "server_status": "stub",
+      "server_touchpoints": [
+        "battle_flow hp_messages zone damage only"
+      ],
+      "blockers": [
+        "player vs player damage not implemented"
+      ]
+    },
+    {
+      "id": "attachments",
+      "category": "Weapons_and_Combat",
+      "player_visible_name": "Attachments",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "weapon attachment slots in item data"
+      ],
+      "data_evidence": [
+        "battle_props.json scopes grips"
+      ],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": [
+        "loot does not spawn attachment rolls"
+      ]
+    },
+    {
+      "id": "grenades",
+      "category": "Weapons_and_Combat",
+      "player_visible_name": "Grenades",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "throwables prop ids 1401+"
+      ],
+      "data_evidence": [
+        "prop_ids.py bombs 1401+"
+      ],
+      "server_status": "stub",
+      "server_touchpoints": [
+        "DtsProp spawn via loot command"
+      ],
+      "blockers": [
+        "throw simulation missing"
+      ]
+    },
+    {
+      "id": "elimination",
+      "category": "Weapons_and_Combat",
+      "player_visible_name": "Elimination",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "battleState Died 2",
+        "onBattleGroundDie"
+      ],
+      "data_evidence": [
+        "battle_flow STATE_DIED zone kill die_call before result_call"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "Match._zone_damage battleState 2",
+        "die_call empty killerInfo"
+      ],
+      "blockers": [
+        "result UI not verified live on LDPlayer adb unavailable this iteration"
+      ]
+    },
+    {
+      "id": "health",
+      "category": "Health_and_Inventory",
+      "player_visible_name": "Health",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "hp maxHp HUD health bar"
+      ],
+      "data_evidence": [
+        "MAX_HP 100 default"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "battle_flow hp_messages Match.hp"
+      ],
+      "blockers": [
+        "HUD bar visibility issues on LDPlayer"
+      ]
+    },
+    {
+      "id": "armor",
+      "category": "Health_and_Inventory",
+      "player_visible_name": "Armor",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "dtsVest dtsHelmet equip slots"
+      ],
+      "data_evidence": [
+        "battle_props vest 2300 helmet 2200"
+      ],
+      "server_status": "stub",
+      "server_touchpoints": [
+        "avatar weapon slots only"
+      ],
+      "blockers": [
+        "armor props not updated on pickup"
+      ]
+    },
+    {
+      "id": "helmet",
+      "category": "Health_and_Inventory",
+      "player_visible_name": "Helmet",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "dtsHelmet appearance slot"
+      ],
+      "data_evidence": [
+        "battle_props helmet ids"
+      ],
+      "server_status": "stub",
+      "server_touchpoints": [],
+      "blockers": []
+    },
+    {
+      "id": "healing",
+      "category": "Health_and_Inventory",
+      "player_visible_name": "Healing",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "medkit consumables prop data"
+      ],
+      "data_evidence": [
+        "battle_props healing items"
+      ],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": []
+    },
+    {
+      "id": "knockdown",
+      "category": "Health_and_Inventory",
+      "player_visible_name": "Knockdown",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "PlayerState Wounded 1 squad modes"
+      ],
+      "data_evidence": [
+        "const.PlayerState"
+      ],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": [
+        "solo path tests only"
+      ]
+    },
+    {
+      "id": "revive",
+      "category": "Health_and_Inventory",
+      "player_visible_name": "Revive",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "teammate revive interactions"
+      ],
+      "data_evidence": [],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": [
+        "no squad cell logic"
+      ]
+    },
+    {
+      "id": "pickup",
+      "category": "Health_and_Inventory",
+      "player_visible_name": "Pickup",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "DtsProp tryPickUp onAddDtsItem"
+      ],
+      "data_evidence": [
+        "battle_flow loot command 411 prop ids"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "Match.handle tryPickUp"
+      ],
+      "blockers": [
+        "no world spawn table for map 700"
+      ]
+    },
+    {
+      "id": "drop",
+      "category": "Health_and_Inventory",
+      "player_visible_name": "Drop",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "drop item from bag UI"
+      ],
+      "data_evidence": [
+        "BattleGroundAvatar drop methods in defs"
+      ],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": []
+    },
+    {
+      "id": "backpack_capacity",
+      "category": "Health_and_Inventory",
+      "player_visible_name": "Backpack capacity",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "dtsItemPackage getUsedGridNum capacity"
+      ],
+      "data_evidence": [
+        "dtsPackage prop id upgrades"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "onAddDtsItem single stack tests"
+      ],
+      "blockers": [
+        "capacity upgrades not simulated"
+      ]
+    },
+    {
+      "id": "loot_crates",
+      "category": "Health_and_Inventory",
+      "player_visible_name": "Loot crates",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "DtsProp world entities airdrop references"
+      ],
+      "data_evidence": [
+        "createEntity DtsProp mapID propID"
+      ],
+      "server_status": "stub",
+      "server_touchpoints": [
+        "battle_flow loot spawn"
+      ],
+      "blockers": [
+        "no building or airdrop timeline"
+      ]
+    },
+    {
+      "id": "map",
+      "category": "World_and_Vehicles",
+      "player_visible_name": "Map",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "MapLoader currentMapID",
+        "maps_utils map 700 701"
+      ],
+      "data_evidence": [
+        "BATTLE_MAP 700 MAP_RANGE notice Ghillie Fearless Fiord"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "avatar_create_messages map_id BattleGroundSpace mapID"
+      ],
+      "blockers": [
+        "only map 700 exercised"
+      ]
+    },
+    {
+      "id": "minimap",
+      "category": "World_and_Vehicles",
+      "player_visible_name": "Minimap",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "RadarMap in-match minimap"
+      ],
+      "data_evidence": [
+        "zone circles on minimap verified LOBBY_FINDINGS 24"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "BattleGroundSpace circle props"
+      ],
+      "blockers": [
+        "UIDtsMap full map no circles"
+      ]
+    },
+    {
+      "id": "waypoints",
+      "category": "World_and_Vehicles",
+      "player_visible_name": "Waypoints",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "map ping markers team waypoints"
+      ],
+      "data_evidence": [],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": []
+    },
+    {
+      "id": "safe_zone",
+      "category": "World_and_Vehicles",
+      "player_visible_name": "Safe zone",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "BattleGroundSpace circleStage white blue circles updateBlueCircle"
+      ],
+      "data_evidence": [
+        "ZONE_STAGES map 700 circle_param.py"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "Match.zone_start zone_tick battle_flow"
+      ],
+      "blockers": [
+        "showCircleNotify not sent"
+      ]
+    },
+    {
+      "id": "zone_damage",
+      "category": "World_and_Vehicles",
+      "player_visible_name": "Zone damage",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "isInPoisonArea showPoisonEffect outside blue circle"
+      ],
+      "data_evidence": [
+        "ZONE_DAMAGE INTERVAL table verified LDPlayer"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "Match._zone_damage"
+      ],
+      "blockers": [
+        "death does not show results"
+      ]
+    },
+    {
+      "id": "vehicle_spawn",
+      "category": "World_and_Vehicles",
+      "player_visible_name": "Vehicle spawn",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "LandCraft entity defs vehicle spawns"
+      ],
+      "data_evidence": [
+        "entities extract Landcraft.def"
+      ],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": []
+    },
+    {
+      "id": "driving",
+      "category": "World_and_Vehicles",
+      "player_visible_name": "Driving",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "PlayerState InVehicle 5 vehicle controls"
+      ],
+      "data_evidence": [
+        "notice speedboat vehicle updates"
+      ],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": []
+    },
+    {
+      "id": "passengers",
+      "category": "World_and_Vehicles",
+      "player_visible_name": "Passengers",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "multi-seat vehicles"
+      ],
+      "data_evidence": [],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": []
+    },
+    {
+      "id": "collision",
+      "category": "World_and_Vehicles",
+      "player_visible_name": "Collision",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "client physics voxel terrain"
+      ],
+      "data_evidence": [
+        "voxel build interfaces in entity defs"
+      ],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": [
+        "server has no physics"
+      ]
+    },
+    {
+      "id": "vehicle_damage",
+      "category": "World_and_Vehicles",
+      "player_visible_name": "Vehicle damage",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "vehicle HP fuel destruction"
+      ],
+      "data_evidence": [],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": []
+    },
+    {
+      "id": "team_markers",
+      "category": "Team_and_Results",
+      "player_visible_name": "Team markers",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "teammate minimap markers ping"
+      ],
+      "data_evidence": [
+        "HALL_TEAM_MEMBER_CLIENT fields"
+      ],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": [
+        "solo matches"
+      ]
+    },
+    {
+      "id": "voice_chat",
+      "category": "Team_and_Results",
+      "player_visible_name": "Voice chat",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "ui.chat.voiceUtils",
+        "voice hosts in script.npk"
+      ],
+      "data_evidence": [
+        "CLIENT_DECOMPILE voice CDN hosts"
+      ],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": [
+        "voice SDK endpoints not mocked"
+      ]
+    },
+    {
+      "id": "quick_chat",
+      "category": "Team_and_Results",
+      "player_visible_name": "Quick chat",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "preset quick chat wheel"
+      ],
+      "data_evidence": [],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": []
+    },
+    {
+      "id": "spectate",
+      "category": "Team_and_Results",
+      "player_visible_name": "Spectate",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "observer mode after elimination"
+      ],
+      "data_evidence": [
+        "defs interfaces iobserver.def"
+      ],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": []
+    },
+    {
+      "id": "survivor_check",
+      "category": "Team_and_Results",
+      "player_visible_name": "Survivor check",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "aliveNum BattleGroundSpace gameEnd"
+      ],
+      "data_evidence": [
+        "aliveNum property createEntity space"
+      ],
+      "server_status": "stub",
+      "server_touchpoints": [
+        "battle_flow space aliveNum 100 default"
+      ],
+      "blockers": [
+        "no bot elimination loop"
+      ]
+    },
+    {
+      "id": "victory",
+      "category": "Team_and_Results",
+      "player_visible_name": "Victory",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "last survivor win detection"
+      ],
+      "data_evidence": [
+        "GS_END gameStatus"
+      ],
+      "server_status": "none",
+      "server_touchpoints": [],
+      "blockers": []
+    },
+    {
+      "id": "placement",
+      "category": "Team_and_Results",
+      "player_visible_name": "Placement",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "onBattleGroundResult rank INT32"
+      ],
+      "data_evidence": [
+        "result_call rank total banner after die_call on hp 0"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "battle_flow.finish die_call plus result_call"
+      ],
+      "blockers": [
+        "not verified live after zone death"
+      ]
+    },
+    {
+      "id": "statistics",
+      "category": "Team_and_Results",
+      "player_visible_name": "Statistics",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "result screen gps kills moveDis",
+        "UIRankPanel"
+      ],
+      "data_evidence": [
+        "lobby_rank.py leaderboard rows"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "lobby_rank.py result pickle dict"
+      ],
+      "blockers": [
+        "in-match stats not accumulated server-side"
+      ]
+    },
+    {
+      "id": "rewards",
+      "category": "Team_and_Results",
+      "player_visible_name": "Rewards",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "match GP exp dailyFirstGameReward"
+      ],
+      "data_evidence": [
+        "result_call zero GP rows"
+      ],
+      "server_status": "stub",
+      "server_touchpoints": [
+        "result_call"
+      ],
+      "blockers": [
+        "no progression grant"
+      ]
+    },
+    {
+      "id": "return_to_lobby",
+      "category": "Team_and_Results",
+      "player_visible_name": "Return to lobby",
+      "in_build_617289": true,
+      "confidence": "confirmed_build",
+      "client_evidence": [
+        "requestLeaveDynamicSpace",
+        "_transition_to_athlete"
+      ],
+      "data_evidence": [
+        "ros_server.py suicideFromClient leave handlers"
+      ],
+      "server_status": "partial",
+      "server_touchpoints": [
+        "ros_server._transition_to_athlete"
+      ],
+      "blockers": [
+        "not verified end-to-end after result screen"
+      ]
+    }
+  ]
+}
