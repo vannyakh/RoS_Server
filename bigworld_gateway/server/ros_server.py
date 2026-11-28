@@ -2174,10 +2174,14 @@ class GateUDP(asyncio.DatagramProtocol):
             
             # Send enterHall cleanly in its own bundle to avoid fragmentation corruption
             hall_call = athlete_method("enterHall", _first_login_today())
-            asyncio.get_event_loop().call_later(
-                0.2, self._send_bundle, addr, hall_call, self._last_client_seq.get(addr), bytes(bf_key)
-            )
-            print(f"      [BASEAPP] Scheduled enterHall in 0.2s")
+            if os.environ.get("HALL_GATE", "on") == "off":
+                asyncio.get_event_loop().call_later(
+                    0.2, self._send_bundle, addr, hall_call, self._last_client_seq.get(addr), bytes(bf_key)
+                )
+                print(f"      [BASEAPP] Scheduled enterHall in 0.2s")
+            else:
+                # Hold enterHall until the client's game thread is responsive (hall_gate.py).
+                self._start_hall_gate(addr, hall_call, bytes(bf_key))
             if os.environ.get("PORTRAIT_SYNC", "on") != "off":
                 asyncio.get_event_loop().call_later(
                     float(os.environ.get("PORTRAIT_DELAY", "12")),
@@ -2188,6 +2192,34 @@ class GateUDP(asyncio.DatagramProtocol):
                                                     self._unlock_all_batch, addr, bytes(bf_key), 0)
             for t in [float(x) for x in os.environ.get("APPEARANCE_PUSH", "").split(",") if x.strip()]:
                 asyncio.get_event_loop().call_later(t, self._push_appearance, addr, bytes(bf_key))
+
+    def _start_hall_gate(self, addr, hall_call, bf_key):
+        """Send enterHall once hall_gate.HallGate says the client is responsive."""
+        import time as _t, hall_gate
+        gate = hall_gate.HallGate(_t.time(),
+                                  settle=float(os.environ.get("HALL_GATE_SETTLE", "1.0")),
+                                  busy_after=float(os.environ.get("HALL_GATE_BUSY", "0.25")),
+                                  max_wait=float(os.environ.get("HALL_GATE_MAX", "60")))
+        print(f"      [BASEAPP] enterHall held until the client is responsive (hall_gate)")
+        asyncio.get_event_loop().call_later(0.1, self._hall_gate_tick, addr, hall_call, bf_key, gate,
+                                            self._ka_gens.get(addr, 0))
+
+    def _hall_gate_tick(self, addr, hall_call, bf_key, gate, gen):
+        import time as _t, hall_gate
+        if gen != self._ka_gens.get(addr, 0):            # client logged in again: drop this gate
+            return
+        self._enter_addr(addr)
+        now = _t.time()
+        sent = [info.get('sent', info['time']) for info in self._unacked_packets.get(addr, {}).values()]
+        action = gate.step(now, now - min(sent) if sent else None)
+        if action == hall_gate.SEND:
+            note = "after a client stall" if gate.blocked else "client responsive"
+            print(f"      [BASEAPP] -> Athlete.enterHall ({note}, {now - gate.t0:.1f}s after lobby data)")
+            self._send_bundle(addr, hall_call, self._last_client_seq.get(addr), bf_key)
+            return
+        if action == hall_gate.PROBE:
+            self._send_bundle(addr, b"", self._last_client_seq.get(addr), bf_key, reliable=True)
+        asyncio.get_event_loop().call_later(0.1, self._hall_gate_tick, addr, hall_call, bf_key, gate, gen)
 
     def _dispatch_athlete(self, addr, name, args):
         """_athlete_request with its latency and reply size recorded in perf_monitor.MONITOR
@@ -3844,10 +3876,12 @@ class GateUDP(asyncio.DatagramProtocol):
         delay = float(os.environ.get("HALL_DELAY", "2.0"))
         asyncio.get_event_loop().call_later(delay, self._send_enter_hall_calls, addr, bytes(bf_key))
 
-    def _send_bundle(self, addr, body, client_seq, bf_key):
+    def _send_bundle(self, addr, body, client_seq, bf_key, reliable=None):
         """Build, encrypt and send one on-channel packet.
         Footer layout (confirmed: client ACKs our seqs with this):
-          [body] [seq u32 LE, if HAS_SEQUENCE] [ack u32 LE ...] [nAcks u8, if HAS_ACKS]"""
+          [body] [seq u32 LE, if HAS_SEQUENCE] [ack u32 LE ...] [nAcks u8, if HAS_ACKS]
+        reliable=None: reliable when body is non-empty. reliable=True with an empty body is the
+        hall_gate probe (the client ACKs it and dispatches nothing)."""
         import time as _t, loginapp
         if self._in_battle.get(addr):
             try:
@@ -3884,15 +3918,16 @@ class GateUDP(asyncio.DatagramProtocol):
                 pad_len = 8 - (len(cleartext) % 8)
                 padded = cleartext + b"\x00" * (pad_len - 1) + bytes([pad_len])
                 self.transport.sendto(loginapp.custom_bf_encrypt(bf_key, padded), addr)
+                now = _t.time()
                 self._unacked_packets.setdefault(addr, {})[seq] = {
-                    'fl': fl, 'body': chunk, 'footer_prefix': footer_prefix, 'time': _t.time()
+                    'fl': fl, 'body': chunk, 'footer_prefix': footer_prefix, 'time': now, 'sent': now
                 }
                 print(f"  [{_t.strftime('%H:%M:%S')}] [BASEAPP SEND] fragment {n + 1}/{len(chunks)} seq={seq} [{first}..{last}] {len(padded)}B")
             return
         fl = 0x0008                              # ON_CHANNEL
         footer_prefix = b""
         sent_seq = None
-        if body:
+        if (bool(body) if reliable is None else reliable):
             fl |= 0x0010 | 0x0040                # RELIABLE | HAS_SEQUENCE
             sent_seq = self._seq.get(addr, 0)
             footer_prefix = struct.pack("<I", sent_seq)
@@ -3907,8 +3942,9 @@ class GateUDP(asyncio.DatagramProtocol):
         enc = loginapp.custom_bf_encrypt(bf_key, padded)
         self.transport.sendto(enc, addr)
         if sent_seq is not None:
+            now = _t.time()
             self._unacked_packets.setdefault(addr, {})[sent_seq] = {
-                'fl': fl, 'body': body, 'footer_prefix': footer_prefix, 'time': _t.time()
+                'fl': fl, 'body': body, 'footer_prefix': footer_prefix, 'time': now, 'sent': now
             }
         print(f"  [{_t.strftime('%H:%M:%S')}] [BASEAPP SEND] flags=0x{fl:04x} {len(enc)}B seq={sent_seq} ack={client_seq} pt={cleartext.hex()}")
 
