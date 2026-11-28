@@ -22,6 +22,8 @@ import server_registry  # heartbeat + server-select list from RoS_Server (server
 import perf_monitor  # in-memory per-request latency/bytes (server/perf_monitor.py)
 import supply_cache  # pre-pickled Supply catalogue (server/supply_cache.py)
 import local_store  # cached, atomic saved_accounts.json store (server/local_store.py)
+import social  # friends (server/social.py)
+import teams  # hall squads (server/teams.py)
 import pay_goods  # private IAP bid -> diamond amounts (server/pay_goods.py)
 import training_event  # Special Distinction / Brave Book + Spec Train (server/training_event.py)
 
@@ -2532,6 +2534,15 @@ class GateUDP(asyncio.DatagramProtocol):
                     "onBuyLimitPackageFailed",
                     _bw_blob(b"I_NOT_AVAILABLE") + struct.pack("<iiii", currency, pkg, 0, 0))
 
+            # Squads (server/teams.py); None leaves the request to the solo hall code below.
+            if name in teams.REQUESTS and account_link.current_gid():
+                reply = teams.handle(self, addr, name, rd, int(account_link.current_gid()), get_account_name(),
+                                     athlete_method,
+                                     lambda delay, fn, *a: asyncio.get_event_loop().call_later(delay, fn, *a))
+                if reply is not None:
+                    return reply
+                rd = athlete_requests.Reader(args)
+
             hall = self._hall_match.handle(
                 name, rd, addr, athlete_method=athlete_method, py=py, hall_team_member=self._hall_team_member)
             if hall is not None:
@@ -2804,11 +2815,20 @@ class GateUDP(asyncio.DatagramProtocol):
             if name in RANK_REQUESTS:
                 return self._rank_reply(addr, name, rd)
 
-            # Friend lists (iFriend.getFriendList(UINT8 friendType) -> onGetFriendList(UINT8,
-            # ARRAY<FRIEND_ABSTRACT>, PY_DICT)). No other players on this server yet: empty lists.
-            if name == "getFriendList":
-                friend_type = rd.i8() & 0xFF
-                return athlete_method("onGetFriendList", bytes([friend_type]) + struct.pack("<I", 0) + py({}))
+            # Friends (server/social.py). Without a linked account there is no gid: empty lists.
+            if name in social.REQUESTS:
+                gid = account_link.current_gid()
+                if gid:
+                    linked = account_link.current() or {}
+                    me = {"gid": int(gid), "nickname": get_account_name(),
+                          "characterType": int(get_account_char()),
+                          "nationalFlag": linked.get("national_flag") or "",
+                          "portrait": linked.get("portrait") or ""}
+                    return social.handle(self, addr, name, rd, me, athlete_method)
+                if name == "getFriendList":
+                    friend_type = rd.i8() & 0xFF
+                    return athlete_method("onGetFriendList",
+                                          bytes([friend_type]) + struct.pack("<I", 0) + py({}))
 
             # Avatar upload: token for the FilePicker upload, then the chosen file id.
             if name == "requestFilePickerToken":
@@ -3598,7 +3618,7 @@ class GateUDP(asyncio.DatagramProtocol):
         except Exception as e:
             print(f"      [ROOM] join failed: {e!r}")
 
-    def _hall_team_member(self, addr):
+    def _hall_team_member(self, addr, in_world=True):
         """HALL_TEAM_MEMBER_CLIENT for our own player: .def defaults plus identity and outfit."""
         D = bwdefs.shared()
         outfit = self._session_outfit(addr)
@@ -3608,12 +3628,24 @@ class GateUDP(asyncio.DatagramProtocol):
               "nickname": bwdefs.blob(get_account_name().encode()),
               "level": struct.pack("<i", 1),
               "characterType": struct.pack("<i", get_account_char()),
-              "inWorld": b"\x01",
+              # UIMain shows the "GAMING" tag on a squad member whose inWorld > 0
+              "inWorld": b"\x01" if in_world else b"\x00",
               # 0 is not a theme prop (iHallTeam.onEnterHallTeam -> getHallThemeScore(0) -> None.PROP_TYPE)
-              "hallThemeID": struct.pack("<i", outfit.theme or hall_theme_id(0)),
+              "hallThemeID": struct.pack("<i", self._hall_theme(addr)[0]),
               "dtsBodyAppearanceList": arr(outfit.body),
-              "dtsWearableAppearanceList": arr(outfit.wear)}
+              "dtsWearableAppearanceList": arr(outfit.wear),
+              # [weapon skin, pose]: UIMain appends the gender and character_scene.initDressInfo reads all
+              # three. {} raised TypeError and [] IndexError, which stopped the client before it set up
+              # the teammate's kick/promote menu and flag.
+              "outGameWeapon": athlete_requests.py(list(next(iter(outfit.out_weapon.values()), (0, 0)))[:2]),
+              "hallVehicleAppearanceList": arr(outfit.hall_vehicle),
+              "nationalFlag": bwdefs.blob(str((account_link.current() or {}).get("national_flag") or "").encode())}
         return b"".join(ov.get(n) or bwdefs.encode_default(t, fd) for n, t, fd in D.resolve("HALL_TEAM_MEMBER_CLIENT")[1])
+
+    def _hall_theme(self, addr):
+        """(lobby theme, display vehicles) of the player at `addr` (their account state has to be loaded)."""
+        outfit = self._session_outfit(addr)
+        return outfit.theme or hall_theme_id(0), list(outfit.hall_vehicle)
 
     def _recent_list(self, addr):
         if addr not in self._recent_got:

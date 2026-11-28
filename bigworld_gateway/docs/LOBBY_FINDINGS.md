@@ -520,3 +520,11 @@ Sources: `server/extract` defs read with `bwdefs` / `battle_flow.other_client_pr
 - **Design:** [MULTIPLAYER_DESIGN.md](MULTIPLAYER_DESIGN.md). Code: `server/match_room.py`. Hooks in `ros_server.py` are tagged `# lane 6`.
 - **The full 219-property createEntity crashes the client.** `ROOM_CE=full` sent mask flag 0 and every `battle_flow.other_client_props("BattleGroundAvatar")` value. The client logged "Pickler::unpickle: Failed to unpickle", then "PythonDataType::createFromStream: Not enough data", then "IntegerDataType ... Not enough data", then SIGSEGV in NeoXMain (logs/lane6_crash_logcat.txt). So the client's createEntity list for BattleGroundAvatar is **not** the parse-order ALL/OTHER_CLIENTS list that works for Space, Plane and DtsProp. The likely cause is the Avatar interface (`<Implements>`) order. Until the real list is read from the client, the bitmask (`ROOM_CE=mask`) has the same risk.
 - **Workaround (`ROOM_CE=empty`, default):** createEntity with only the flag and compression bytes. The client builds its default dictionary from an empty stream (CREATE_ENTITY_FORMAT.md §2). Property updates follow with the update-list index, which is verified on the own BattleGroundAvatar.
+
+## Update 2026-11-28: monthly Supreme page on a device with a later clock
+
+- `supplement_utils.getCurrentMonthSupplementID` is wrapped by `decorators.FuncParamInTracebackInnerFunc`; the real function is in `func_closure[0]`.
+- `client/patch_tools/patch_month_supplement.py` builds a loose override (`files/netease/h45na/script/common/supplement_utils.nxs`) that uses a fixed 2022-04-20 date instead of `time.time()`.
+- NeoX marshal XORs binary floats (`g`) with (7-i), like strings: a plain 1650456000.0 loaded as 1717041616.08.
+- NeoX opcodes used: LOAD_CONST 0x65, JUMP_FORWARD 0x84 (`JUMP_FORWARD 0` is a 3-byte no-op), STORE_FAST 0x68.
+- LDPlayer: the loaded function has the 1650456000.0 constant and returns box 9782 (`client/frida/payloads/month_supplement_check.py`). The page on a 2026 phone is not verified yet.
