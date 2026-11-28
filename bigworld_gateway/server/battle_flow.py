@@ -385,7 +385,10 @@ def result_call(rank, total, gid, nickname, kills=0, collected=0, move=0):
     row = {"getGPs": (0, 0, 0, 0, 0), "randomGP": 0, "exp": 0,
            "gps": (0, 0, 0, 0, 0, 0), "dailyFirstGameReward": (0, 1), "GPMul": 1,
            "nickname": nickname, "name": nickname, "kill": kills, "score": 0, "moveDis": move,
-           "collectCount": collected, "healTeammate": 0, "nationalFlag": ""}
+           "collectCount": collected, "healTeammate": 0, "nationalFlag": "",
+           # UIBattlegroundsResult.showResult subscripts these too (client_frida result_ui_keys,
+           # 2026-11-28; run 5: KeyError 'randomScore' at line 708 left the member row empty).
+           "randomScore": 0, "dtsNameplateAppearance": 0, "newPrizeMatchScore": 0, "oldPrizeMatchScore": 0}
     args = (i32(RESULT_GAME_TYPE) + i8(1) + i32(rank) + i32(total) + i32(banner)
             + bwdefs.blob(pickle.dumps({gid: row}, protocol=2)) + bwdefs.blob(pickle.dumps({}, protocol=2)))
     if os.environ.get("RESULT_CM_INDEX"):         # override if the +3 client index offset is wrong here

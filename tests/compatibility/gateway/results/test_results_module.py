@@ -222,3 +222,15 @@ def test_space_leaves_fight_status_before_the_result(session, sent, results_mod,
     assert bf.GS_END == 4
     assert end in sent and result in sent
     assert sent.index(end) < sent.index(result)
+
+
+def test_result_row_has_every_key_showresult_subscripts(bf):
+    """UIBattlegroundsResult.showResult reads these with row[key] (Frida disassembly 2026-11-28);
+    a missing one (run 5: 'randomScore') stops the screen before the member row and the countdown."""
+    import pickle
+
+    body = bf.result_call(1, 10, 4242, "QATester", kills=0)
+    row = pickle.loads(body[body.index(b"\x80\x02"):])[4242]
+    for key in ("gps", "dailyFirstGameReward", "randomGP", "nickname", "kill", "score", "nationalFlag",
+                "moveDis", "collectCount", "healTeammate", "randomScore"):
+        assert key in row, key

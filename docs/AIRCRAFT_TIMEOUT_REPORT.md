@@ -129,7 +129,8 @@ Device runs (Solo, 1 human + 9 bots, `ZONE_TIME_SCALE=0.1`):
 | 2 | ok (Events popup covered PLAY on the first try) | 30 s | 8 s, forced | 304 s: 4 759 position reports, all at y 19300 (the client hovered) | 188 s | casual-points panel, client log `FailedUnpickle` | after 60 s | Wrong method index: see cause 5 |
 | 3 | ok | 30 s | 8 s, forced | 46.5 s, landed from the client's position | 188 s | `onBattleGroundResult` ran with no error; the battle HUD stayed and the frame did not change for 60 s; no result panel | after 60 s | Victory: the player survived the last circle |
 | 4 | invalid | | | | | | | Started from the lobby after a match: START opened the Supply shop; the client stayed on "Matched!" (`MapLoader.doLoadMap` 'NoneType'.get) and never entered the map |
-| 5 | not run | | | | | | | |
+| 5 | ok | 30 s | 8 s, forced | 304 s (hover) | 188 s | **Result panel shown**: "No. 1 / 10 Teams", nickname, Report / Spectate / Next; member row empty, countdown stuck (`KeyError 'randomScore'`) | after 60 s | Fix: space `gameStatus` END before the result |
+| 6 | ok | 30 s | 8 s, forced | 304 s (hover) | — | not reached | quit | The Settings panel with "Quit Game" was open at landing; the script never opens it (someone else used the emulator). The `randomScore` fix is not seen on device yet |
 
 ## Open blockers
 
@@ -147,7 +148,16 @@ Device runs (Solo, 1 human + 9 bots, `ZONE_TIME_SCALE=0.1`):
    - Landing came only from `JUMP_LAND_MAX` (300 s).
    - Next device check: whether the client reports positions during a fall started by the button
      instead of `force`.
-2. **No result panel after `onBattleGroundResult` (run 3).**
+2. **Result panel (fixed in runs 5–6, partly verified).**
+   - `UIBattlegroundsResult.delayShowResult` closes itself when the player is alive and the space
+     `isInFightStatus` (`gameStatus == FIGHT`, 3).
+   - The gateway now sets `gameStatus` END (4) first. The enum was read from the client.
+   - Run 5 showed the panel. Run 5 then hit `KeyError 'randomScore'`; the row now carries every key
+     `showResult` subscripts.
+   - The mode label reads "Solo-Zombie", because the client maps `gameType` 1 to "Zombie". This is
+     cosmetic.
+
+   **History: no result panel after `onBattleGroundResult` (run 3).**
    - The client ran it with no error and logged the result-screen sounds and the SDK `af_first_game`
      event.
    - The battle HUD stayed and the screen did not change until the lobby return. The return was the
