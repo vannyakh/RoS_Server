@@ -69,9 +69,11 @@ class FakeApi:
         self.purchase_result = None
         self.compound_result = None
         self.listings = []
+        self.retry_stale = []   # account_link._call(..., retry_stale=) per call, same order as calls
 
-    def __call__(self, method, path, body):
+    def __call__(self, method, path, body, retry_stale=False):
         self.calls.append((method, path, body))
+        self.retry_stale.append(retry_stale)
         if path.endswith("/purchase"):
             result = self.purchase_result
             return result(body) if callable(result) else result

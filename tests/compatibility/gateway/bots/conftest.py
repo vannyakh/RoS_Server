@@ -80,3 +80,10 @@ def solo_fill_mod():
     sys.modules["battle.modules.solo_fill"] = module
     spec.loader.exec_module(module)
     return module
+
+
+@pytest.fixture(autouse=True)
+def bot_client_entities(monkeypatch):
+    """These tests pin the Robot createEntity bytes, sent only with BOT_CLIENT_ENTITIES=on
+    (off by default: the client crashed on them, bots.client_entities)."""
+    monkeypatch.setenv("BOT_CLIENT_ENTITIES", "on")

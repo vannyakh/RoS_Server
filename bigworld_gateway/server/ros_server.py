@@ -12,9 +12,18 @@ import account_link  # RoS_Server account link (/api/v1/gateway); off when GATEW
 import bwdefs   # BigWorld .def parser (server/bwdefs.py)
 import profile_screens  # My Page / Stats / Credit replies (server/profile_screens.py)
 import hero_rules  # normal male/female hero only (server/hero_rules.py)
+import lobby_mail  # mailbox replies (server/lobby_mail.py)
+import lobby_rank  # leaderboard replies (server/lobby_rank.py)
+import lobby_topup  # Top-Up packs -> diamonds, no payment (server/lobby_topup.py)
+import lobby_vip  # VIP Privilege screen data and reward claims (server/lobby_vip.py)
+import pickle
+import client_pickle  # safe decode of client PYTHON args (server/client_pickle.py)
+import server_registry  # heartbeat + server-select list from RoS_Server (server/server_registry.py)
 import perf_monitor  # in-memory per-request latency/bytes (server/perf_monitor.py)
 import supply_cache  # pre-pickled Supply catalogue (server/supply_cache.py)
 import local_store  # cached, atomic saved_accounts.json store (server/local_store.py)
+import social  # friends (server/social.py)
+import teams  # hall squads (server/teams.py)
 import pay_goods  # private IAP bid -> diamond amounts (server/pay_goods.py)
 import training_event  # Special Distinction / Brave Book + Spec Train (server/training_event.py)
 
@@ -79,6 +88,12 @@ def _new_session(bf, u32):
     _SESSIONS.append(sess)
     del _SESSIONS[:-16]
     return sess
+
+
+GATE_CAPTURE = os.environ.get("GATE_CAPTURE", "off") == "on"   # raw packet capture files
+LOG_RAW = os.environ.get("LOG_RAW", "off") == "on"              # raw hex line per received packet
+STALE_STRIKES = int(os.environ.get("STALE_STRIKES", "3"))      # undecryptable packets before a channel is dead
+PEER_TIMEOUT = float(os.environ.get("PEER_TIMEOUT", "60"))     # silent seconds before a client is gone (0 = never)
 
 
 def _bf_plain_ok(pt):
@@ -170,10 +185,65 @@ class RoSHTTPHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
+    def _reply_json(self, obj):
+        body = json.dumps(obj).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _avatar_upload(self, body=b""):
+        """21.03 avatar upload (LOBBY_FINDINGS 2026-11-19). FilePicker POST .../file/new/ (any image in a
+        multipart or raw body) is saved as portraits/<id>.png|.jpg and answered {"url": ".../file/<id>"};
+        TanTanService/setPortrait|delPortrait answer {"Ret": 0, "Data": {"PORTRAIT": id}}. The client then
+        sends Athlete.setPortrait(id), which stores it (set_account_portrait). True when handled."""
+        import re as _re, urllib.parse as _up
+        p = self.path.lower()
+        if "/file/new" in p:
+            print(f"[FILEPICKER UPLOAD] Host={self.headers.get('Host')} Path={self.path} "
+                  f"CT={self.headers.get('Content-Type')} len={len(body)} head={body[:120]!r}")
+            img, ext = None, ".png"
+            for magic, e, end in ((b"\x89PNG\r\n\x1a\n", ".png", b"IEND\xaeB`\x82"), (b"\xff\xd8\xff", ".jpg", b"\xff\xd9")):
+                i = body.find(magic)
+                if i >= 0:
+                    j = body.rfind(end)
+                    img, ext = body[i:j + len(end)] if j > i else body[i:], e
+                    break
+            if not img:
+                self._reply_json({"code": 400, "msg": "no image"})
+                return True
+            fid = "rosup" + os.urandom(8).hex()
+            pdir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "portraits")
+            os.makedirs(pdir, exist_ok=True)
+            with open(os.path.join(pdir, fid + ext), "wb") as f:
+                f.write(img)
+            print(f"[FILEPICKER UPLOAD] saved {fid}{ext} ({len(img)} B)")
+            self._reply_json({"url": f"http://g89ros.fp.ps.easebar.com/file/{fid}", "file_id": fid, "code": 0})
+            return True
+        if "/tantanservice/" in p:
+            q = _up.parse_qs(_up.urlsplit(self.path).query)
+            if body:
+                q.update(_up.parse_qs(body.decode("utf-8", "replace")))
+            print(f"[TANTAN] {self.command} {self.path} body={body[:200]!r}")
+            if "setportrait" in p or "delportrait" in p:
+                fid = ""
+                if "setportrait" in p:
+                    for k, v in q.items():
+                        if k.lower() in ("portrait", "fileid", "file_id", "fid", "url") and v:
+                            fid = _re.sub(r".*/file/", "", v[0]).split("?")[0]
+                self._reply_json({"Ret": 0, "Data": {"PORTRAIT": fid}})
+            else:
+                self._reply_json({"Ret": 0, "Data": {}})
+            return True
+        return False
+
     def do_GET(self):
         ua = self.headers.get("User-Agent", "")
         print(f"[GET] https?={isinstance(self.connection, ssl.SSLSocket)} Host={self.headers.get('Host')} Path={self.path} UA={ua[:80]}")
         account_link.note_device(self.path, ua)  # model, OS, version, time zone for the next login
+        if self._avatar_upload():
+            return
         path_lower = self.path.lower()
         host_only = canonical_host(self.headers.get("Host"))
         if host_only.endswith("mpsdk.easebar.com") and path_lower.startswith("/api/games/config"):
@@ -206,6 +276,23 @@ class RoSHTTPHandler(BaseHTTPRequestHandler):
             print(f"[FORGE user/info] -> {body[:160]!r}")
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        # FilePicker download (client filePicker.download_file, host g89ros.fp.ps.easebar.com):
+        # /file/<id>?fop=... -> portraits/<id>.png|.jpg, else portraits/default.png. The lobby avatar
+        # has no built-in image in this build, so every portrait comes from here (see portrait_file_id).
+        if path_lower.startswith("/file/"):
+            fid = os.path.basename(self.path[len("/file/"):].split("?")[0])
+            pdir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "portraits")
+            fpath = next((os.path.join(pdir, fid + ext) for ext in (".png", ".jpg")
+                          if fid and os.path.isfile(os.path.join(pdir, fid + ext))),
+                         os.path.join(pdir, "default.png"))
+            body = open(fpath, "rb").read()
+            print(f"[FILEPICKER] {fid!r} -> {os.path.basename(fpath)} ({len(body)} B)")
+            self.send_response(200)
+            self.send_header("Content-Type", "image/jpeg" if fpath.endswith(".jpg") else "image/png")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -243,9 +330,22 @@ class RoSHTTPHandler(BaseHTTPRequestHandler):
         static_map = {
             "/pl/h45na_hc": ("h45na_hc", "application/octet-stream"),
             "/pl/npk_version_na_android.plist": ("npk_version_na_android.patched.plist", "text/plain"),
+            # ROS2 mode DLC list (Recruit Guide tile -> UIR2FlowActivity.reqDLCSize -> Plist.from_url);
+            # the JSON patch reply below raised PatcherException and left the panel half-open.
+            "/pl/npk_version_na_ros2_inner_android.plist": ("npk_version_na_ros2_inner_android.plist", "text/plain"),
             "/server_list_ad.txt": (os.environ.get("SERVER_LIST_FILE", "server_list_ad.local.txt"), "text/plain"),
             "/notice_pc_hw.txt": ("notice_pc_hw.txt", "text/plain"),
         }
+        if self.path.split("?")[0] == "/server_list_ad.txt":
+            body = server_registry.server_list_text()   # RoS_Server's Game servers list; None = static file
+            if body is not None:
+                print(f"  -> Serving server list from RoS_Server ({len(body)} bytes)")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
         route = static_map.get(self.path.split("?")[0])
         if route:
             fpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "real", route[0])
@@ -312,6 +412,8 @@ class RoSHTTPHandler(BaseHTTPRequestHandler):
         post_body = self.rfile.read(content_len)
         host = canonical_host(self.headers.get("Host"))
         account_link.note_device(self.path, self.headers.get("User-Agent", ""))
+        if self._avatar_upload(post_body):
+            return
 
         # Forge login success: NetEase's live server returns 1003 "service stopped" (guest)
         # or 2003 "User does not exist" (auto-login sdk_token re-validation).
@@ -558,7 +660,7 @@ def parse_client_bundle(pkt):
     return out
 
 
-def avatar_create_messages(map_id=None, char_type=None, name=None, entity=None):
+def avatar_create_messages(map_id=None, char_type=None, name=None, entity=None, outfit=None):
     """Tutorial route: hand the client to a battle Avatar (client type 43).
     PlayerAvatar.onBecomePlayer -> MapLoader.onHandshake -> loadMap(currentMapID) loads the map
     itself (const.DTS_TUTORIAL_MAP = 701); PlayerAvatar.prerequisites only needs a scene, so the
@@ -579,6 +681,8 @@ def avatar_create_messages(map_id=None, char_type=None, name=None, entity=None):
         "baseCharacterType": struct.pack("<I", char_type),
         "msHttpAP": bwdefs.blob(_pk.dumps((LOCAL_SERVER_IP, 443, 80), protocol=2)),
     }
+    if outfit is not None:     # base prop; the .def default (2, female) mismatched a male character
+        ov["dtsAppearanceGender"] = struct.pack("<i", current_gender())
     log_b, log_c = [], []
     ent = entity or os.environ.get("AVATAR_ENTITY", "Avatar")
     import json as _json
@@ -601,6 +705,30 @@ def avatar_create_messages(map_id=None, char_type=None, name=None, entity=None):
     cell_ov.setdefault("dtsWeapon3", struct.pack("<i", 1301))
     cell_ov.setdefault("dtsWeapon5", struct.pack("<i", 1301))
     cell_ov.setdefault("dtsCurWeapon", struct.pack("<i", 5))
+    # Equipped lobby outfit in the match: the same ARRAY<INT32> lists as the Athlete (ALL_CLIENTS
+    # cell props on BattleGroundAvatar). OUTFIT_IN_MATCH=off sends the .def defaults (no outfit).
+    if outfit is not None and os.environ.get("OUTFIT_IN_MATCH", "on") != "off":
+        for kind, prop in (("body", "dtsBodyAppearanceList"), ("wear", "dtsWearableAppearanceList"),
+                           ("weapon", "dtsWeaponAppearanceList"), ("vehicle", "dtsVehicleAppearanceList"),
+                           ("bgprop", "dtsBattlegroundPropAppearanceList")):
+            ids = [int(i) for i in getattr(outfit, kind, []) or []]
+            if ids:
+                cell_ov[prop] = struct.pack("<I", len(ids)) + b"".join(struct.pack("<i", i) for i in ids)
+        if int(getattr(outfit, "aircraft", 0) or 0):     # show aircraft skin (ALL_CLIENTS cell prop)
+            cell_ov["dtsShowAircraftAppearanceID"] = struct.pack("<i", int(outfit.aircraft))
+        if int(getattr(outfit, "jetwings", 0) or 0):     # glider (BattleGroundAvatar.lastJetWingsID)
+            cell_ov["lastJetWingsID"] = struct.pack("<i", int(outfit.jetwings))
+        # The match model is dressed from the equipment slots, not the lists above:
+        # iDtsEquip.curr_equip_parts = equip_utils.getCurrentEquipPartsFromEquips(
+        #   [dtsHelmet, dtsVest, dtsPackage, cloth0, cloth1, cloth3..6], ...). A clothing skin is its
+        # own battle prop (hall PROP_TYPE.PROP_ITEM_ID == item id, e.g. 111900), so each worn item goes
+        # into its slot (extract/appearance_slots.json: item -> ["wear", "cloth0", gender]).
+        slots = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "extract",
+                                            "appearance_slots.json"), encoding="utf-8"))["items"]
+        for i in getattr(outfit, "wear", []) or []:
+            rule = slots.get(str(int(i)))
+            if rule and rule[0] == "wear" and str(rule[1]).startswith("cloth"):
+                cell_ov[rule[1]] = struct.pack("<i", int(i))
     cell = bwdefs.stream_for(D, ent, cell_ov, log_c, props=D.cell_own_client_props(ent))
     eid = int(os.environ.get("AVATAR_ID", "10003"))
     cbp = struct.pack("<IH", eid, types_.index(ent)) + base
@@ -752,6 +880,69 @@ def get_account_portrait():
     return v if isinstance(v, str) else ""
 
 
+def portrait_file_id():
+    """Portrait file id for UIMain's profile avatar. This build has no built-in portrait images
+    ('""' loads ui/images/avatar/portrait/<char>_on.png, which is missing: ImageView stays 0x0), '' makes
+    the client look the photo up by gid, '0' is ignored. An id of 16+ characters is downloaded through
+    FilePicker (/file/<id>, served by RoSHTTPHandler from server/portraits/) and cached on the device."""
+    p = (get_account_portrait() or "").strip()
+    if not p or p in ("0", "None", "null"):
+        return os.environ.get("PORTRAIT_BUILTIN", "rosdefaultportrait01")   # -> portraits/default.png
+    return p
+
+
+def _portrait_sync_call():
+    """Client Athlete.onSetPortrait(STRING fileID); must run after PlayerAthlete exists."""
+    if os.environ.get("PORTRAIT_SYNC", "on") == "off":
+        return b""
+    return athlete_method("onSetPortrait", _bw_blob(portrait_file_id().encode()))
+
+
+_LEVEL_EXP = None
+_EXP_GRANT_DONE = False
+
+
+def account_level():
+    """(level, exp inside that level) of the lobby badge and exp bar. RoS_Server's profile level when
+    linked, else saved_accounts.json "level:<gid>" ({"level", "exp"}, created with ATHLETE_LEVEL / 0 so it
+    can be edited). The client keeps dtsLevel / dtsExp in childBaseClientPropertyList, which the gateway
+    cannot send (stream bug), so they are set after enterHall with onAddDtsExp. The exp bar is
+    dtsExp / ExpLevelTable[level].levelExp (extract/level_exp.json, levels 1..300)."""
+    global _LEVEL_EXP
+    if _LEVEL_EXP is None:
+        here = os.path.dirname(os.path.abspath(__file__))
+        _LEVEL_EXP = {int(k): v for k, v in json.load(open(os.path.join(here, "extract", "level_exp.json"))).items()}
+    key = "level:" + str(account_link.current_gid())
+    v = load_accounts().get(key)
+    if not isinstance(v, dict):
+        v = {"level": int(os.environ.get("ATHLETE_LEVEL", "1")), "exp": 0}
+        save_account(key, v)
+    level, exp = int(v.get("level", 1)), int(v.get("exp", 0))
+    profile = account_link.get_profile() if account_link.current() else None
+    if profile and profile.get("level"):
+        level = int(profile["level"])
+    level = min(max(level, 1), max(_LEVEL_EXP))
+    return level, min(max(exp, 0), _LEVEL_EXP[level] - 1)
+
+
+def _level_sync_call():
+    """Client Athlete.onAddDtsExp(INT32 dtsExp, INT32 dtsLevel, BOOL newLevelup): sets the level badge
+    and exp bar (iDtsLevelSystem.onAddDtsExp -> UIMain.updateLevel). Match exp queued in
+    profile_screens.PENDING_EXP is added first; newLevelup is True when it crossed a level (popup)."""
+    level, exp = account_level()
+    gained = profile_screens.PENDING_EXP.pop(str(account_link.current_gid()), 0)
+    global _EXP_GRANT_DONE
+    if not _EXP_GRANT_DONE and int(os.environ.get("EXP_GRANT", "0")) > 0:
+        _EXP_GRANT_DONE = True                       # test knob: one grant per gateway start
+        gained += int(os.environ["EXP_GRANT"])
+    up = False
+    if gained:
+        level, exp, up = profile_screens.add_exp(level, exp, gained, _LEVEL_EXP)
+        save_account("level:" + str(account_link.current_gid()), {"level": level, "exp": exp})
+        print(f"      [BASEAPP] match exp +{gained} -> level {level} exp {exp} levelup={up}")
+    return athlete_method("onAddDtsExp", struct.pack("<iib", exp, level, 1 if up else 0))
+
+
 def _inventory_key():
     return "inventory:" + str(account_link.current_gid())
 
@@ -826,6 +1017,30 @@ def save_local_state(yuanbao=None, add_items=(), outfit=None, recent_got=None):
     save_account(_inventory_key(), v)
 
 
+def _vip_key():
+    return "vip:" + str(account_link.current_gid())
+
+
+def _signin_key():
+    """Per-account daily sign-in state (lobby_events.signin_claim)."""
+    return "signin:" + str(account_link.current_gid())
+
+
+def _activity_key():
+    """Per-account Activity Points state (lobby_events.activity_state)."""
+    return "activity:" + str(account_link.current_gid())
+
+
+def vip_claimed():
+    """{type: set(levels)} of VIP rewards this account has claimed (saved_accounts.json)."""
+    v = load_accounts().get(_vip_key()) or {}
+    return {int(t): {int(lv) for lv in lvs} for t, lvs in (v.get("claimed") or {}).items()}
+
+
+def save_vip_claimed(claimed):
+    save_account(_vip_key(), {"claimed": {str(t): sorted(lvs) for t, lvs in claimed.items()}})
+
+
 def _gender_key():
     return "gender:" + str(account_link.current_gid())
 
@@ -889,6 +1104,9 @@ def _first_login_today():
 
 PROFILE_REQUESTS = {"requireRecordData", "requireBaseInfo", "queryPersonalInfo", "queryPersonalSpaceLikeCnt",
                     "queryCreditStatus", "queryCreditScore", "requireCreditReward"}
+MAIL_REQUESTS = {"requestMails", "requestMailDetail", "getAwardFromMail", "deleteMail", "delMails"}
+RANK_REQUESTS = {"requireRankList", "requireRankInfo", "updatePlayerLBSData", "requestLBSRankList",
+                 "requestLBSPlayerRank"}
 
 
 def get_account_name():
@@ -902,9 +1120,21 @@ def get_account_name():
     return acc.get("name", os.environ.get("CBP_NAME", "GuestLocal"))
 
 
+def _local_bans():
+    """uids banned without the RoS_Server backend: one per line in server/banned_uids.txt (# comments)."""
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "banned_uids.txt"), encoding="utf-8") as f:
+            return {ln.split("#", 1)[0].strip() for ln in f} - {""}
+    except OSError:
+        return set()
+
+
 def link_login(username, ip_address):
     """Resolve the RoS_Server account for a Mercury login. Returns False if the account may not play."""
     uid = account_link.note_login(username)
+    if uid and uid in _local_bans():
+        print(f"[ACC-LINK] uid={uid} is in banned_uids.txt: login refused")
+        return False
     if not account_link.enabled():
         return True
     linked = account_link.resolve(uid, ip_address)
@@ -1015,11 +1245,16 @@ def login_gold():
 LIST_PROPS = {"body": ("dtsBodyAppearanceList", "dtsShowBodyAppearanceList"),
               "wear": ("dtsWearableAppearanceList", "dtsShowWearableAppearanceList"),
               "weapon": ("dtsWeaponAppearanceList", "dtsShowWeaponAppearanceList"),
-              "vehicle": ("dtsVehicleAppearanceList", "dtsShowVehicleAppearanceList")}
+              "vehicle": ("dtsVehicleAppearanceList", "dtsShowVehicleAppearanceList"),
+              "bgprop": ("dtsBattlegroundPropAppearanceList", "dtsShowBattlegroundPropAppearanceList")}
 LIST_METHODS = {"body": ("onUpdateDtsBodyAppearanceList", "onUpdateDtsShowBodyAppearanceList"),
                 "wear": ("onUpdateDtsWearableAppearanceList", "onUpdateDtsShowWearableAppearanceList"),
                 "weapon": ("onUpdateDtsWeaponAppearanceList", "onUpdateDtsShowWeaponAppearanceList"),
-                "vehicle": ("onUpdateVehicleAppearanceList", "onUpdateDtsShowVehicleAppearanceList")}
+                "vehicle": ("onUpdateVehicleAppearanceList", "onUpdateDtsShowVehicleAppearanceList"),
+                "bgprop": ("onUpdateBattlegroundPropAppearanceList", "onUpdateDtsShowBattlegroundPropAppearanceList")}
+# Single-id appearances (athlete_requests.Outfit.SINGLES) -> Athlete property / client update method.
+SINGLE_PROPS = {"jetwings": "dtsJetWingsAppearanceID", "aircraft": "dtsShowAircraftAppearanceID"}
+SINGLE_METHODS = {"jetwings": "onUpdateDtsJetWingsAppearanceID", "aircraft": "onUpdateDtsShowAircraftAppearanceID"}
 
 
 def athlete_create_message():
@@ -1049,7 +1284,7 @@ def athlete_create_message():
         "playerUUID": bwdefs.blob(bytes(range(16))),
         "playerName": bwdefs.blob(name), "identifierName": bwdefs.blob(name),
         "baseNickname": bwdefs.blob(name), "gid": struct.pack("<Q", gid),
-        "baseLevel": struct.pack("<i", int(os.environ.get("ATHLETE_LEVEL", "1"))),
+        "baseLevel": struct.pack("<i", account_level()[0]),
         "hostID": struct.pack("<i", 10001),
         "msHttpAP": bwdefs.blob(__import__("pickle").dumps((LOCAL_SERVER_IP, 443, 80), protocol=2)),
         "canCreateRoom": struct.pack("<b", int(os.environ.get("ATHLETE_CAN_CREATE_ROOM", "1"))),
@@ -1097,6 +1332,9 @@ def athlete_create_message():
         recent = _resolve_recent_got(LOGIN_STATE)
         LOGIN_STATE["recent_got"] = recent
         ov["recentGotPropIDList"] = _int_array(recent)
+        for key, prop in SINGLE_PROPS.items():     # glider / show aircraft
+            if int(getattr(saved, key, 0) or 0):
+                ov[prop] = struct.pack("<i", int(getattr(saved, key)))
         print(f"[*] account state: {LOGIN_STATE.get('yuanbao')} diamonds, {len(owned)} items, outfit={saved.to_dict()}")
     # Sent only with a portrait: a full element currently misaligns the client's stream by
     # 2 bytes within its first ~70 bytes (SequenceDataType "Invalid size" -> EOFError on the
@@ -1235,18 +1473,69 @@ class GateUDP(asyncio.DatagramProtocol):
         self._training = {}         # addr -> training_event.TrainingState
     def connection_made(self, transport):
         self.transport = transport
+
+    def _drop_stale_channel(self, addr, data):
+        """No known session key decrypts this BaseApp packet: the client still talks on a channel
+        this gateway no longer has (gateway restarted, or a second login replaced the key). Parsing
+        it gave garbage and the keepalive ACKs kept the client from ever timing out, so it hung on
+        the menu/lobby. Drop it, stop this address's keepalive and battle state, and let the client
+        time the dead channel out and log in again."""
+        stale = self.__dict__.setdefault("_stale_addrs", {})
+        now = time.time()
+        for old in [a for a, (_n, at) in stale.items() if now - at > 600]:
+            del stale[old]                                        # pruned: idle addresses
+        count = stale.get(addr, (0, now))[0] + 1
+        stale[addr] = (count, now)
+        if count == STALE_STRIKES:
+            print(f"      [SESSION] {addr}: {count} packets match no session key -> stale channel; "
+                  f"dropped, keepalive stopped (client must log in again)")
+            self._ka_gens[addr] = self._ka_gens.get(addr, 0) + 1     # stale keepalive timers stop
+            self.__dict__.get("_keepalive_started", set()).discard(addr)
+            self._unacked_packets.pop(addr, None)
+            if self._in_battle.get(addr):
+                self._abandon_match(addr, "stale channel")
+        elif count % 50 == 0:
+            print(f"      [SESSION] {addr}: {count} stale-channel packets dropped")
+
+    def _drop_dead_peer(self, addr, silent):
+        """The client sent nothing for PEER_TIMEOUT seconds (emulator crash, app killed, network
+        gone). Without this the keepalive resent every unacked packet every 0.5 s forever (2026-11-28:
+        40 764 resends over an hour to a crashed LDPlayer). Stop the keepalive and resends, and end
+        its match once; a later login starts a fresh channel."""
+        print(f"      [SESSION] {addr}: no packet for {silent:.0f}s -> client gone; keepalive stopped, "
+              f"{len(self._unacked_packets.get(addr, {}))} unacked dropped")
+        self._ka_gens[addr] = self._ka_gens.get(addr, 0) + 1
+        self.__dict__.get("_keepalive_started", set()).discard(addr)
+        self._unacked_packets.pop(addr, None)
+        self._last_recv.pop(addr, None)
+        if self._in_battle.get(addr):
+            self._abandon_match(addr, "client gone")
+
+    def _abandon_match(self, addr, reason):
+        """The client left the match without the result screen (re-login, dead channel): record the
+        result once as a quit, end the match session and leave the battle state."""
+        session = self._match_session(addr)
+        results = getattr(session, "results_module", None) if session is not None else None
+        if results is not None:
+            results.record_quit()
+        print(f"      [BATTLE] match abandoned ({reason}) for {addr}")
+        self.__dict__.get("_matches", {}).pop(addr, None)
+        self._end_match_session(addr)
+        self._in_battle[addr] = False
     def datagram_received(self, data, addr):
         import time as _t
         is_login = data[:4] == b"\x01\x00\x00\x84"
 
         if is_login:
             print(f"[UDP GATE:{self.port}] LOGIN from {addr} {len(data)}B seq={data[5:7].hex()}")
-        else:
+        elif LOG_RAW:
             print(f"[UDP GATE:{self.port}] NON-LOGIN from {addr} {len(data)}B: {data.hex()}")
 
-        # Always capture to gate_capture.bin
-        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "gate_capture.bin"), "ab") as f:
-            f.write(data)
+        # Raw capture for protocol work only (GATE_CAPTURE=on): two file appends per packet on the
+        # event loop grew these files past 14 MB and slowed every packet.
+        if GATE_CAPTURE:
+            with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "gate_capture.bin"), "ab") as f:
+                f.write(data)
 
         # --- Login reply handler ---
         reply_variant_env = os.environ.get("REPLY_VARIANT", "24")
@@ -1269,9 +1558,11 @@ class GateUDP(asyncio.DatagramProtocol):
                     pkt, params, bf = res
                     _stash()                # park the previous player's globals; this login owns them now
                     u32 = loginapp.extract_session_u32(params)
-                    if not link_login(params.get("username"), addr[0]):
-                        return              # banned/suspended in the admin console: no login reply
-                    _new_session(bf, u32)
+                    banned = not link_login(params.get("username"), addr[0])
+                    if banned and os.environ.get("BAN_MODE", "kick") != "kick":
+                        return              # BAN_MODE=silent: no login reply (old behaviour)
+                    # Banned/suspended: log in, then Athlete.onKickOff + loggedOff at hall entry.
+                    _new_session(bf, u32)["banned"] = banned
                     account_link.touch()
                     sk = u32.hex()
                     print(f"  [{_t.strftime('%H:%M:%S')}] [LOGIN] TRY msgid={msgid} (0x{msgid:02x}) -> {len(pkt)}B: {pkt.hex()}")
@@ -1286,13 +1577,15 @@ class GateUDP(asyncio.DatagramProtocol):
         # --- BaseApp Mercury channel handler ---
         if self.port == 25000 and not is_login:
             ts = _t.strftime('%H:%M:%S')
-            with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "baseapp_capture.bin"), "ab") as f:
+            if GATE_CAPTURE:
+              with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "baseapp_capture.bin"), "ab") as f:
                 f.write(len(data).to_bytes(2, 'little') + data)
 
             try:
                 import loginapp
                 self._select_session(addr, data)
                 account_link.touch()          # presence lease for this player (no I/O on this path)
+                server_registry.note(addr, bool(self._in_battle.get(addr)))   # player counts for the heartbeat
                 bf_key = CURRENT_BF_KEY
                 if not bf_key:
                     try:
@@ -1330,8 +1623,12 @@ class GateUDP(asyncio.DatagramProtocol):
                         session_key = data[11:15] if len(data) >= 15 else struct.pack("<I", 0x11223344)
                     print(f"  [{ts}] [BASEAPP LOGIN REQ] from {addr} req5={req_id_5.hex()} req7={req_id_7.hex()} sess={session_key.hex()} bf={bf_key.hex() if bf_key else None}")
                     # New BaseApp session: reset per-channel state
+                    self.__dict__.get("_stale_addrs", {}).pop(addr, None)
+                    if self._in_battle.get(addr):          # reconnect mid-match: end the old match once
+                        self._abandon_match(addr, "re-login")
                     self._player_created.pop(addr, None)
                     self._last_client_seq.pop(addr, None)
+                    self.__dict__.get("_seen_client_seq", {}).pop(addr, None)
                     self._unacked_packets.pop(addr, None)
                     self._handshake_done.pop(addr, None)
                     self._athlete_sent.pop(addr, None)
@@ -1370,6 +1667,9 @@ class GateUDP(asyncio.DatagramProtocol):
                                 self._bind_session(addr, other)
                                 bf_key, pt = other["bf"], alt
                                 break
+                        if not _bf_plain_ok(pt):
+                            self._drop_stale_channel(addr, data)
+                            return
                     elif self._sess.get(addr) is not None:
                         self._sess[addr]["confirmed"] = True
                     wastage = pt[-1]
@@ -1420,6 +1720,18 @@ class GateUDP(asyncio.DatagramProtocol):
                 # ServerConnection::createBasePlayer (libclient+0x94c10c) only dispatches to its
                 # handler once logOn completed; earlier copies are dropped ("did not consume").
                 msgs = parse_client_bundle(pkt)
+                # Lane 2: a resent packet (same client seq; our ACK was late or lost) must not run its
+                # calls twice (double draw / buy / top-up). It is still ACKed through _last_client_seq.
+                # Only after the handshake: login resends (seq #1, msg 0xC5) are handled on purpose.
+                if (client_seq is not None and msgs and addr in self._handshake_done
+                        and os.environ.get("DEDUPE_CLIENT_SEQ", "on") != "off"):
+                    seen = self.__dict__.setdefault("_seen_client_seq", {}).setdefault(addr, [])
+                    if client_seq in seen:
+                        print(f"      [BASEAPP] duplicate client seq #{client_seq}: {len(msgs)} msg(s) not run again")
+                        msgs = []
+                    else:
+                        seen.append(client_seq)
+                        del seen[:-512]
                 if msgs:
                     print(f"      [BASEAPP] client msgs: {[(m, p.hex()) for m, p in msgs]}")
 
@@ -1462,25 +1774,47 @@ class GateUDP(asyncio.DatagramProtocol):
                     for m, p in msgs:
                         if m == 3 and session is not None:
                             try_sync_xyz(session, p)
-                        if m == 3 and hasattr(battle_flow.Match, "on_position"):
+                        # With the module engine (jump.py) the legacy height landing would land the
+                        # player a second time; it only runs without a match session's jump module.
+                        if (m == 3 and hasattr(battle_flow.Match, "on_position")
+                                and getattr(session, "jump_module", None) is None):
                             handled = session.dispatch_inbound(m, p) if session is not None else None
                             if handled is not None:
                                 if handled:
                                     session.enqueue(handled)
                                 continue
                             try:
-                                reply = self._battle_match(addr).on_position(p, time.time(), log=print)
+                                # via the module's class, not the instance: the match object can predate a
+                                # hot reload of battle_flow and would keep running the old method
+                                reply = battle_flow.Match.on_position(self._battle_match(addr), p, time.time(), log=print)
                             except Exception as e:
                                 reply = b""
                                 print(f"      [BATTLE] position failed: {e!r}")
                             if reply:
                                 self._send_bundle(addr, reply, self._last_client_seq.get(addr), bytes(bf_key))
+                            # Legacy height-based landing also moves the match flow to "ground" (the flow
+                            # only moves forward, so the jump module's timed landing cannot repeat it).
+                            if session is not None and getattr(self._battle_match(addr), "landed", False):
+                                session.flow.enter("ground", "landed (position)")
+                        # Match timeline (plane boarding, fall phases) driven by every client message,
+                        # including position reports (msg 2); battle_flow.Match.on_message.
+                        if hasattr(battle_flow.Match, "on_message"):
+                            try:
+                                tl = battle_flow.Match.on_message(self._battle_match(addr), m, p, log=print)
+                            except Exception as e:
+                                tl = b""
+                                print(f"      [BATTLE] timeline failed: {e!r}")
+                            if tl:
+                                self._send_bundle(addr, tl, self._last_client_seq.get(addr), bytes(bf_key))
                         if 0x80 <= m <= 0xBF:
                             handled = session.dispatch_inbound(m, p) if session is not None else None
                             if handled is not None:
                                 if handled:
                                     session.enqueue(handled)
                                 continue
+                            # No module claimed it: battle_flow.Match still owns changePose, fall,
+                            # changeFallPhase/changeGlidePhase, doPutGun and the battle_world vehicle and
+                            # crate requests (QA 2026-11-27).
                             try:
                                 reply = battle_flow.Match.handle(self._battle_match(addr), m, p, log=print)
                             except Exception as e:
@@ -1488,6 +1822,10 @@ class GateUDP(asyncio.DatagramProtocol):
                                 print(f"      [BATTLE] request 0x{m:02x} failed: {e!r}")
                             if reply:
                                 self._send_bundle(addr, reply, self._last_client_seq.get(addr), bytes(bf_key))
+                    try:
+                        import match_room; match_room.on_client_msgs(self, addr, msgs)   # lane 6: other players
+                    except Exception as e:
+                        print(f"      [ROOM] relay failed: {e!r}")
                     match = self.__dict__.get("_matches", {}).get(addr)
                     # Quit Game -> Confirm sends the base method requestLeaveDynamicSpace (raw base index 181,
                     # client index +3): msg 0xFD (var16) with sub byte 0x7B. Measured live 2026-11-20.
@@ -1498,6 +1836,11 @@ class GateUDP(asyncio.DatagramProtocol):
                     if match is not None and getattr(match, "leave", False):
                         # Quit Game: back to the lobby (Athlete), like the tutorial SKIP path
                         print("      [BATTLE] player left the match -> lobby")
+                        quit_session = self._match_session(addr)
+                        results = getattr(quit_session, "results_module", None) if quit_session else None
+                        if results is not None:
+                            results.record_quit()        # one result writer, also for Quit Game
+                        import match_room; match_room.leave(self, addr)   # lane 6
                         self._matches.pop(addr, None)
                         self._end_match_session(addr)
                         self._in_battle[addr] = False
@@ -1509,6 +1852,7 @@ class GateUDP(asyncio.DatagramProtocol):
                 # "Starting in N s" countdown, the player count and the safe-zone circle. Sent once, after
                 # the map has had time to load (BATTLE_SPACE_DELAY seconds). BATTLE_SPACE=off disables it.
                 if (self._in_battle.get(addr) and os.environ.get("BATTLE_SPACE", "on") == "on"
+                        and getattr(self._match_session(addr), "space_module", None) is None
                         and not self.__dict__.setdefault("_space_sent", {}).get(addr)
                         and time.time() - self.__dict__.setdefault("_battle_t0", {}).get(addr, float("inf"))
                         >= float(os.environ.get("BATTLE_SPACE_DELAY", "20"))):
@@ -1699,6 +2043,10 @@ class GateUDP(asyncio.DatagramProtocol):
         if gen != self._ka_gens.get(addr, 0):
             return
         now = _t.time()
+        last = self._last_recv.get(addr)
+        if PEER_TIMEOUT > 0 and last is not None and now - last > PEER_TIMEOUT:
+            self._drop_dead_peer(addr, now - last)
+            return
         _flag1 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "harness", "push_now.flag")
         _flag2 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "harness", "push_now.flag")
         _flag = _flag1 if os.path.exists(_flag1) else (_flag2 if os.path.exists(_flag2) else None)
@@ -1792,6 +2140,14 @@ class GateUDP(asyncio.DatagramProtocol):
             return
         self._hall_entered[addr] = True
         import pickle
+        if _ACTIVE is not None and _ACTIVE.get("banned"):
+            # Original kick path: Athlete.onKickOff() sets Globals.showKickOffDes, then
+            # ClientInterface.loggedOff (map seq 119 - 21 = wire 0x62, 1-byte reason) drops the
+            # connection; UILogin.on_enter shows the kick-off dialog on the login screen.
+            print(f"      [BASEAPP] -> banned account: Athlete.onKickOff + loggedOff")
+            self._send_bundle(addr, athlete_method("onKickOff", b"") + b"\x62\x00",
+                              self._last_client_seq.get(addr), bytes(bf_key))
+            return
         if is_new_account():
             print(f"      [BASEAPP] -> New account detected! Sending Athlete.showSelectCharacter...")
             calls = (athlete_method("onLogin", struct.pack("<i", 0) + _bw_blob(b"")) +
@@ -1837,18 +2193,41 @@ class GateUDP(asyncio.DatagramProtocol):
             self._send_bundle(addr, calls, cur_seq, bytes(bf_key))
             print(f"      [BASEAPP] Sent Athlete.onLogin + onRoleCreateSuc + switches + lobby data")
             
-            # Send enterHall cleanly in its own bundle to avoid fragmentation corruption
+            # Send enterHall cleanly in its own bundle to avoid fragmentation corruption.
+            # HALL_WAIT_ACK=on (default): only after the client ACKed the whole lobby bundle. While
+            # the client is still busy with that bundle (12 s stall seen 2026-11-27), an early
+            # enterHall ends in Athlete._realEnterHall AttributeError ('NoneType'.GetComponent)
+            # and the lobby never loads.
             hall_call = athlete_method("enterHall", _first_login_today())
-            asyncio.get_event_loop().call_later(
-                0.2, self._send_bundle, addr, hall_call, self._last_client_seq.get(addr), bytes(bf_key)
-            )
-            print(f"      [BASEAPP] Scheduled enterHall in 0.2s")
+            if os.environ.get("HALL_WAIT_ACK", "on") == "on":
+                self._send_enter_hall_after_ack(addr, hall_call, bytes(bf_key), self._seq.get(addr, 0),
+                                                time.time() + float(os.environ.get("HALL_ACK_MAX", "20")))
+            else:
+                asyncio.get_event_loop().call_later(
+                    0.2, self._send_bundle, addr, hall_call, self._last_client_seq.get(addr), bytes(bf_key)
+                )
+                print(f"      [BASEAPP] Scheduled enterHall in 0.2s")
+            if os.environ.get("PORTRAIT_SYNC", "on") != "off":
+                asyncio.get_event_loop().call_later(
+                    float(os.environ.get("PORTRAIT_DELAY", "12")),
+                    self._sync_lobby_portrait, addr, bytes(bf_key))
             # Hall hero model needs a dress refresh after UIMain exists (loader stays None otherwise).
             if os.environ.get("UNLOCK_ALL", "calls") == "calls":
                 asyncio.get_event_loop().call_later(float(os.environ.get("UNLOCK_DELAY", "20")),
                                                     self._unlock_all_batch, addr, bytes(bf_key), 0)
             for t in [float(x) for x in os.environ.get("APPEARANCE_PUSH", "").split(",") if x.strip()]:
                 asyncio.get_event_loop().call_later(t, self._push_appearance, addr, bytes(bf_key))
+
+    def _send_enter_hall_after_ack(self, addr, hall_call, bf_key, before_seq, deadline):
+        """Send enterHall once every reliable packet below before_seq is ACKed, or at deadline."""
+        pending = [s for s in self._unacked_packets.get(addr, {}) if s < before_seq]
+        if pending and time.time() < deadline:
+            asyncio.get_event_loop().call_later(0.1, self._send_enter_hall_after_ack,
+                                                addr, hall_call, bf_key, before_seq, deadline)
+            return
+        reason = "deadline, %d unacked" % len(pending) if pending else "lobby bundle ACKed"
+        self._send_bundle(addr, hall_call, self._last_client_seq.get(addr), bf_key)
+        print(f"      [BASEAPP] enterHall sent ({reason})")
 
     def _dispatch_athlete(self, addr, name, args):
         """_athlete_request with its latency and reply size recorded in perf_monitor.MONITOR
@@ -2087,16 +2466,17 @@ class GateUDP(asyncio.DatagramProtocol):
             if train is not None:
                 return train
 
-            if name == "requestDtsSigninAward":
-                import time as _tm
-                day = _tm.strftime("%Y-%m-%d", _tm.gmtime(athlete_requests.game_now()))
-                st = load_accounts().get("signin") or {"level": 0, "day": ""}
-                level = st["level"] if st.get("day") == day else min(st["level"] + 1, len(SIGNIN_AWARDS))
-                save_account("signin", {"level": level, "day": day})
-                award = SIGNIN_AWARDS[max(level, 1) - 1]
-                print(f"      [BASEAPP] sign-in claim -> level {level}, award {award}")
-                return athlete_method("onRequestDtsSignInAward",
-                                      struct.pack("<Ii", 1, award) + struct.pack("<i", level))
+            if name == "requestDtsSigninAward":      # lane 2: server/lobby_events.py
+                import lobby_events
+                st, award, calls = lobby_events.signin_claim(load_accounts().get(_signin_key()), athlete_requests.game_now())
+                save_account(_signin_key(), st)
+                print(f"      [BASEAPP] sign-in claim -> level {st['level']}, award {award or 'none (already claimed today)'}")
+                return b"".join(athlete_method(n, a) for n, a in calls)
+
+            # Benefits > Activity Points "Get" buttons (ui.UIDailyActivity): one activity, or a
+            # daily / weekly tier box. State per account; nothing claimable answers with the state.
+            if name in ("getActivityReward", "getDailyActivityReward", "getWeeklyActivityReward"):
+                return self._activity_reward(addr, name, rd.i32())
 
             if name == "setHasAlreadyShowSupplyID":
                 # Athlete.def declares no arguments, so the server picks the id: this week's box
@@ -2154,6 +2534,15 @@ class GateUDP(asyncio.DatagramProtocol):
                     "onBuyLimitPackageFailed",
                     _bw_blob(b"I_NOT_AVAILABLE") + struct.pack("<iiii", currency, pkg, 0, 0))
 
+            # Squads (server/teams.py); None leaves the request to the solo hall code below.
+            if name in teams.REQUESTS and account_link.current_gid():
+                reply = teams.handle(self, addr, name, rd, int(account_link.current_gid()), get_account_name(),
+                                     athlete_method,
+                                     lambda delay, fn, *a: asyncio.get_event_loop().call_later(delay, fn, *a))
+                if reply is not None:
+                    return reply
+                rd = athlete_requests.Reader(args)
+
             hall = self._hall_match.handle(
                 name, rd, addr, athlete_method=athlete_method, py=py, hall_team_member=self._hall_team_member)
             if hall is not None:
@@ -2170,6 +2559,12 @@ class GateUDP(asyncio.DatagramProtocol):
                 kind = outfit.equip(pid)
                 if not kind:
                     app_type = athlete_requests.appearance_type(pid)
+                    single = outfit.set_single(app_type, pid)
+                    if single:     # glider / show aircraft (ITEMS tab): one id, saved with the outfit
+                        self._save_outfit(outfit)
+                        print(f"      [BASEAPP] equipAppearance {pid} ({single}) -> {outfit.to_dict()}")
+                        return (athlete_method(SINGLE_METHODS[single], struct.pack("<i", pid)) +
+                                athlete_method("onNotifyEquipedAppearance", struct.pack("<i", pid)))
                     if app_type == HEAD_FRAME_TYPE:     # avatar frame: Athlete.headFrameTag
                         return (self._set_head_frame(addr, pid, "equipAppearance") +
                                 athlete_method("onNotifyEquipedAppearance", struct.pack("<i", pid)))
@@ -2200,9 +2595,13 @@ class GateUDP(asyncio.DatagramProtocol):
                 return athlete_method("onUpdateItemConvertRemind",
                                       py(dict(self._item_convert_remind[addr])))
 
-            # System mail (iMail): list, detail, claim attachments, delete.
-            if name in ("requestMails", "requestMailDetail", "getAwardFromMail", "deleteMail"):
-                return self._mail_request(addr, name, rd)
+            # System mail (iMail): list, detail, claim attachments, delete. Linked: RoS_Server is the
+            # mailbox (operators send mail there). Not linked: the local lobby_mail.json mailbox
+            # (server/lobby_mail.py); LOCAL_MAIL=off keeps an empty mailbox instead.
+            if name in MAIL_REQUESTS:
+                if account_link.current() or os.environ.get("LOCAL_MAIL", "on") == "off":
+                    return self._mail_request(addr, name, rd)
+                return self._mail_reply(addr, name, rd)
 
             # Depot > Vehicles > Display: the vehicle skin shown beside the player in the lobby.
             # Depot > Firearms > Display Firearm: setOutGameWeapon(charType, weapon skin, pose);
@@ -2238,6 +2637,18 @@ class GateUDP(asyncio.DatagramProtocol):
                 app_type = athlete_requests.appearance_type(pid)
                 print(f"      [BASEAPP] unloadAppearance {pid} ({app_type})")
                 calls = athlete_method("onNotifyUnloadAppearance", struct.pack("<i", pid))
+                outfit = self._session_outfit(addr)
+                single = athlete_requests.Outfit.SINGLES.get(app_type)
+                if single and getattr(outfit, single, 0) == pid:
+                    outfit.set_single(app_type, 0)
+                    self._save_outfit(outfit)
+                    calls = athlete_method(SINGLE_METHODS[single], struct.pack("<i", 0)) + calls
+                if outfit.kind(pid) == "bgprop" and pid in outfit.bgprop:
+                    # BattleGroundPropAppearanceType.unloadAppearanceRequestServer: off both lists
+                    outfit.bgprop = [i for i in outfit.bgprop if i != pid]
+                    outfit.show_bgprop = None
+                    self._save_outfit(outfit)
+                    calls = self._outfit_calls(outfit, "bgprop") + calls
                 if app_type == "EmojiType":
                     calls += athlete_method("onUpdateDtsEmojiID", struct.pack("<i", 0))
                 if app_type == HEAD_FRAME_TYPE and int((LOGIN_STATE or {}).get("head_frame") or 0) in (0, pid):
@@ -2337,6 +2748,41 @@ class GateUDP(asyncio.DatagramProtocol):
                         self._show_list_calls("wear", outfit.shown("wear")))
 
             # My Page / Stats / Credit screens (server/profile_screens.py), from RoS_Server's profile.
+            # Depot "Data Import" (UIDtsAppearanceOthers.onImportData -> UIDataIntercommunicate):
+            # the client waits on "Importing..." for onLoadOtherServerItemList(INT8 code),
+            # 1 success / 2 fail / 3 cool-down (iDtsAppearancePackage). There is no other server
+            # to import from (items already live here), so answer success.
+            if name == "requestLoadOtherServerItemList":
+                print("      [BASEAPP] requestLoadOtherServerItemList -> success (nothing to import)")
+                return athlete_method("onLoadOtherServerItemList", struct.pack("<b", 1))
+
+            # VIP Privilege rewards (ui.UIVipPrivilege.onClickGet -> getVipReward(type, level)).
+            if name in ("getVipReward", "getAllVipReward"):
+                claimed = vip_claimed()
+                info = lobby_vip.vip_info(claimed)
+                if name == "getVipReward":
+                    todo = [(rd.i32(), rd.i32())]
+                else:
+                    todo = [(t, lv) for t, v in info.items() for lv, st in v["rewardStatus"].items()
+                            if st == lobby_vip.AVAILABLE]
+                todo = [(t, lv) for t, lv in todo
+                        if info.get(t, {}).get("rewardStatus", {}).get(lv) == lobby_vip.AVAILABLE]
+                props = [p for t, lv in todo for p in lobby_vip.reward_props(t, lv)]
+                print(f"      [BASEAPP] {name} -> {todo} props {props}")
+                if not todo:
+                    return athlete_method("syncVipInfo", py(info))
+                for t, lv in todo:
+                    claimed.setdefault(t, set()).add(lv)
+                save_vip_claimed(claimed)
+                if props and not self._settle(addr, 0, props, f"gateway:vip:{todo}"):
+                    print(f"      [BASEAPP] {name}: items not saved")
+                calls = self._grant_props(props, force=True) if props else b""
+                calls += athlete_method("syncVipInfo", py(lobby_vip.vip_info(claimed)))
+                if name == "getVipReward":
+                    t, lv = todo[0]
+                    return calls + athlete_method("onGetVipReward", struct.pack("<ii", t, lv))
+                return calls + athlete_method("onGetAllVipReward", py({p: 1 for p in props}))
+
             if name in PROFILE_REQUESTS:
                 return self._profile_reply(addr, name, rd)
 
@@ -2344,8 +2790,16 @@ class GateUDP(asyncio.DatagramProtocol):
             if name == "changeNicknameWithCard":
                 new_name = rd.string().strip()
                 linked = account_link.current() or {}
-                saved = account_link.set_character(new_name, linked.get("char_type") or get_account_char())                     if linked and new_name else None
-                ok = bool(saved)
+                if linked:     # RoS_Server: refused when the name is taken
+                    ok = bool(new_name) and bool(account_link.set_character(
+                        new_name, linked.get("char_type") or get_account_char()))
+                else:          # local account (saved_accounts.json "default")
+                    ok = bool(new_name) and len(new_name) <= 32
+                    if ok:
+                        acc = load_accounts().get("default") or {}
+                        acc["name"] = new_name
+                        acc.setdefault("char_type", int(get_account_char()))
+                        save_account("default", acc)
                 print(f"      [BASEAPP] changeNicknameWithCard '{new_name}' -> {'saved' if ok else 'refused'}")
                 if not ok:
                     return athlete_method("onChangeNickname", b"\x00" + _bw_blob(new_name.encode()))
@@ -2356,6 +2810,25 @@ class GateUDP(asyncio.DatagramProtocol):
                 saved = account_link.set_national_flag(flag) if account_link.current() else None
                 print(f"      [BASEAPP] setNationalFlag '{flag}' -> {'saved' if saved else 'not saved'}")
                 return b""
+
+            # Leaderboard, "data" tab (server/lobby_rank.py).
+            if name in RANK_REQUESTS:
+                return self._rank_reply(addr, name, rd)
+
+            # Friends (server/social.py). Without a linked account there is no gid: empty lists.
+            if name in social.REQUESTS:
+                gid = account_link.current_gid()
+                if gid:
+                    linked = account_link.current() or {}
+                    me = {"gid": int(gid), "nickname": get_account_name(),
+                          "characterType": int(get_account_char()),
+                          "nationalFlag": linked.get("national_flag") or "",
+                          "portrait": linked.get("portrait") or ""}
+                    return social.handle(self, addr, name, rd, me, athlete_method)
+                if name == "getFriendList":
+                    friend_type = rd.i8() & 0xFF
+                    return athlete_method("onGetFriendList",
+                                          bytes([friend_type]) + struct.pack("<I", 0) + py({}))
 
             # Avatar upload: token for the FilePicker upload, then the chosen file id.
             if name == "requestFilePickerToken":
@@ -2423,6 +2896,8 @@ class GateUDP(asyncio.DatagramProtocol):
         own_gid = account_link.current_gid()
         profile = account_link.get_profile()
         u64 = lambda v: struct.pack("<Q", v)
+        if name in ("requireBaseInfo", "queryPersonalInfo"):        # same level as the lobby badge
+            profile = dict(profile or {}, level=account_level()[0])
         if name == "requireRecordData":
             gid, record_type = rd.u64(), rd.i16()
             data = profile_screens.record_data(profile if gid == own_gid else None, record_type)
@@ -2440,7 +2915,7 @@ class GateUDP(asyncio.DatagramProtocol):
             gid = rd.u64()
             linked = account_link.current() or {}
             info = profile_screens.personal_info(profile if gid == own_gid else None, gid, get_account_name(),
-                                                 get_account_char(), linked.get("portrait", ""))
+                                                 get_account_char(), portrait_file_id())
             return athlete_method("queryPersonalInfoCB", u64(gid) + py(info))
         if name == "queryPersonalSpaceLikeCnt":
             return athlete_method("queryPersonalSpaceLikeCntCB", u64(own_gid) +
@@ -2459,6 +2934,101 @@ class GateUDP(asyncio.DatagramProtocol):
             _score, status, weeks, gifts, _rows = profile_screens.credit(after)
             return (self._grant_props(awards, addr=addr) + athlete_method("requireCreditRewardCB", py(awards)) +
                     athlete_method("syncCreditStatus", struct.pack("<ii", status, weeks) + py(gifts)))
+        return b""
+
+    def _mailbox(self):
+        if os.environ.get("MAIL_RELOAD", "on") != "off":     # pick up lobby_mail.py edits without a relog
+            __import__("importlib").reload(lobby_mail)
+        key = "mail:" + str(account_link.current_gid())
+        return lobby_mail.Mailbox(lambda: load_accounts().get(key), lambda st: save_account(key, st),
+                                  athlete_requests.game_now())
+
+    def _activity_reward(self, addr, name, idx):
+        """getActivityReward(idx) / getDailyActivityReward(idx) / getWeeklyActivityReward(idx)
+        (Athlete.def INT32) -> lobby_events claim; props are settled on RoS_Server, then granted."""
+        import lobby_events
+        now = athlete_requests.game_now()
+        st = lobby_events.activity_state(load_accounts().get(_activity_key()), now)
+        props = []
+        if name == "getActivityReward":
+            calls = lobby_events.activity_claim(st, idx)
+        else:
+            props, calls = lobby_events.tier_claim(st, name == "getWeeklyActivityReward", idx)
+        save_account(_activity_key(), st)
+        print(f"      [BASEAPP] {name}({idx}) -> {'claimed' if calls else 'not claimable'}, props {props}")
+        if not calls:                    # answer anyway, so the panel does not wait on the button
+            return b"".join(athlete_method(n, a) for n, a in lobby_events.activity_sync_calls(st))
+        out = b""
+        if props:
+            if not self._settle(addr, 0, props, f"gateway:activity:{name}:{idx}"):
+                print(f"      [BASEAPP] {name}: items not saved")
+            out += self._grant_props(props, force=True)
+        return out + b"".join(athlete_method(n, a) for n, a in calls)
+
+    def _mail_reply(self, addr, name, rd):
+        """Mail list / detail / claim / delete (client iChat.py + UISystemMail.py)."""
+        py = athlete_requests.py
+        box = self._mailbox()
+        mail_list = lambda: athlete_method("onMailUpdate", py(box.mail_list()) + py([]))
+        if name == "requestMails":
+            return mail_list()
+        if name == "requestMailDetail":
+            mid = rd.i32()
+            found = box.detail(mid)
+            if found is None:
+                return athlete_method("onLoadMailDetailFailed", struct.pack("<i", mid))
+            content, extra = found
+            return athlete_method("onLoadMailDetail", struct.pack("<i", mid) + _bw_blob(content.encode()) + py(extra))
+        if name == "getAwardFromMail":
+            mid = rd.i32()
+            props = box.claim(mid)
+            print(f"      [BASEAPP] mail {mid} claim -> {props}")
+            ids = [p for p, _c in props]
+            if not ids:       # nothing to show: an empty result screen raises and hides the lobby UI
+                return b""
+            if not self._settle(addr, 0, ids, f"gateway:mail:{mid}"):
+                print(f"      [BASEAPP] mail {mid}: items not saved")
+            return self._grant_props(ids, force=True) + athlete_method("onGetAwardFromMail",
+                                                                       py(lobby_mail.award_result(props)))
+        if name == "deleteMail":
+            box.delete([rd.i32()])
+            return mail_list()
+        if name == "delMails":
+            try:
+                ids = client_pickle.int_list(rd.blob())   # never pickle.loads client bytes
+            except pickle.UnpicklingError as e:
+                print(f"      [BASEAPP] delMails refused: {e}")
+                return b""
+            box.delete(ids)
+            return mail_list()
+        return b""
+
+    def _rank_reply(self, addr, name, rd):
+        """Rank / Win / Kill lists and the player's own rank (client ui.UIRankPanel)."""
+        if os.environ.get("MAIL_RELOAD", "on") != "off":
+            __import__("importlib").reload(lobby_rank)
+        gid = account_link.current_gid()
+        profile = account_link.get_profile()
+        nick, _score, _level = profile_screens.base_info(profile, get_account_name())
+        players = [(gid, nick, profile)]
+        if name == "requireRankList":
+            rank_type, _ver, buf_len, next_batch = rd.i32(), rd.i32(), rd.i32(), rd.i8()
+            method = lobby_rank.reply_method(rank_type)
+            print(f"      [BASEAPP] requireRankList type={rank_type} next={next_batch} -> {method}")
+            if method is None:
+                return b""
+            return athlete_method(method, lobby_rank.list_reply_args(rank_type, next_batch, buf_len, players))
+        if name == "requireRankInfo":
+            rank_type = rd.i32()
+            if lobby_rank.kind(rank_type) is None:
+                return b""
+            return athlete_method("onGetPlayerBattleGroundRank", struct.pack("<i", rank_type) +
+                                  athlete_requests.py(lobby_rank.own_info(rank_type, gid, players)))
+        if name == "updatePlayerLBSData":
+            admin, sub = rd.string(), rd.string()
+            return athlete_method("onUpdatePlayerLBSData", _bw_blob(admin.encode()) + _bw_blob(sub.encode()))
+        if name in ("requestLBSRankList", "requestLBSPlayerRank"):
+            return athlete_method("onGetLBSRank", athlete_requests.py([]))
         return b""
 
     def _diamond_props(self, addr):
@@ -2493,7 +3063,8 @@ class GateUDP(asyncio.DatagramProtocol):
     def _complete_private_pay(self, addr, bid):
         """Simulate a successful IAP: onRequirePayOrder then onConfirmPayOrder + balance updates."""
         import uuid as _uuid
-        ingot, bonus = pay_goods.diamonds_for_bid(bid)
+        # Client PayGoods table (AMOUNT, NORMAL_PRESENT) first; the bid heuristic only for unknown ids.
+        ingot, bonus = lobby_topup.grant(bid) or pay_goods.diamonds_for_bid(bid)
         total = ingot + bonus
         sn = _uuid.uuid4().hex
         ref = f"iap.{account_link.ledger_reason(bid)[:24]}.{sn[:12]}"
@@ -2892,6 +3463,15 @@ class GateUDP(asyncio.DatagramProtocol):
         py = athlete_requests.py
         if name == "requestMails":
             return self._mail_update_calls("requestMails")
+        if name == "delMails":                # PY_LIST of mail ids, decoded without running code
+            try:
+                ids = client_pickle.int_list(rd.blob())
+            except pickle.UnpicklingError as e:
+                print(f"      [BASEAPP] delMails refused: {e}")
+                return b""
+            deleted = [mid for mid in ids if self._link_call("delete_mail", mid)]
+            print(f"      [BASEAPP] delMails {ids} -> deleted {deleted}")
+            return self._mail_update_calls("delMails")
         mail_id = rd.i32()
         if name == "requestMailDetail":
             detail = self._link_call("mail_detail", mail_id)
@@ -3026,13 +3606,19 @@ class GateUDP(asyncio.DatagramProtocol):
         # BattleGroundAvatar (Avatar + iDtsEquip/iDtsProp/iDtsPackage/iDtsEquipAppearanceAvatar):
         # plain Avatar lacks dtsBattlegroundPropAppearanceList (PlayerCommonAppear.onInit).
         ent = os.environ.get("BATTLE_ENTITY", "BattleGroundAvatar")
-        cbp_msg, ccp_msg = avatar_create_messages(map_id, char, get_account_name(), ent)
+        outfit = self._session_outfit(addr)
+        print(f"      [BASEAPP] -> battle outfit: body {outfit.body} wear {outfit.wear} weapon {outfit.weapon}")
+        cbp_msg, ccp_msg = avatar_create_messages(map_id, char, get_account_name(), ent, outfit=outfit)
         print(f"      [BASEAPP] -> battle: resetEntities + {ent} (map {map_id}, char {char})")
         self._send_bundle(addr, b"\x04\x00" + cbp_msg + ccp_msg, self._last_client_seq.get(addr), self._last_bf[addr])
         # In-match seam: empty modules/ keeps trigger_battle.txt + battle_flow behaviour unchanged.
         self._start_match_session(addr)
+        try:
+            import match_room; match_room.join(self, addr, get_account_name(), account_link.current_gid(), char, outfit)   # lane 6
+        except Exception as e:
+            print(f"      [ROOM] join failed: {e!r}")
 
-    def _hall_team_member(self, addr):
+    def _hall_team_member(self, addr, in_world=True):
         """HALL_TEAM_MEMBER_CLIENT for our own player: .def defaults plus identity and outfit."""
         D = bwdefs.shared()
         outfit = self._session_outfit(addr)
@@ -3042,12 +3628,24 @@ class GateUDP(asyncio.DatagramProtocol):
               "nickname": bwdefs.blob(get_account_name().encode()),
               "level": struct.pack("<i", 1),
               "characterType": struct.pack("<i", get_account_char()),
-              "inWorld": b"\x01",
+              # UIMain shows the "GAMING" tag on a squad member whose inWorld > 0
+              "inWorld": b"\x01" if in_world else b"\x00",
               # 0 is not a theme prop (iHallTeam.onEnterHallTeam -> getHallThemeScore(0) -> None.PROP_TYPE)
-              "hallThemeID": struct.pack("<i", outfit.theme or hall_theme_id(0)),
+              "hallThemeID": struct.pack("<i", self._hall_theme(addr)[0]),
               "dtsBodyAppearanceList": arr(outfit.body),
-              "dtsWearableAppearanceList": arr(outfit.wear)}
+              "dtsWearableAppearanceList": arr(outfit.wear),
+              # [weapon skin, pose]: UIMain appends the gender and character_scene.initDressInfo reads all
+              # three. {} raised TypeError and [] IndexError, which stopped the client before it set up
+              # the teammate's kick/promote menu and flag.
+              "outGameWeapon": athlete_requests.py(list(next(iter(outfit.out_weapon.values()), (0, 0)))[:2]),
+              "hallVehicleAppearanceList": arr(outfit.hall_vehicle),
+              "nationalFlag": bwdefs.blob(str((account_link.current() or {}).get("national_flag") or "").encode())}
         return b"".join(ov.get(n) or bwdefs.encode_default(t, fd) for n, t, fd in D.resolve("HALL_TEAM_MEMBER_CLIENT")[1])
+
+    def _hall_theme(self, addr):
+        """(lobby theme, display vehicles) of the player at `addr` (their account state has to be loaded)."""
+        outfit = self._session_outfit(addr)
+        return outfit.theme or hall_theme_id(0), list(outfit.hall_vehicle)
 
     def _recent_list(self, addr):
         if addr not in self._recent_got:
@@ -3112,8 +3710,12 @@ class GateUDP(asyncio.DatagramProtocol):
         # Returning-player sign-in (UIDtsSign via huiliu) and friend recall (Recruit Rewards) pop
         # up at login once the date is in 2022; their data is not served, so UIDtsSign stays an
         # empty dim mask that blocks the lobby. Off as well (LOBBY_SWITCHES_OFF, comma list).
+        # EnableEntertainScore: the result screen's Exit / Next then opens the entertainment-score
+        # panel, which reads newEntertainScore etc. from the result row (KeyError on device); the
+        # gateway serves no entertainment score, so Exit / Next take the normal transit panel.
         off = os.environ.get("LOBBY_SWITCHES_OFF", "SysEnableMonthSupply,SysEnableHuiliuRecallSystem,"
-                                                   "EnableRecallPlayer,EnableNewRecallPlayer")
+                                                   "EnableRecallPlayer,EnableNewRecallPlayer,"
+                                                   "EnableEntertainScore")
         for sw in filter(None, (x.strip() for x in off.split(","))):
             calls += athlete_method("onSetSwitches", _bw_blob(sw.encode()) + b"\x00", quiet=True)
         # Weekly supply push (UIMgr.gotoThisWeekSupplyPackage) opens Supply at every login
@@ -3160,10 +3762,34 @@ class GateUDP(asyncio.DatagramProtocol):
         except Exception as e:
             print(f"      [BASEAPP] Warning: onQueryAvailableSupplement stub skipped: {e}")
         try:
-            # iVip.syncVipInfo; draw-result and ad screens read vipInfo["level"] / ["rewardStatus"].
-            calls += athlete_method("syncVipInfo", py({"level": 0, "exp": 0, "rewardStatus": {}}))
+            # iVip.syncVipInfo: vipInfo keyed by card type {0 silver, 1 gold: {level, rewardStatus, activeTime}}
+            # (server/lobby_vip.py). A flat {"level": ...} dict crashed the VIP Privilege screen.
+            calls += athlete_method("syncVipInfo", py(lobby_vip.vip_info(vip_claimed())))
         except Exception as e:
             print(f"      [BASEAPP] Warning: syncVipInfo skipped: {e}")
+        try:
+            # Benefits > Activity Points (ui.UIDailyActivity). The panel reads the client-only
+            # activityProgressList / activityStateList / dailyActivityRewardStateList, which only
+            # the iDailyActivity.sync* methods fill; without them [0] raised KeyError and the panel
+            # could not close. Fresh-day values as the client's resetDailyActivityState builds them:
+            # 14 activities (iterDailyActivityData), 4 daily tiers (30/60/90/120 pts), 2 weekly
+            # tiers (300/600 pts), all const.RewardState.UnmetNeeds (0).
+            # The account's stored state (server/lobby_events.py); a new day starts from those values.
+            if os.environ.get("DAILY_ACTIVITY_SYNC", "on") == "off":    # rule out these calls when the hall fails to load
+                raise RuntimeError("DAILY_ACTIVITY_SYNC=off")
+            import lobby_events
+            act = lobby_events.activity_state(load_accounts().get(_activity_key()), athlete_requests.game_now())
+            for n, a in lobby_events.activity_sync_calls(act):
+                calls += athlete_method(n, a)
+        except Exception as e:
+            print(f"      [BASEAPP] Warning: daily activity sync skipped: {e}")
+        try:     # lane 2: stored sign-in time/level (popup stays closed after today's claim)
+            import lobby_events
+            if os.environ.get("SIGNIN_SYNC", "on") != "off":
+                for n, a in lobby_events.signin_login_calls(load_accounts().get(_signin_key())):
+                    calls += athlete_method(n, a)
+        except Exception as e:
+            print(f"      [BASEAPP] Warning: sign-in sync skipped: {e}")
         try:
             calls += athlete_method("syncMonthPayRebateSpecialAwardInfo", py(month_rebate))
         except Exception as e:
@@ -3175,6 +3801,12 @@ class GateUDP(asyncio.DatagramProtocol):
             calls += athlete_method("onPersonalRecommendStateUpdated", struct.pack("<ii", 0, 0) + py([]) + struct.pack("<i", 0))
         except Exception as e:
             print(f"      [BASEAPP] Warning: onPersonalRecommendStateUpdated skipped: {e}")
+        try:
+            # Activity panel (UILimitWelfareController.on_enter line 73) next reads isTelkosmeOpen,
+            # set only by syncTelkomseOpenStatus(BOOL) (Telkomsel carrier promo): closed.
+            calls += athlete_method("syncTelkomseOpenStatus", b"\x00")
+        except Exception as e:
+            print(f"      [BASEAPP] Warning: syncTelkomseOpenStatus skipped: {e}")
         try:
             calls += training_event.lobby_sync_calls(athlete_method)
         except Exception as e:
@@ -3194,7 +3826,19 @@ class GateUDP(asyncio.DatagramProtocol):
                 calls += athlete_method("onUpdateDtsEmojiList", arr_fn(emoji_ids))
         except Exception as e:
             print(f"      [BASEAPP] Warning: action/emoji sync skipped: {e}")
+        calls += _portrait_sync_call()
         return calls
+
+    def _sync_lobby_portrait(self, addr, bf_key):
+        """Top-left profile avatar: without childBaseClientPropertyList the client has no portrait id;
+        onSetPortrait('0') selects the built-in image for baseCharacterType."""
+        self._enter_addr(addr)
+        fid = portrait_file_id()
+        level, exp = account_level()
+        calls = _portrait_sync_call() + _level_sync_call()      # avatar image + level badge / exp bar
+        self._send_bundle(addr, calls, self._last_client_seq.get(addr), bytes(bf_key))
+        print(f"      [BASEAPP] profile sync fileID={fid!r} baseCharacterType={get_account_char()} "
+              f"level={level} exp={exp}")
 
     def _unlock_all_batch(self, addr, bf_key, pos):
         """Give the test user every appearance item (onAddDtsAppearanceItem), a few per packet."""
@@ -3279,9 +3923,26 @@ class GateUDP(asyncio.DatagramProtocol):
         Footer layout (confirmed: client ACKs our seqs with this):
           [body] [seq u32 LE, if HAS_SEQUENCE] [ack u32 LE ...] [nAcks u8, if HAS_ACKS]"""
         import time as _t, loginapp
+        if self._in_battle.get(addr):
+            try:
+                import match_room; match_room.on_reply(self, addr, body)   # lane 6: state seen by others
+            except Exception as e:
+                print(f"      [ROOM] state relay failed: {e!r}")
         max_body = int(os.environ.get("FRAG_BODY", "1200"))
         if len(body) > max_body:
-            chunks = [body[i:i + max_body] for i in range(0, len(body), max_body)]
+            # Never split a message header across fragments: the client drops the whole bundle
+            # ("Got corrupted message header"). FRAG_SPLIT=blind restores the old fixed cuts.
+            import mercury_frag
+            if os.environ.get("FRAG_SPLIT", "messages") == "blind":
+                chunks = [body[i:i + max_body] for i in range(0, len(body), max_body)]
+                bad = mercury_frag.header_split_points(body, max_body)
+                if bad:
+                    print(f"      [BASEAPP] FRAG_SPLIT=blind cuts {len(bad)} message header(s) at {bad[:8]}")
+            else:
+                chunks = mercury_frag.split_bundle(body, max_body)
+                bad = mercury_frag.header_split_points(body, max_body)
+                if bad:
+                    print(f"      [BASEAPP] fragments cut at message boundaries ({len(bad)} header(s) a fixed cut would split)")
             first = self._seq.get(addr, 0)
             last = first + len(chunks) - 1
             for n, chunk in enumerate(chunks):
@@ -3412,4 +4073,6 @@ if __name__ == "__main__":
     threading.Thread(target=start_http_server, daemon=True).start()
     threading.Thread(target=start_https_server, daemon=True).start()
     threading.Thread(target=start_stub_8080, daemon=True).start()
+    if account_link.enabled() and os.environ.get("SERVER_HEARTBEAT", "on") != "off":
+        server_registry.start()       # this gateway on RoS_Server's Game servers page
     asyncio.run(start_tcp_gate())

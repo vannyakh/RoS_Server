@@ -1,11 +1,13 @@
-# BattleGroundAvatar.requestGetOffPlane()
+# BattleGroundAvatar.markFloor(INT32) -- NOT requestGetOffPlane (corrected 2026-11-27)
 # Source: bigworld_gateway/logs/server.prev-restart.log
 #
 # Framing: msgid 0xBC (extended Avatar cell method; eff=60), length var16,
 # payload = eid u32 + sub_byte + args
-# Wire client index k = 60 + 0x13 = 79; with EXPOSED_SHIFT=2 -> raw exposed index 77 = requestGetOffPlane
+# Wire client index k = 60 + 0x13 = 79 = raw 79 markFloor (Avatar requests are unshifted below wire 172,
+# measured on LDPlayer 2026-11-27). Args ffffffff = INT32 -1; the bundle peer is wire 80 markPos(VECTOR2).
+# The Jump button (requestGetOffPlane) is wire 77, sub byte 0x11. File name kept for history.
 # Entity id in this capture is 0 (own-player cell calls often use 0 in this build's logs)
-# Extra args bytes ffffffff present on the wire despite empty .def signature — keep as observed.
+# The ffffffff bytes are markFloor's INT32 argument.
 
 full_message_hex=
 bc08000000000013ffffffff

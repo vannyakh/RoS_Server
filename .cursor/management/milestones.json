@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updated_at": "2026-11-27T12:54:00+07:00",
+  "updated_at": "2026-11-27T14:20:00+07:00",
   "current_phase": "09",
   "phases": [
     {
@@ -122,12 +122,13 @@
       "phase": "08",
       "name": "Release and deployment",
       "status": "in_progress",
-      "summary": "Release status is recorded and is not ready. Docker returned an engine error. PostgreSQL was not executed. RO-034 still waits on RO-011.",
+      "summary": "Release status is recorded and is not ready. Docker returned an engine error. PostgreSQL was not executed. RO-034 still waits on RO-011. RO-128 completed: main already contains feat/original-client-gateway at 289b7be.",
       "task_ids": [
         "RO-010",
         "RO-034",
         "RO-045",
-        "RO-054"
+        "RO-054",
+        "RO-128"
       ]
     },
     {

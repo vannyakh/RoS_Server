@@ -62,7 +62,7 @@ async def test_mail_goes_to_one_player_and_is_claimed_once(client, key):
     sent = await client.post(f"/api/v1/admin/players/{account}/mail", headers=admin, json=body)
     assert sent.status_code == 201, sent.text
     number = sent.json()["id"]
-    assert number >= 1_000_000 and sent.json()["type"] == 1
+    assert number == 1 and sent.json()["type"] == 1          # the player's game mail id
 
     base = f"/api/v1/gateway/accounts/{UID}"
     assert [m["id"] for m in (await client.get(f"{base}/mail", headers=key)).json()] == [number]
@@ -76,6 +76,45 @@ async def test_mail_goes_to_one_player_and_is_claimed_once(client, key):
     assert (await client.get(f"{base}/state", headers=key)).json()["items"] == [{"prop_id": 120901, "number": 2}]
     audit = (await client.get("/api/v1/admin/audit", headers=admin)).json()
     assert any(row["action"] == "player.mail" and row["target_id"] == account for row in audit)
+
+
+async def test_support_page_mail_reaches_the_game_mailbox(client, key):
+    """Regression: mail sent from the support page must be on the route the game reads
+    (`/gateway/accounts/{uid}/mails`, account_link.list_mails) and claimable there, once."""
+    account = await _player(client, key)
+    admin = await _operator(client, ["support"])
+    body = {"title": "Support gift", "content": "Sorry for the trouble", "props": [[200027, 2], [203011, 1]],
+            "reason": "support ticket"}
+    sent = await client.post(f"/api/v1/admin/players/{account}/mail", headers=admin, json=body)
+    assert sent.status_code == 201, sent.text
+    number = sent.json()["id"]
+
+    base = f"/api/v1/gateway/accounts/{UID}"
+    listed = (await client.get(f"{base}/mails", headers=key)).json()["mails"]
+    mine = [m for m in listed if m["mail_id"] == number]
+    assert mine and mine[0]["title"] == "Support gift" and not mine[0]["claimed"]
+    assert sorted((a["prop_id"], a["number"]) for a in mine[0]["attachments"]) == [(200027, 2), (203011, 1)]
+    detail = (await client.get(f"{base}/mails/{number}", headers=key)).json()
+    assert detail["content"] == "Sorry for the trouble"
+
+    first = (await client.post(f"{base}/mails/{number}/claim", headers=key, json={})).json()
+    second = (await client.post(f"{base}/mails/{number}/claim", headers=key, json={})).json()
+    assert first["replayed"] is False and second["replayed"] is True
+    items = {i["prop_id"]: i["number"] for i in (await client.get(f"{base}/state", headers=key)).json()["items"]}
+    assert items == {200027: 2, 203011: 1}
+
+    shown = (await client.get(f"/api/v1/admin/players/{account}/mail", headers=admin)).json()
+    assert [(m["id"], m["claimed"]) for m in shown] == [(number, True)]
+    in_admin_mails = (await client.get(f"/api/v1/admin/mails?account_id={account}", headers=admin)).json()["mails"]
+    assert [m["mail_id"] for m in in_admin_mails] == [number]
+
+
+async def test_support_page_mail_that_does_not_fit_the_game_mailbox_is_refused(client, key):
+    account = await _player(client, key)
+    admin = await _operator(client, ["support"])
+    body = {"title": "T" * 70, "content": "x", "reason": "too long title"}   # support page allows 80, game 64
+    refused = await client.post(f"/api/v1/admin/players/{account}/mail", headers=admin, json=body)
+    assert refused.status_code == 422, refused.text
 
 
 async def test_mail_needs_the_economy_permission(client, key):

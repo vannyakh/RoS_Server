@@ -1,0 +1,135 @@
+[
+  {
+    "id": 1,
+    "type": 0,
+    "title": "Welcome to the private server",
+    "sender": "RoS Server",
+    "content": "Welcome back, survivor!\nThis is a preservation server for Rules of Survival 1.610637.617289. Lobby, store, supply, wardrobe and matches are being restored step by step.",
+    "props": [],
+    "deadline_days": 0
+  },
+  {
+    "id": 2,
+    "type": 1,
+    "title": "Comeback gift",
+    "sender": "RoS Server",
+    "content": "Thanks for playing. Here is a small gift to get you started.",
+    "props": [
+      [
+        120901,
+        1
+      ],
+      [
+        2990236,
+        1
+      ],
+      [
+        250175,
+        1
+      ]
+    ],
+    "deadline_days": 0
+  },
+  {
+    "id": 3,
+    "type": 1,
+    "title": "ITEMS tab test pack",
+    "sender": "RoS Server",
+    "content": "Test items for every Depot > ITEMS tab: one item skin per slot (helmets, vests, backpacks, parachutes, boxes...), gliders, planes and effects.",
+    "props": [
+      [
+        103015,
+        1
+      ],
+      [
+        103020,
+        1
+      ],
+      [
+        103021,
+        1
+      ],
+      [
+        103064,
+        1
+      ],
+      [
+        103065,
+        1
+      ],
+      [
+        104001,
+        1
+      ],
+      [
+        107900,
+        1
+      ],
+      [
+        107901,
+        1
+      ],
+      [
+        107902,
+        1
+      ],
+      [
+        108201,
+        1
+      ],
+      [
+        108202,
+        1
+      ],
+      [
+        108203,
+        1
+      ],
+      [
+        109000,
+        1
+      ],
+      [
+        109001,
+        1
+      ],
+      [
+        109002,
+        1
+      ],
+      [
+        109200,
+        1
+      ],
+      [
+        109500,
+        1
+      ],
+      [
+        104932,
+        1
+      ],
+      [
+        104935,
+        1
+      ],
+      [
+        106057,
+        1
+      ],
+      [
+        106059,
+        1
+      ],
+      [
+        108900,
+        1
+      ],
+      [
+        139008,
+        1
+      ]
+    ],
+    "deadline_days": 0
+  }
+]

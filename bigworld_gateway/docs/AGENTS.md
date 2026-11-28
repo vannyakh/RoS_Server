@@ -17,6 +17,11 @@ Agents working in this repo emulate **Rules of Survival 1.610637.617289** (dead 
 3. **PLAY path:** server list → **`IP:25000`** Mercury (UDP primary). Port `20001` is auxiliary.
 4. **Dual test:** every iteration logs results for **LDPlayer** (`emulator-5554`) and **phone** when connected.
 5. **Minimal diffs** in `loginapp.py` / `ros_server.py`; capture evidence in `harness/captures/` and `harness/iteration_log.jsonl`.
+6. **Two copies, kept in sync.** This repository (RosGG-Server-v2) is also the `bigworld_gateway/` folder of RoS_Server, the copy that runs the game and its API. Changes move both ways with RoS_Server's `scripts/sync_rosgg_gateway.py`. The tool takes RoS_Server changes only when this copy did not change the same file, and a file changed on both sides stops for a human merge.
+   - Before you start, ask whether RoS_Server has gateway changes waiting. Commit RoS_Server's pushed files as `Sync from RoS_Server: <what>`.
+   - After you commit here, tell the RoS_Server side to `pull`.
+   - Gateway tests live in RoS_Server (`tests/compatibility/gateway/`). Run them there before you push a change here.
+7. **One gateway on the device.** This copy and RoS_Server's both bind UDP/TCP 25000, DNS 53 and HTTP/HTTPS 80/443. Check which one is running before a device run, and take `tools/ldplayer_lock.ps1` in both copies. Do not stop the other copy's gateway yourself.
 
 ## Iteration loop (each cycle)
 

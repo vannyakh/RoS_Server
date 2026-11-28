@@ -51,27 +51,24 @@ def test_try_pickup_from_capture(reqs, capture_hex, logs):
     assert lines == []
 
 
-def test_request_get_off_plane_shift_and_length_quirk(reqs, capture_hex, logs):
-    """Wire sub 0x13 → client idx 79 → EXPOSED_SHIFT → raw 77; keep ffffffff args.
-
-    RO-057 capture note: .def signature is empty but the gateway logged payload
-    ``0000000013ffffffff`` (args=ffffffff). The comment file's ``full_message_hex``
-    writes length ``0800`` while that payload is 9 bytes — honor the logged
-    payload / ``bundle_peer`` form, not the inconsistent length nibble.
+def test_captured_0xbc_0x13_is_mark_floor_not_jump(reqs, capture_hex, logs):
+    """Wire sub 0x13 -> client idx 79 = raw 79 markFloor(INT32): the 4 arg bytes ffffffff are its
+    INT32 -1, and its bundle peer (wire 80, 8 bytes) is markPos(VECTOR2). Avatar requests are
+    unshifted below wire 172 (measured on LDPlayer 2026-11-27); the Jump button is wire 77.
+    The comment file's ``full_message_hex`` writes length ``0800`` while that payload is 9 bytes:
+    honor the logged payload form, not the inconsistent length nibble.
     """
     lines, log = logs
     frame_doc = capture_hex("request_get_off_plane.hex.txt")
     assert frame_doc == bytes.fromhex("bc08000000000013ffffffff")
 
-    # Payload form as logged next to the decode line / extract _captures.
     payload = bytes.fromhex("0000000013ffffffff")
     call = reqs.decode(0xBC, payload, log=log)
     assert call is not None
     assert call.entity_id == 0
     assert call.entity == "BattleGroundAvatar"
-    assert call.method == "requestGetOffPlane"
-    assert call.args == b"\xff\xff\xff\xff"
-    assert call.verified is True
+    assert call.method == "markFloor"
+    assert call.args == bytes.fromhex("ffffffff")
 
     # Framed with a length that matches the 9-byte payload (capture length quirk).
     framed = bytes([0xBC]) + struct.pack("<H", 9) + payload
@@ -81,7 +78,7 @@ def test_request_get_off_plane_shift_and_length_quirk(reqs, capture_hex, logs):
     # Length-8 framing drops the last 0xff; still decodes the method name safely.
     call3 = reqs.decode_frame(frame_doc, log=log)
     assert call3 is not None
-    assert call3.method == "requestGetOffPlane"
+    assert call3.method == "markFloor"
     assert call3.args == b"\xff\xff\xff"
     assert lines == []
 

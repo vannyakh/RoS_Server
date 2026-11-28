@@ -136,6 +136,9 @@ class SoloFillModule:
         if self.session.closed:
             return self
         self.session.solo_fill = self.config
+        flow = getattr(self.session, "flow", None)
+        if flow is not None:
+            flow.set_slots(humans=self.config.human_count, bots=self.config.bot_count)
         self.session._log(
             "      [BATTLE] solo_fill human=%s bots=%s warmup=%.1fs alive_num=%s map_id=%s mode_id=%s"
             % (

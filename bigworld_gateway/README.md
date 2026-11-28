@@ -1,7 +1,7 @@
 # BigWorld gateway (RoS open play server v2)
 
 Preservation/research server for Rules of Survival 1.610637.617289 (BigWorld Mercury, UDP/TCP :25000).
-Imported from RosGG-Server-v2 (commit 48522b6). This folder is the gateway for the original client: `server/ros_server.py` handles login, lobby, HTTP/HTTPS/DNS targets and the UDP/TCP gates. It runs on its own, separate from the FastAPI app in `app/`, and uses the repository `.venv`.
+Imported from RosGG-Server-v2 and kept in sync with it; the last synced RosGG commit is in `UPSTREAM_SYNC.json` (see "Sync with RosGG-Server-v2" below). This folder is the gateway for the original client: `server/ros_server.py` handles login, lobby, HTTP/HTTPS/DNS targets and the UDP/TCP gates. It runs on its own, separate from the FastAPI app in `app/`, and uses the repository `.venv`.
 
 ```
 bigworld_gateway/
@@ -20,7 +20,7 @@ bigworld_gateway/
     scripts/               adb install/setup/DNS scripts (point at ../../server/...)
     frida/                 read-only inspection payloads
   tools/                   probes, test cycles (bash, need adb + frida)
-  docs/                    findings (LOBBY_FINDINGS.md), original README, decompile notes
+  docs/                    findings (LOBBY_FINDINGS.md), gameplay reference, decompile notes
   logs/                    server/dns logs
 ```
 
@@ -53,6 +53,40 @@ pattern are in `docs/LOBBY_FINDINGS.md`. Character type is set in `server/saved_
 (`20001` = normal male hero, `20002` = normal female hero). Any other type (10001, 10002, the
 30001 robot placeholder, unknown values) is mapped to the hero of the saved gender by
 `server/hero_rules.py`.
+
+## Gameplay documentation (build 617289)
+
+Original ROS gameplay (player-facing behaviour), a **74-function traceability matrix** (client evidence + private-server status), and implementation phases:
+
+| Doc | Purpose |
+|-----|---------|
+| [docs/GAMEPLAY_REFERENCE_617289.md](docs/GAMEPLAY_REFERENCE_617289.md) | Version-verified feature reference |
+| [docs/gameplay_function_matrix.json](docs/gameplay_function_matrix.json) | Per-function `server_status` and blockers |
+| [docs/SERVER_GAMEPLAY_ROADMAP.md](docs/SERVER_GAMEPLAY_ROADMAP.md) | Lobby → match → BR priorities |
+| [docs/LOBBY_FINDINGS.md](docs/LOBBY_FINDINGS.md) | Wire-protocol and harness evidence |
+
+Regenerate the matrix after editing `docs/gameplay_matrix_evidence.yaml`: `python scratch/build_gameplay_matrix.py` (from repo root).
+
+## Sync with RosGG-Server-v2
+Another team develops the gateway in RosGG-Server-v2. This folder is the copy that runs the
+real game, so their work is pulled in here and our fixes are pushed back. Run from the
+RoS_Server root, with `--source` (or `ROSGG_SERVER_V2`) pointing at a RosGG-Server-v2 checkout:
+
+```powershell
+python scripts/sync_rosgg_gateway.py status --source <RosGG-Server-v2>
+python scripts/sync_rosgg_gateway.py pull --source <RosGG-Server-v2> --fetch --ref origin/main
+python scripts/sync_rosgg_gateway.py push --source <RosGG-Server-v2>
+```
+
+- Per file it compares the last synced RosGG commit (`UPSTREAM_SYNC.json`), the RosGG commit
+  being pulled and the file here. Files changed only in RosGG are taken, files changed only here
+  are kept, files changed on both sides are reported as conflicts and left alone. The recorded
+  commit moves forward only when no conflict is left.
+- `push` copies our changed gateway files into the RosGG working tree for the other team to
+  commit. It never overwrites uncommitted RosGG work.
+- Keys, `.env`, captures, logs, `saved_accounts.json` and APKs never cross.
+- Nothing is committed in either repository. Run the gateway tests
+  (`pytest tests/compatibility/gateway tests/unit -k gateway`) and commit by hand.
 
 ## Next: real launcher
 A single GUI/CLI launcher can wrap `start.cmd` + `install_ros.ps1`: detect adb device,

@@ -213,6 +213,19 @@ Reads need `store.read`; writes need `players.economy`; writes are audited and a
 
 Web skin purchases now store `{"skin": <code>}` in the ledger row's details.
 
+### Game servers (original client)
+
+Each original-client gateway process reports itself; the game's server-select screen and the admin Game servers page read the same rows (`gateway_servers`).
+
+| Method | Path | Body / query | Response |
+| --- | --- | --- | --- |
+| POST | `/api/v1/gateway/servers/heartbeat` | Gateway key. `server_key` (`^[a-z0-9][a-z0-9_-]{0,31}$`), `name` (`^[A-Za-z0-9_.-]{1,32}$`, used only on first registration), `host`, `port` (1–65535), `version`, `players_online`, `players_in_match`, optional `started_at` | `{"server_key", "name", "host", "port", "zone", "group_id", "status", "listed"}`. `status` is the effective state: the operator's value, or for `auto` `maintenance` when no heartbeat for 30 s, else `full` at ≥95 % of capacity, `busy` at ≥60 %, else `smooth`. 422 for a name with spaces or a bad field. |
+| GET | `/api/v1/gateway/servers` | Gateway key | `{"servers": [entry]}`: listed servers only, by zone then key. The gateway builds `server_list_ad.txt` from it. |
+| GET | `/api/v1/admin/game-servers` | `servers.read` | `{"servers": [entry + configured_status, capacity, version, live, players_online, players_in_match, started_at, last_seen_at], "players_online", "players_in_match"}`. Counts are 0 for a server that is not live. |
+| PATCH | `/api/v1/admin/game-servers/{server_key}` | `servers.manage`. Any of `name`, `status` (`auto`, `smooth`, `busy`, `full`, `maintenance`), `capacity` (1–100000), `listed`, `zone`, plus `reason` (3–240) | The updated admin row. Audited as `server.update`. 404 unknown key. |
+
+Metrics: `ros_gateway_servers_live`, `ros_gateway_players_online`, `ros_gateway_players_in_match`.
+
 ### System mail (original client)
 
 Operators send mail to original-client players; the gateway serves it to the client's mail screen (`UISystemMail`, see `bigworld_gateway/docs/MAIL_FINDINGS.md`). Rows are `gateway_mails` (revision `9e9814d7f549`). `mail_id` is the client's INT32 mailID: a sequence per gateway identity that starts at 1.
@@ -236,6 +249,8 @@ Operator routes (same bearer auth as the store administration routes):
 | --- | --- | --- |
 | POST | `/api/v1/admin/mails` | Needs `players.economy`. Body `account_ids` (1–200 RoS_Server account ids), `title` (1–64), `content` (0–2000, default ""), `sender` (1–32, default `System`), `attachments` (at most 6 `{"prop_id": int >= 0, "number": 1..999}`), `gold` (0–10,000,000), `deadline_days` (1–365, default 30), `reason` (3–240). 201 `{"sent": [{"account_id", "mail_id"}], "skipped": [account_id]}`: one mail per account with a gateway identity; accounts without one (web accounts, unknown ids) are skipped. Repeated ids are sent once. Each sent mail is audited as `player.mail` and announced on the live feed as `player.changed` with `change` `mail`. 422 for more than 6 attachments or an out-of-range field. |
 | GET | `/api/v1/admin/mails?account_id=` | Needs `players.read`. `{"mails": [...]}`, newest first, every mail of that account including claimed, deleted and expired: MailView plus `content`, `account_id`, `deleted`, `expired`, `sent_by`, `read_at`, `claimed_at`, `deleted_at`. Empty for an account without a gateway identity. |
+| POST | `/api/v1/admin/players/{account_id}/mail` | Support-page form for one player. Needs `players.economy`. Body `title`, `sender` (default `RoS Server`), `content` (required), `props` (list of `[prop_id, count]`), `deadline_days` (0 = longest allowed, 365), `reason` (3–240). The mail goes into the same game mailbox as `POST /api/v1/admin/mails`, so the client lists and claims it through the `/mails` routes above. 201 `{"id", "type", "title", "sender", "content", "props", "sent_at", "deadline", "claimed"}`, where `id` is the player's game `mail_id`. 404 unknown account; 422 for a web account without a gateway identity, or a mail that breaks the game mailbox limits (title over 64, sender over 32 characters, more than 6 props). |
+| GET | `/api/v1/admin/players/{account_id}/mail` | Needs `players.read`. That player's game mail, newest first, in the same shape as the POST answer. |
 
 `bigworld_gateway/server/account_link.py` calls the gateway routes as `list_mails()` (list of MailView, or None when not linked/down), `mail_detail(mail_id)` (detail dict, `{"_error": 404, "detail": ...}`, or None), `claim_mail(mail_id)` (claim body, `{"_error": <status>, ...}`, or None) and `delete_mail(mail_id)` (True when deleted, else False). A 204 answer reaches `_call` as `{}`.
 

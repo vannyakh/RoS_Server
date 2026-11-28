@@ -51,6 +51,15 @@ DEFAULT_BOT_COUNT = 9
 DEFAULT_HUMAN_COUNT = 1
 
 
+def client_entities():
+    """Send the Robot createEntity to the client (BOT_CLIENT_ENTITIES=on).
+
+    Off by default: on LDPlayer (2026-11-27) the client crashed with SIGSEGV on NeoXMain right after
+    the 9 Robot creates (seq 102-111, never ACKed). Until an accepted bot entity form is found, bots
+    are server-side only: combatants with runtime state that count in aliveNum, slots and placement."""
+    return os.environ.get("BOT_CLIENT_ENTITIES", "off") == "on"
+
+
 def _u32(v):
     return struct.pack("<I", int(v))
 
@@ -232,7 +241,8 @@ class BotModule:
                 direction=(yaw, 0.0, 0.0),
                 values=values,
             )
-            self.session.enqueue(body)
+            if client_entities():
+                self.session.enqueue(body)
             self.bot_ids.append(eid)
             self.positions.append(pos)
             bot_runtime = pe.new_bot_player(
@@ -264,9 +274,13 @@ class BotModule:
             )
         )
 
+        flow = getattr(self.session, "flow", None)
+        if flow is not None:
+            flow.set_slots(bots=n)
+            flow.bots_ready = True       # server-side initialisation done; bots send no client acks
         self.created = True
         self.session.bots_module = self
-        self.session.close = self._close_with_cleanup
+        self.session.on_close(self.remove)
         self.session._log(
             "      [BATTLE] bots module spawn n=%s eids=%s..%s aliveNum=%s seed=%s type=%s (~%dB create)"
             % (
@@ -283,7 +297,7 @@ class BotModule:
     def remove(self):
         if self.removed:
             return
-        if self.created and not self.session.closed:
+        if self.created and not self.session.closed and client_entities():
             for eid in self.bot_ids:
                 self.session.enqueue(bf.leave_aoi(eid))
         self.removed = True
@@ -305,7 +319,11 @@ def register(session):
     before we read bot_count and update aliveNum.
     """
     mod = BotModule(session)
-    session.schedule(0.0, _deferred_start, mod)
+    flow = getattr(session, "flow", None)
+    if flow is not None:                 # after the space exists: aliveNum is a space property
+        flow.on_enter("waiting", lambda _stage: mod.start())
+    else:
+        session.schedule(0.0, _deferred_start, mod)
     return mod
 
 

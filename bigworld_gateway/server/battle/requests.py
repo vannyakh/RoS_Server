@@ -41,8 +41,8 @@ PLANE_ENTITY_ID = int(os.environ.get("PLANE_ENTITY_ID", "20002"))
 PROP_ID_BASE = int(os.environ.get("PROP_ENTITY_ID_BASE", "30000"))
 
 # Avatar client table vs raw .def (LOBBY_FINDINGS / RO-057).
-EXPOSED_SHIFT = int(os.environ.get("EXPOSED_SHIFT", "2"))
-EXPOSED_SHIFT_FROM = int(os.environ.get("EXPOSED_SHIFT_FROM", "60"))
+# One shift rule for every decoder: battle_flow holds it with the evidence.
+from battle_flow import EXPOSED_SHIFT, EXPOSED_SHIFT_FROM  # noqa: E402
 
 # Suspected client position path; layout not verified for this task.
 CLIENT_INTERFACE_POSITION_MSG = 3

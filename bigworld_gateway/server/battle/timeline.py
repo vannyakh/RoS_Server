@@ -111,3 +111,17 @@ class MatchTimeline:
     @property
     def finished(self):
         return self._finished
+
+
+def shared_timeline(session, *module_attrs):
+    """The match's one timeline: ``session.timeline`` (MatchSession owns it), else the timeline of
+    the first listed module already attached to the session, else None."""
+    timeline = getattr(session, "timeline", None)
+    if timeline is not None:
+        return timeline
+    for attr in module_attrs:
+        mod = getattr(session, attr, None)
+        timeline = getattr(mod, "timeline", None) if mod is not None else None
+        if timeline is not None:
+            return timeline
+    return None

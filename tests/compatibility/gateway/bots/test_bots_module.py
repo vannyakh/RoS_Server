@@ -207,7 +207,8 @@ def test_auto_load_includes_bots(sent, clock, bf):
     names = [Path(getattr(m, "__file__", "")).name for m in loaded]
     assert "bots.py" in names
     assert "solo_fill.py" in names
-    # Deferred bots start after load; FakeClock needs advance(0).
+    # Bots start with the waiting stage, once the match starts (client in the world).
+    session.start_match("test")
     clock.advance(0.0)
     bots = getattr(session, "bots_module", None)
     assert bots is not None
@@ -227,3 +228,17 @@ def test_remaining_issues_document_walk_and_live_ops(bots_mod):
     assert "0x58" in joined or "walk" in joined
     assert "combat" in joined or "kill" in joined
     assert "ldplayer" in joined or "unverified" in joined or "ops" in joined
+
+
+def test_default_keeps_bots_server_side(session, sent, bots_mod, solo_fill_mod, bf, monkeypatch):
+    """Default (BOT_CLIENT_ENTITIES off): no Robot createEntity or leaveAoI reaches the client, but the
+    bots still count in aliveNum and in the match flow's slots."""
+    monkeypatch.setenv("BOT_CLIENT_ENTITIES", "off")
+    solo_fill_mod.register(session)
+    mod = _start_bots(bots_mod, session)
+    assert len(mod.bot_ids) == 9
+    assert all(body[:1] != b"\x0b" for body in sent)          # no enterAoI / createEntity
+    assert sent == [bf.update_property("BattleGroundSpace", "aliveNum", bf.i32(10), eid=session.space_id)]
+    assert session.flow.slots == 10
+    mod.remove()
+    assert len(sent) == 1                                       # no leaveAoI for entities never sent

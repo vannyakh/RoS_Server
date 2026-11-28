@@ -1,0 +1,109 @@
+# Rules of Survival — gameplay function manifest (checklist §15)
+# Build target: 1.610637.617289 — one row per function in gameplay_function_matrix.json
+build: "1.610637.617289"
+package: com.netease.chiji
+
+categories:
+  - id: Account_and_Lobby
+    functions:
+      - { id: login, name: Login }
+      - { id: server_selection, name: Server selection }
+      - { id: player_profile, name: Player profile }
+      - { id: character_customization, name: Character customization }
+      - { id: friends, name: Friends }
+      - { id: party_creation, name: Party creation }
+      - { id: inventory, name: Inventory }
+      - { id: shop, name: Shop }
+      - { id: missions, name: Missions }
+      - { id: events, name: Events }
+      - { id: settings, name: Settings }
+
+  - id: Matchmaking
+    functions:
+      - { id: mode_selection, name: Mode selection }
+      - { id: map_selection, name: Map selection }
+      - { id: queue, name: Queue }
+      - { id: room_assignment, name: Room assignment }
+      - { id: waiting_area, name: Waiting area }
+      - { id: ready_countdown, name: Ready/countdown }
+      - { id: match_start, name: Match start }
+
+  - id: Aircraft_and_Landing
+    functions:
+      - id: flight_route
+        name: Flight route
+      - id: jump
+        name: Jump
+      - id: freefall
+        name: Freefall
+      - id: parachute
+        name: Parachute
+      - id: landing
+        name: Landing
+      - id: team_coordination_landing
+        name: Team coordination (landing)
+
+  - id: Movement_and_Camera
+    functions:
+      - { id: walk, name: Walk }
+      - { id: sprint, name: Sprint }
+      - { id: jump_move, name: Jump }
+      - { id: crouch, name: Crouch }
+      - { id: prone, name: Prone }
+      - { id: crawl, name: Crawl }
+      - { id: swim, name: Swim }
+      - { id: free_look, name: Free look }
+      - { id: ads, name: ADS }
+      - { id: camera_rotation, name: Camera rotation }
+
+  - id: Weapons_and_Combat
+    functions:
+      - { id: equip_weapon, name: Equip }
+      - { id: fire, name: Fire }
+      - { id: reload, name: Reload }
+      - { id: fire_mode, name: Fire mode }
+      - { id: recoil, name: Recoil }
+      - { id: projectile_hit_detection, name: Projectile/hit detection }
+      - { id: damage, name: Damage }
+      - { id: attachments, name: Attachments }
+      - { id: grenades, name: Grenades }
+      - { id: elimination, name: Elimination }
+
+  - id: Health_and_Inventory
+    functions:
+      - { id: health, name: Health }
+      - { id: armor, name: Armor }
+      - { id: helmet, name: Helmet }
+      - { id: healing, name: Healing }
+      - { id: knockdown, name: Knockdown }
+      - { id: revive, name: Revive }
+      - { id: pickup, name: Pickup }
+      - { id: drop, name: Drop }
+      - { id: backpack_capacity, name: Backpack capacity }
+      - { id: loot_crates, name: Loot crates }
+
+  - id: World_and_Vehicles
+    functions:
+      - { id: map, name: Map }
+      - { id: minimap, name: Minimap }
+      - { id: waypoints, name: Waypoints }
+      - { id: safe_zone, name: Safe zone }
+      - { id: zone_damage, name: Zone damage }
+      - { id: vehicle_spawn, name: Vehicle spawn }
+      - { id: driving, name: Driving }
+      - { id: passengers, name: Passengers }
+      - { id: collision, name: Collision }
+      - { id: vehicle_damage, name: Vehicle damage }
+
+  - id: Team_and_Results
+    functions:
+      - { id: team_markers, name: Team markers }
+      - { id: voice_chat, name: Voice chat }
+      - { id: quick_chat, name: Quick chat }
+      - { id: spectate, name: Spectate }
+      - { id: survivor_check, name: Survivor check }
+      - { id: victory, name: Victory }
+      - { id: placement, name: Placement }
+      - { id: statistics, name: Statistics }
+      - { id: rewards, name: Rewards }
+      - { id: return_to_lobby, name: Return to lobby }

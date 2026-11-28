@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from app.api.v1 import original_catalog
 from app.api.v1 import admin_mail
+from app.api.v1 import admin_servers
 from app.api.v1 import admin_access, assets, store, admin_maps, admin_support, auth, cosmetics, gateway, health, inventory, items, lobby, match_records, maps, matches, players, weapons
 from app.networking.admin_socket import router as admin_socket_router
 from app.networking.websocket import router as websocket_router
@@ -28,6 +29,7 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(assets.admin, prefix="/api/v1")
     app.include_router(store.router, prefix="/api/v1")
     app.include_router(admin_mail.router, prefix="/api/v1")
+    app.include_router(admin_servers.router, prefix="/api/v1")
     app.include_router(weapons.router, prefix="/api/v1")
     app.include_router(original_catalog.router, prefix="/api/v1")
     app.include_router(websocket_router)

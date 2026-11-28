@@ -12,6 +12,7 @@ from supply_helpers import ADDR, read_blob, read_py
 LOGIN_ORDER = [
     "syncServerTime", "syncServerTimeZone",
     "onSetSwitches", "onSetSwitches", "onSetSwitches", "onSetSwitches",       # LOBBY_SWITCHES_OFF
+    "onSetSwitches",                    # EnableEntertainScore off (result screen Exit / Next)
     "onUpdateAlreadyShowSupplyID",
     "onUpdateDtsHallThemeID",
     "onUpdateRecentGotPropIDList",      # Depot > Recent at login (RO-118); not supply-related
@@ -21,12 +22,18 @@ LOGIN_ORDER = [
     "onQueryAvailableSupplement",
     "onUpdateBuySupplementCntDict",
     "syncVipInfo",
+    # Event panel activities (RosGG-Server-v2 82fb509, server/lobby_events.py)
+    "syncDailyActivity", "syncDailyActivityRewardState",
+    "syncWeeklyActivity", "syncWeeklyActivityRewardState",
+    "syncActivityProgress", "syncActivityState",
     "syncMonthPayRebateSpecialAwardInfo",
     "onPersonalRecommendStateUpdated",
+    "syncTelkomseOpenStatus",
     "_OnBraveBookDataChanged", "onSyncSpecTrainExp", "onSyncSpecTrainRewardMain",
     "_OnBraveBookTaskDataChanged",
     "onSyncSwitches", "onSetSwitches", "onSyncSwitches", "onSetSwitches",
     "syncDtsInGameActionAppearanceIDs", "syncDtsInGameActionSuitAppearanceIDs", "onUpdateDtsEmojiList",
+    "onSetPortrait",
 ]
 SUPPLY_METHODS = {"onUpdateAlreadyShowSupplyID", "onQueryAvailableSupplement",
                   "onUpdateBuySupplementCntDict", "syncVipInfo"}

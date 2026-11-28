@@ -16,9 +16,21 @@ if str(GATEWAY_SERVER) not in sys.path:
 GATEWAY_MODULES = ("ros_server", "account_link", "athlete_requests", "supply_cache", "bwdefs")
 
 
+def _gateway_module_names():
+    """GATEWAY_MODULES plus every other loaded module from bigworld_gateway/server. A module left
+    loaded (training_event, lobby_events, ...) would keep the previous test's athlete_requests, so
+    a patch on the fresh athlete_requests (game_now) would not reach it."""
+    names = set(GATEWAY_MODULES)
+    for name, module in list(sys.modules.items()):
+        path = getattr(module, "__file__", None)
+        if path and Path(path).resolve().is_relative_to(GATEWAY_SERVER):
+            names.add(name)
+    return names
+
+
 @pytest.fixture(autouse=True)
 def fresh_gateway_modules():
-    saved = {name: sys.modules.pop(name, None) for name in GATEWAY_MODULES}
+    saved = {name: sys.modules.pop(name, None) for name in _gateway_module_names()}
     yield
     for name, module in saved.items():
         sys.modules.pop(name, None)

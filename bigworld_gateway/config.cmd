@@ -1,7 +1,7 @@
 @echo off
 rem ===== RoS private server config (edit this) =====
 rem LAN IP of this PC (must match what the phone/emulator uses as DNS + game server)
-if "%ROS_PC_IP%"=="" set ROS_PC_IP=192.168.180.137
+if "%ROS_PC_IP%"=="" set ROS_PC_IP=192.168.1.21
 rem Fixed lobby test account. Leave EMPTY for real new-player behaviour: a new device account
 rem gets the in-game character screen (normal male/female human, starter outfit, no hero).
 rem Set it (e.g. TestPlayer) only to skip that screen for quick tests.
@@ -31,7 +31,8 @@ rem 2022-04-20 too (setup_emulator.ps1 after each cold start).
 if "%GAME_DATE%"=="" set GAME_DATE=2022-04-20 12:00:00
 rem SysEnableMonthSupply OFF avoids Supreme/Helios art on the Looks tab on first Supply open.
 rem To test the monthly Supreme page again, drop SysEnableMonthSupply from this list.
-set LOBBY_SWITCHES_OFF=SysEnableHuiliuRecallSystem,EnableRecallPlayer,EnableNewRecallPlayer
+rem EnableEntertainScore OFF: the result screen's Exit / Next otherwise open a panel the gateway has no data for.
+set LOBBY_SWITCHES_OFF=SysEnableHuiliuRecallSystem,EnableRecallPlayer,EnableNewRecallPlayer,EnableEntertainScore
 rem Supply: full catalogue at login; strip IS_THIS_WEEK so weekly Supreme boxes do not own the UI.
 rem Do not set SUPPLY_PREACK_WEEKLY_PUSH=1 (stores Supreme box 9778 and pins the wrong banner).
 set SUPPLY_CATALOG_AT_LOGIN=1

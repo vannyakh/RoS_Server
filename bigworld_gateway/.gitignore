@@ -10,6 +10,7 @@ __pycache__/
 *.pyc
 *.bak
 server/saved_accounts.json
+server/social.json
 # large binaries: attach to GitHub Releases instead
 client/apk/*.apk
 # local settings / secrets
@@ -29,3 +30,6 @@ client/patch_tools/jdk/
 client/patch_tools/neox_rotor_key.txt
 client/patches/CURRENT.local.md
 __pycache__/
+
+# Local match results (runtime data, results.py when not linked)
+server/match_results.jsonl

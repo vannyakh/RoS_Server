@@ -17,7 +17,7 @@ from pathlib import Path
 
 import battle_flow as bf
 import bwdefs
-from battle.timeline import MatchTimeline, load_phase_durations
+from battle.timeline import MatchTimeline, load_phase_durations, shared_timeline
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DEFAULT_SPACE_PATH = DATA_DIR / "space.json"
@@ -87,6 +87,18 @@ def build_space_values(defaults, *, stage_start, plane_id):
     }
 
 
+# The client counts "Starting in N s" down from its own mapData PREPARE_TIME (80 s, LOBBY_FINDINGS)
+# measured from gameStageStartTime in serverTime. To show exactly the waiting length W, the stage
+# start is placed PREPARE_TIME - W seconds before now. SPACE_PREPARE_TIME overrides 80.
+PREPARE_TIME = float(os.environ.get("SPACE_PREPARE_TIME", "80"))
+
+
+def countdown_stage_start(session, timeline):
+    now = session.server_time() if hasattr(session, "server_time") else 1.0
+    warmup = float(timeline.durations.get("warmup", 0.0)) if timeline is not None else 0.0
+    return now - max(0.0, PREPARE_TIME - warmup)
+
+
 class SpaceModule:
     """Owns the BattleGroundSpace entity for one MatchSession."""
 
@@ -95,16 +107,19 @@ class SpaceModule:
         self.space_id = session.alloc_space_id()
         self.plane_id = session.alloc_plane_id()
         self.defaults = _load_space_defaults(space_data_path)
-        self.timeline = timeline if timeline is not None else MatchTimeline(load_phase_durations())
+        self.timeline = timeline if timeline is not None else (
+            shared_timeline(session) or MatchTimeline(load_phase_durations()))
         self.created = False
         self.removed = False
-        # serverTime at create ~= 1.0 when setGameTime ticks start at match enter.
-        self.stage_start = 1.0 if stage_start is None else float(stage_start)
+        # None: computed at create from the session clock (client countdown = waiting length).
+        self.stage_start = None if stage_start is None else float(stage_start)
         self._orig_close = session.close
 
     def start(self):
         if self.created or self.session.closed:
             return
+        if self.stage_start is None:
+            self.stage_start = countdown_stage_start(self.session, self.timeline)
         values = build_space_values(
             self.defaults, stage_start=self.stage_start, plane_id=self.plane_id
         )
@@ -125,7 +140,7 @@ class SpaceModule:
         )
         self.timeline.on_phase("boarding", self._on_boarding)
         self.timeline.start(self.session)
-        self.session.close = self._close_with_cleanup
+        self.session.on_close(self.remove)
 
     def _on_boarding(self, _phase):
         """End of warmup / pre-start: drop the countdown banner (BEFORE_FIGHT)."""
@@ -156,7 +171,14 @@ class SpaceModule:
 
 
 def register(session):
-    """MatchSession module entry point (GATEWAY_BATTLE_SESSION.md)."""
+    """MatchSession module entry point (GATEWAY_BATTLE_SESSION.md). The space entity (countdown,
+    player count, circle) is created when the waiting stage starts, i.e. once the client is in the
+    world; the module is attached at once so other modules can find it."""
     mod = SpaceModule(session)
-    mod.start()
+    session.space_module = mod
+    flow = getattr(session, "flow", None)
+    if flow is not None:
+        flow.on_enter("waiting", lambda _stage: mod.start(), first=True)
+    else:
+        mod.start()
     return mod
