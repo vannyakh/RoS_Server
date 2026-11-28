@@ -31,7 +31,7 @@ EXPECT = {
     "aircraft": "player jumps or is force-dropped at the end of the jump window (jump.py)",
     "parachute": "player lands (jump.py timed landing or legacy height landing)",
     "ground": "match ends: death, victory or quit (results.py)",
-    "results": "return to the lobby after RESULTS_LOBBY_DELAY (results.py)",
+    "results": "client Exit/Next (requestLeaveDynamicSpace), else RESULTS_LOBBY_DELAY (results.py)",
 }
 # Extra seconds a stage may run past its planned length before it is reported as timed out.
 TIMEOUT_GRACE = 15.0
@@ -128,7 +128,7 @@ class MatchFlow:
             # jump.py lands from the client's fall reports; JUMP_LAND_MAX is its hard cap (a real drop
             # from the plane took ~70 s on LDPlayer, so the old 8 s timed landing was not a limit).
             "parachute": float(os.environ.get("JUMP_LAND_MAX", "300")),
-            "results": float(os.environ.get("RESULTS_LOBBY_DELAY", "3")),
+            "results": float(os.environ.get("RESULTS_LOBBY_DELAY", "60")),
         }.get(stage)
         return None if planned is None else float(planned) + TIMEOUT_GRACE
 

@@ -378,7 +378,12 @@ def result_call(rank, total, gid, nickname, kills=0, collected=0, move=0):
     """onBattleGroundResult for a solo player (no GP or exp is granted, so the reward rows are 0)."""
     import pickle
     banner = BANNER_WIN_SINGLE if rank == 1 else BANNER_LOSE_SINGLE_TOP10 if rank <= 10 else BANNER_LOSE
-    row = {"gps": (0, 0, 0, 0, 0, 0), "dailyFirstGameReward": (0, 1), "randomGP": 0, "GPMul": 1, "exp": 0,
+    # UIBattlegroundsResultGold.showResult (client/frida/payloads/result_gold_keys.py, 2026-11-28):
+    # row = results.get(BigWorld.player().gid); row['getGPs'] = (totalGP, rate, avgGP, getGP, piece),
+    # row['randomGP'], row.get('exp', 0); per member row['nickname'], row['kill'], row['getGPs'][0..1].
+    # The older UIBattlegroundsResult keys (gps, dailyFirstGameReward, GPMul ...) stay for that screen.
+    row = {"getGPs": (0, 0, 0, 0, 0), "randomGP": 0, "exp": 0,
+           "gps": (0, 0, 0, 0, 0, 0), "dailyFirstGameReward": (0, 1), "GPMul": 1,
            "nickname": nickname, "name": nickname, "kill": kills, "score": 0, "moveDis": move,
            "collectCount": collected, "healTeammate": 0, "nationalFlag": ""}
     args = (i32(RESULT_GAME_TYPE) + i8(1) + i32(rank) + i32(total) + i32(banner)
@@ -484,7 +489,10 @@ def board_messages(map_id, center):
 AVATAR_ID = int(os.environ.get("AVATAR_ID", "10003"))
 # client index - raw .def index, measured per method where it differs from the entity default
 # (onAddItemToTemporary ran when sending raw 420 + 2... see docs/LOBBY_FINDINGS.md section 10)
-CM_DELTAS = {"BattleGroundAvatar": {"onAddItem": 2}}
+# Measured: raw 419 onAddItem is client index +2; sent 267 (raw 264 onBattleGroundResult + 3) ran raw 265
+# onBattleGroundGoldBattleResult (run 2, 2026-11-28: _showGoldArenaResult traceback, FailedUnpickle,
+# casual-points panel), so 263..265 are +2 too. +3 holds from raw 745 (onPickUpPropEntity).
+CM_DELTAS = {"BattleGroundAvatar": {"onAddItem": 2, "onBattleGroundDie": 2, "onBattleGroundResult": 2}}
 PROP_BASE = 30000
 _CACHE = {}
 

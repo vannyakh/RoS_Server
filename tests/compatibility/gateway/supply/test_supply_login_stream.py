@@ -12,6 +12,7 @@ from supply_helpers import ADDR, read_blob, read_py
 LOGIN_ORDER = [
     "syncServerTime", "syncServerTimeZone",
     "onSetSwitches", "onSetSwitches", "onSetSwitches", "onSetSwitches",       # LOBBY_SWITCHES_OFF
+    "onSetSwitches",                    # EnableEntertainScore off (result screen Exit / Next)
     "onUpdateAlreadyShowSupplyID",
     "onUpdateDtsHallThemeID",
     "onUpdateRecentGotPropIDList",      # Depot > Recent at login (RO-118); not supply-related

@@ -219,9 +219,9 @@ def test_close_runs_every_module_cleanup_once(session, sent, clock):
     assert len(sent) == n
 
 
-def test_first_avatar_request_starts_the_match_once(session, sent, clock):
-    """Measured: an idle client in the world sends no position report, but its avatar sends
-    onRecvClientFrameLevel / onRecvClientFPS 6 s after battle entry."""
+def test_in_world_request_starts_the_match_once(session, sent, clock):
+    """Measured with screenshots: onRecvClientFPS arrives while the loading screen is still up;
+    jumpEnd (and verifyClientValue, onDtsSelectStart ...) only once the player is in the world."""
     import battle_flow as bf
     from battle.session import load_battle_modules
 
@@ -231,7 +231,12 @@ def test_first_avatar_request_starts_the_match_once(session, sent, clock):
     fps = bytes.fromhex("00000000e717000000")              # captured onRecvClientFPS (0xBC)
     assert bf.decode_request(0xBC, fps)[2] == "onRecvClientFPS"
     session.dispatch_inbound(0xBC, fps)
-    session.dispatch_inbound(0xBC, fps)
+    clock.advance(0.0)
+    assert not session.client_ready                        # loading screen: no start yet
+    jump_end = bytes.fromhex("00000000f6")
+    assert bf.decode_request(0xBC, jump_end)[2] == "jumpEnd"
+    session.dispatch_inbound(0xBC, jump_end)
+    session.dispatch_inbound(0xBC, jump_end)
     clock.advance(0.0)
     assert session.client_ready and session.flow.stage == "waiting"
     assert [s for s, _a, _r in session.flow.history] == ["waiting"]
@@ -274,10 +279,20 @@ def test_other_entity_requests_do_not_start_the_match(session, clock):
     from battle.session import load_battle_modules
 
     load_battle_modules(session, MODULES_DIR, log=lambda *a, **k: None)
-    other_avatar = struct.pack("<I", 777) + bytes.fromhex("e717000000")   # an Avatar id that is not ours
+    other_avatar = struct.pack("<I", 777) + bytes.fromhex("f6")   # jumpEnd from an Avatar id that is not ours
     session.dispatch_inbound(0xBC, other_avatar)
     clock.advance(0.0)
     assert not session.client_ready
-    own = struct.pack("<I", bf.AVATAR_ID) + bytes.fromhex("e717000000")
+    own = struct.pack("<I", bf.AVATAR_ID) + bytes.fromhex("f6")
     session.dispatch_inbound(0xBC, own)
     assert session.client_ready
+
+
+def test_match_start_on_avatar_still_starts_on_any_own_request(session, clock, monkeypatch):
+    from battle.session import load_battle_modules
+
+    monkeypatch.setenv("MATCH_START_ON", "avatar")
+    load_battle_modules(session, MODULES_DIR, log=lambda *a, **k: None)
+    session.dispatch_inbound(0xBC, bytes.fromhex("00000000e717000000"))    # onRecvClientFPS
+    clock.advance(0.0)
+    assert session.client_ready and session.flow.stage == "waiting"

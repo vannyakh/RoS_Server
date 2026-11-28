@@ -91,6 +91,7 @@ def _new_session(bf, u32):
 GATE_CAPTURE = os.environ.get("GATE_CAPTURE", "off") == "on"   # raw packet capture files
 LOG_RAW = os.environ.get("LOG_RAW", "off") == "on"              # raw hex line per received packet
 STALE_STRIKES = int(os.environ.get("STALE_STRIKES", "3"))      # undecryptable packets before a channel is dead
+PEER_TIMEOUT = float(os.environ.get("PEER_TIMEOUT", "60"))     # silent seconds before a client is gone (0 = never)
 
 
 def _bf_plain_ok(pt):
@@ -1494,6 +1495,20 @@ class GateUDP(asyncio.DatagramProtocol):
         elif count % 50 == 0:
             print(f"      [SESSION] {addr}: {count} stale-channel packets dropped")
 
+    def _drop_dead_peer(self, addr, silent):
+        """The client sent nothing for PEER_TIMEOUT seconds (emulator crash, app killed, network
+        gone). Without this the keepalive resent every unacked packet every 0.5 s forever (2026-11-28:
+        40 764 resends over an hour to a crashed LDPlayer). Stop the keepalive and resends, and end
+        its match once; a later login starts a fresh channel."""
+        print(f"      [SESSION] {addr}: no packet for {silent:.0f}s -> client gone; keepalive stopped, "
+              f"{len(self._unacked_packets.get(addr, {}))} unacked dropped")
+        self._ka_gens[addr] = self._ka_gens.get(addr, 0) + 1
+        self.__dict__.get("_keepalive_started", set()).discard(addr)
+        self._unacked_packets.pop(addr, None)
+        self._last_recv.pop(addr, None)
+        if self._in_battle.get(addr):
+            self._abandon_match(addr, "client gone")
+
     def _abandon_match(self, addr, reason):
         """The client left the match without the result screen (re-login, dead channel): record the
         result once as a quit, end the match session and leave the battle state."""
@@ -2026,6 +2041,10 @@ class GateUDP(asyncio.DatagramProtocol):
         if gen != self._ka_gens.get(addr, 0):
             return
         now = _t.time()
+        last = self._last_recv.get(addr)
+        if PEER_TIMEOUT > 0 and last is not None and now - last > PEER_TIMEOUT:
+            self._drop_dead_peer(addr, now - last)
+            return
         _flag1 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "harness", "push_now.flag")
         _flag2 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "harness", "push_now.flag")
         _flag = _flag1 if os.path.exists(_flag1) else (_flag2 if os.path.exists(_flag2) else None)
@@ -2172,12 +2191,20 @@ class GateUDP(asyncio.DatagramProtocol):
             self._send_bundle(addr, calls, cur_seq, bytes(bf_key))
             print(f"      [BASEAPP] Sent Athlete.onLogin + onRoleCreateSuc + switches + lobby data")
             
-            # Send enterHall cleanly in its own bundle to avoid fragmentation corruption
+            # Send enterHall cleanly in its own bundle to avoid fragmentation corruption.
+            # HALL_WAIT_ACK=on (default): only after the client ACKed the whole lobby bundle. While
+            # the client is still busy with that bundle (12 s stall seen 2026-11-27), an early
+            # enterHall ends in Athlete._realEnterHall AttributeError ('NoneType'.GetComponent)
+            # and the lobby never loads.
             hall_call = athlete_method("enterHall", _first_login_today())
-            asyncio.get_event_loop().call_later(
-                0.2, self._send_bundle, addr, hall_call, self._last_client_seq.get(addr), bytes(bf_key)
-            )
-            print(f"      [BASEAPP] Scheduled enterHall in 0.2s")
+            if os.environ.get("HALL_WAIT_ACK", "on") == "on":
+                self._send_enter_hall_after_ack(addr, hall_call, bytes(bf_key), self._seq.get(addr, 0),
+                                                time.time() + float(os.environ.get("HALL_ACK_MAX", "20")))
+            else:
+                asyncio.get_event_loop().call_later(
+                    0.2, self._send_bundle, addr, hall_call, self._last_client_seq.get(addr), bytes(bf_key)
+                )
+                print(f"      [BASEAPP] Scheduled enterHall in 0.2s")
             if os.environ.get("PORTRAIT_SYNC", "on") != "off":
                 asyncio.get_event_loop().call_later(
                     float(os.environ.get("PORTRAIT_DELAY", "12")),
@@ -2188,6 +2215,17 @@ class GateUDP(asyncio.DatagramProtocol):
                                                     self._unlock_all_batch, addr, bytes(bf_key), 0)
             for t in [float(x) for x in os.environ.get("APPEARANCE_PUSH", "").split(",") if x.strip()]:
                 asyncio.get_event_loop().call_later(t, self._push_appearance, addr, bytes(bf_key))
+
+    def _send_enter_hall_after_ack(self, addr, hall_call, bf_key, before_seq, deadline):
+        """Send enterHall once every reliable packet below before_seq is ACKed, or at deadline."""
+        pending = [s for s in self._unacked_packets.get(addr, {}) if s < before_seq]
+        if pending and time.time() < deadline:
+            asyncio.get_event_loop().call_later(0.1, self._send_enter_hall_after_ack,
+                                                addr, hall_call, bf_key, before_seq, deadline)
+            return
+        reason = "deadline, %d unacked" % len(pending) if pending else "lobby bundle ACKed"
+        self._send_bundle(addr, hall_call, self._last_client_seq.get(addr), bf_key)
+        print(f"      [BASEAPP] enterHall sent ({reason})")
 
     def _dispatch_athlete(self, addr, name, args):
         """_athlete_request with its latency and reply size recorded in perf_monitor.MONITOR
@@ -3640,8 +3678,12 @@ class GateUDP(asyncio.DatagramProtocol):
         # Returning-player sign-in (UIDtsSign via huiliu) and friend recall (Recruit Rewards) pop
         # up at login once the date is in 2022; their data is not served, so UIDtsSign stays an
         # empty dim mask that blocks the lobby. Off as well (LOBBY_SWITCHES_OFF, comma list).
+        # EnableEntertainScore: the result screen's Exit / Next then opens the entertainment-score
+        # panel, which reads newEntertainScore etc. from the result row (KeyError on device); the
+        # gateway serves no entertainment score, so Exit / Next take the normal transit panel.
         off = os.environ.get("LOBBY_SWITCHES_OFF", "SysEnableMonthSupply,SysEnableHuiliuRecallSystem,"
-                                                   "EnableRecallPlayer,EnableNewRecallPlayer")
+                                                   "EnableRecallPlayer,EnableNewRecallPlayer,"
+                                                   "EnableEntertainScore")
         for sw in filter(None, (x.strip() for x in off.split(","))):
             calls += athlete_method("onSetSwitches", _bw_blob(sw.encode()) + b"\x00", quiet=True)
         # Weekly supply push (UIMgr.gotoThisWeekSupplyPackage) opens Supply at every login

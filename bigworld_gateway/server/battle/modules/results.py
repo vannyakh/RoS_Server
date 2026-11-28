@@ -22,7 +22,10 @@ import battle_flow as bf
 import bwdefs
 
 AVATAR_ID = bf.AVATAR_ID
-RESULTS_LOBBY_DELAY = float(os.environ.get("RESULTS_LOBBY_DELAY", "3.0"))
+# The result screen's Exit / Next (10 s auto) sends requestLeaveDynamicSpace and ros_server returns
+# the player to the lobby. This is only the fallback when that never comes: returning earlier left the
+# result panel open on top of the lobby (device, 2026-11-27).
+RESULTS_LOBBY_DELAY = float(os.environ.get("RESULTS_LOBBY_DELAY", "60"))
 
 
 @dataclass
@@ -51,6 +54,12 @@ def _gid():
         return int(account_link.current_gid())
     except (TypeError, ValueError):
         return int(os.environ.get("CBP_GID", "9000000001"))
+
+
+def _result_gid():
+    """The row key: the client looks its row up with BigWorld.player().gid, which ros_server sets
+    from account_link.current_gid()."""
+    return int(account_link.current_gid())
 
 
 def _nickname():
@@ -233,20 +242,25 @@ class ResultsModule:
             "die": deaths,
             "player_id": 1,
         }
-        game_end_args = encode_game_end(1, [player_row])
-        result_args = encode_on_battle_ground_result(
-            placement=placement,
-            kills=kills,
-            extra={"reason": reason, "victory": victory},
-        )
+        total = int(self._alive_start)
 
         bodies = []
-        bodies.append(bf.entity_method(self.space_id, "BattleGroundSpace", "gameEnd", game_end_args))
-        if not victory:
-            bodies.append(
-                bf.client_call("BattleGroundAvatar", "onBattleGroundDie", AVATAR_ID, _py_arg({"placement": placement}))
-            )
-        bodies.append(bf.client_call("BattleGroundAvatar", "onBattleGroundResult", AVATAR_ID, result_args))
+        if os.environ.get("RESULT_GAME_END", "off") == "on":       # not measured live yet
+            game_end_args = encode_game_end(1, [player_row])
+            bodies.append(bf.entity_method(self.space_id, "BattleGroundSpace", "gameEnd", game_end_args))
+        if not victory and os.environ.get("RESULT_DIE_CALL", "off") == "on":
+            # onBattleGroundDie opens the result panel in spectate mode (squads: "Your team still have
+            # a chance!" + Spectate). A solo death needs only onBattleGroundResult (device 2026-11-27).
+            bodies.append(bf.die_call())
+        # UIBattlegroundsResult.delayShowResult closes the panel again (leave_self_ui, no showResult)
+        # while the player is alive (not deadInGame) and the space isInFightStatus (gameStatus == FIGHT).
+        # A winner is alive, so the space goes to END (4) first (client_frida payloads result_ui_keys /
+        # fight_status, 2026-11-28; run 3: result entered, no panel).
+        bodies.append(bf.update_property("BattleGroundSpace", "gameStatus", bf.i32(bf.GS_END), eid=self.space_id))
+        # Client layout (LOBBY_FINDINGS index 267): INT32 gameType, INT8 teamSize, INT32 rank,
+        # INT32 total, INT32 bannerID, PY_DICT {gid: row}, PY_DICT killerInfo. The old 7 fields
+        # (map 700, mode, placement, kills, 0, {reason}, {}) left the panel on its placeholder text.
+        bodies.append(bf.result_call(int(placement), total, _result_gid(), nick, kills=kills))
         alive_left = 0 if victory else max(0, self._alive_start - self._eliminated - 1)
         if alive_left >= 0:
             bodies.append(
@@ -256,7 +270,7 @@ class ResultsModule:
             self.session.enqueue(chunk)
 
         self._send_match_report(placement)
-        self._teardown_session()
+        self._teardown_plane()          # space and bots stay until the lobby return (session close)
         self.session.schedule(RESULTS_LOBBY_DELAY, self._return_to_lobby)
         self.session._log(
             "      [BATTLE] results end placement=%s victory=%s reason=%s alive_left=%s"
@@ -315,25 +329,13 @@ class ResultsModule:
         self._send_match_report(placement)
         self.session._log("      [BATTLE] results quit placement=%s" % placement)
 
-    def _teardown_session(self):
+    def _teardown_plane(self):
         plane = getattr(self.session, "plane_module", None)
         if plane is not None and hasattr(plane, "remove"):
             try:
                 plane.remove()
             except Exception as e:
                 self.session._log(f"      [BATTLE] results plane remove failed: {e!r}")
-        space = getattr(self.session, "space_module", None)
-        if space is not None and hasattr(space, "remove"):
-            try:
-                space.remove()
-            except Exception as e:
-                self.session._log(f"      [BATTLE] results space remove failed: {e!r}")
-        bots = getattr(self.session, "bots_module", None)
-        if bots is not None and hasattr(bots, "remove_all"):
-            try:
-                bots.remove_all()
-            except Exception as e:
-                self.session._log(f"      [BATTLE] results bots remove failed: {e!r}")
 
     def _return_to_lobby(self):
         if self.session.closed:

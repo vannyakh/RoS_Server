@@ -44,6 +44,17 @@ BOT_ID_BASE = int(os.environ.get("BOT_ENTITY_ID_BASE", "40000"))
 DEFAULT_MODULES_DIR = Path(__file__).resolve().parent / "modules"
 
 
+
+MATCH_START_ON_DEFAULT = "inworld,position"
+# Own-avatar requests that the client only sends once the loading screen is gone (measured).
+IN_WORLD_REQUESTS = ("verifyClientValue", "reqFallFollowCurrentInfo", "switchOperateMode",
+                     "onDtsSelectStart", "jumpEnd", "onGetFallDamage")
+
+
+def in_world_requests():
+    raw = os.environ.get("MATCH_START_REQUESTS", "")
+    return {n.strip() for n in raw.split(",") if n.strip()} or set(IN_WORLD_REQUESTS)
+
 class HallMatchSession:
     """Athlete base calls from the hall START button through matchBattleGround."""
 
@@ -329,15 +340,18 @@ class MatchSession:
             return False
         if abs(float(x)) < 1.0 and abs(float(y)) < 1.0 and abs(float(z)) < 1.0:
             return False
-        if "position" not in os.environ.get("MATCH_START_ON", "avatar,position"):
+        if "position" not in os.environ.get("MATCH_START_ON", MATCH_START_ON_DEFAULT):
             return False
         return self.start_match("client in world (%.0f, %.0f, %.0f)" % (x, y, z))
 
     def _start_on_avatar_request(self, msgid, payload):
-        """The client's first BattleGroundAvatar cell request means its avatar is in the world.
-        Measured on LDPlayer 2026-11-27: 6 s after battle entry the client sends
-        onRecvClientFrameLevel, getOnTrain, then onRecvClientFPS every second (render-loop stats),
-        while an idle player sends no position report at all."""
+        """Start the match on the first own-avatar request that only comes once the loading screen
+        is gone (MATCH_START_ON token "inworld", the default; "avatar" = any own-avatar request).
+        Measured on LDPlayer 2026-11-27 19:37 with screenshots every 4 s: onRecvClientFrameLevel,
+        getOnTrain, onRecvClientFPS (+8 s) and skydive2MoveDir, onTryingToRun (+47 s) all arrive
+        while the loading screen is still shown; verifyClientValue, reqFallFollowCurrentInfo,
+        switchOperateMode, onDtsSelectStart, jumpEnd, onGetFallDamage arrive at +81..85 s, between
+        the last loading frame and the first in-world frame. No position report came at all."""
         try:
             import battle_flow
 
@@ -350,9 +364,10 @@ class MatchSession:
         if req[2] not in seen:              # evidence: what the client sends while it loads
             seen.add(req[2])
             self._log("      [BATTLE SESSION] pre-start client request: %s" % req[2])
-        if "avatar" not in os.environ.get("MATCH_START_ON", "avatar,position"):
-            return False
-        return self.start_match("client in world: %s" % req[2])
+        on = os.environ.get("MATCH_START_ON", MATCH_START_ON_DEFAULT)
+        if "avatar" in on or ("inworld" in on and req[2] in in_world_requests()):
+            return self.start_match("client in world: %s" % req[2])
+        return False
 
     def start_timeout(self, limit):
         if self.client_ready or self.closed:

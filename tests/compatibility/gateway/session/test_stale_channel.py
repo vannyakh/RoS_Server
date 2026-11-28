@@ -39,3 +39,30 @@ def test_undecryptable_packet_is_dropped_and_keepalive_stopped(gw, udp, capsys):
 
 def test_capture_files_are_off_by_default(gw):
     assert gw.GATE_CAPTURE is False and gw.LOG_RAW is False
+
+
+def test_silent_client_is_dropped_and_resends_stop(gw, udp, capsys):
+    """A crashed client: after PEER_TIMEOUT seconds with no packet the keepalive stops resending."""
+    import time
+    udp.transport = _Transport()
+    gen0 = udp._ka_gens.get(ADDR, 0)
+    udp._unacked_packets[ADDR] = {5: {"body": b"x", "time": 0, "fl": 0, "footer_prefix": b""}}
+    udp._last_recv[ADDR] = time.time() - gw.PEER_TIMEOUT - 1
+    udp._keepalive(ADDR, b"\x01" * 16, gen0)
+    out = capsys.readouterr().out
+    assert "client gone" in out
+    assert udp._ka_gens[ADDR] == gen0 + 1
+    assert ADDR not in udp._unacked_packets
+    assert udp.transport.sent == []                          # nothing resent to the dead client
+
+
+def test_recent_client_is_kept(gw, udp):
+    import time
+    gen0 = udp._ka_gens.get(ADDR, 0)
+    udp._last_recv[ADDR] = time.time()
+    udp.transport = _Transport()
+    try:
+        udp._keepalive(ADDR, b"\x01" * 16, gen0)
+    except Exception:
+        pass                                                 # later keepalive work needs a loop
+    assert udp._ka_gens.get(ADDR, 0) == gen0
